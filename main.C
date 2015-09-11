@@ -3,6 +3,7 @@
 #include"parser.h"
 #include"network.h"
 #include"simulator.h"
+#include"readout.h"
 #include<sys/time.h>
 #include<iostream>
 #include<math.h>
@@ -99,6 +100,11 @@ int main(int argc, char * argv[]){
   
   gettimeofday(&val2,&zone);
   cout<<"Wall clock time: "<<((val2.tv_sec-val1.tv_sec)+double(val2.tv_usec-val1.tv_usec)*1e-6)<<" seconds"<<endl;
+  
+  cout<<"Readout the results from the /outputs .... "<<endl; 
+  Readout readout_module(260);
+
+  readout_module.Multireadout();
   
   pthread_exit(NULL);
 

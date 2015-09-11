@@ -54,15 +54,17 @@
 #define J_MINUS	0
 
 /* FOR LIQUID STATE MACHINE */
+// damping factor for long-time potientation:
+#define DAMPING 0.01
 // learning rate for STDP:
 #define LAMBDA 0.0002 
 // asymmetry parameter for LTD:
 #define ALPHA 0.6
 // time constant for trace y1, y2: tau_1 < tau_2
-#define TAU_Y1_TRACE 16
-#define TAU_Y2_TRACE 32
+#define TAU_Y1_TRACE 8//16
+#define TAU_Y2_TRACE 16//32
 // time constant for trace x:
-#define TAU_X_TRACE  64 
+#define TAU_X_TRACE  16//64 
 
 #define LSM_T_M 32
 //#define LSM_T_SYNE 2.0

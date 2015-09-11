@@ -218,8 +218,8 @@ void Simulator::LSMRun(long tid){
   int x,y,loss_neuron;
   int Tid;
   double temp;
-  FILE * Fp;
-  FILE * Foutp;
+  FILE * Fp = NULL;
+  FILE * Foutp = NULL;
   networkmode_t networkmode;
   
   srand(0);
@@ -244,39 +244,57 @@ void Simulator::LSMRun(long tid){
   temp = ((double)y)/((double)x);
   cout<<"x = "<<x<<"y = "<<y<<"\t"<<"Lost rate: "<<temp<<"\t"<<"Desired loss rate: "<<LOST_RATE<<endl; */
 
+#if NUM_THREADS == 1
   sprintf(filename, "reservoir_weights_%ld_org.txt", tid);
   _network->WriteSynWeightsToFile("reservoir",filename);
-
+#endif
   // train the reservoir using STDP rule:
   networkmode = TRAINRESERVOIR;
   _network->LSMSetNetworkMode(networkmode);
 
   gettimeofday(&val1, &zone);
   // repeatedly training the reservoir for a certain amount of iterations:
-  for(int i = 0; i < 2; ++i){
+  for(int i = 0; i < 10; ++i){
     _network->LSMClearSignals();
     // no training of the readout synapses happens during this stage:
     info = _network->LoadFirstSpeech(false, networkmode);
     while(info != -1){
-      Fp = NULL;
+#if NUM_THREADS == 1
+      sprintf(filename,"results/spikepattern%d.dat", info);
+      Fp = fopen(filename, "w");
+      assert(Fp != NULL);
+#endif
       Foutp = NULL;
       int time = 0;
       while(!_network->LSMEndOfSpeech(networkmode)){
-        _network->LSMNextTimeStep(++time, false, 1, NULL);
+        _network->LSMNextTimeStep(++time, false, 1, NULL, Fp);
       }
+#if NUM_THREADS == 1
+      fclose(Fp);
+#endif
+      cout<<"Speech : "<<info<<endl;
       _network->LSMClearSignals();
       info = _network->LoadNextSpeech(false, networkmode);
     }
+#if NUM_THREADS == 1  
+  // Write the weight back to file after training the reservoir with STDP:
+  sprintf(filename, "reservoir_weights_%d.txt", i);
+  _network->WriteSynWeightsToFile("reservoir",filename);
+#endif       
+
   }
   gettimeofday(&val2, &zone);
   cout<<"Total time spent in training the reservoir: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
-  
+
+  assert(0);
+
+#if NUM_THREADS == 1  
   // Write the weight back to file after training the reservoir with STDP:
   sprintf(filename, "reservoir_weights_%ld.txt", tid);
   _network->WriteSynWeightsToFile("reservoir",filename);
+#endif
   // Load the weight from file:
   
-  assert(0);
   
   // produce transient state
   networkmode = TRANSIENTSTATE;
@@ -286,28 +304,18 @@ void Simulator::LSMRun(long tid){
   _network->LSMClearSignals();
   info = _network->LoadFirstSpeech(false, networkmode);
   while(info != -1){
-//cout<<"1\t"<<count<<endl;
-//    sprintf(filename,"results/spikepattern%d.dat\0",info);
-//    Fp = fopen(filename,"w");
-//    assert(Fp != NULL);
     Fp = NULL;
     Foutp = NULL;
-//    sprintf(filename,"trainoutputs/spikepattern%d.dat\0",count);
-//    Foutp = fopen(filename,"w");
     count++;
     int time = 0;
     while(!_network->LSMEndOfSpeech(networkmode)){
-      _network->LSMNextTimeStep(++time,false,1,NULL);
+      _network->LSMNextTimeStep(++time,false,1,NULL,NULL);
     }
-//cout<<time<<endl;
-//    fclose(Fp);
-//    fclose(Foutp);
 //cout<<"Speech "<<count<<endl;
 //_network->SpeechInfo();
     _network->LSMClearSignals();
     info = _network->LoadNextSpeech(false, networkmode);
   }
-//  cout<<"start..."<<endl;
 
   // train the readout layer
   networkmode = READOUT;
@@ -328,21 +336,19 @@ void Simulator::LSMRun(long tid){
      _network->Fold(Tid);
 #endif
 //  _network->LSMClearWeights();   //Clear all weights before each fold of CV
-//#ifdef CV
   info = _network->LoadFirstSpeechTestCV(networkmode);
   while(info != -1){
-    cout<<"In thread "<<Tid<<", this is speech "<<info<<endl;
+    // write the file array for the purpose of parallel writing protectation:
+    file[info] = Tid;
     sprintf(filename,"outputs/spikepattern%d.dat",info);
     
     Foutp = fopen(filename,"w");
-//    file[info] = info;
     assert(Foutp != NULL);
     fprintf(Foutp,"%d\t%d\n",-1,-1);
     fclose(Foutp);
     info = _network->LoadNextSpeechTestCV(networkmode);
   }
 #endif
-//  for(int iii = 0; iii < 500; iii++){
   for(int iii = 0; iii < 500; iii++){
     count = 0;
     _network->LSMClearSignals();
@@ -352,25 +358,48 @@ void Simulator::LSMRun(long tid){
     info = _network->LoadFirstSpeech(true, networkmode);
 #endif
     while(info != -1){
-//cout<<"training "<<count<<endl;
-//cout<<"2\t"<<count<<endl;
-//      sprintf(filename,"results/spikepattern%d.dat\0",count);
-//      Fp = fopen(filename,"w");
-//      sprintf(filename,"trainoutputs/spikepattern%d.dat\0",count);
-//      Foutp = fopen(filename,"w");
-        Fp = NULL;
-        Foutp = NULL;
-//      cout<<"iter "<<iii+1<<"\tspeech "<<count++<<endl;
+      Fp = NULL;
+      Foutp = NULL;
       count++;
       int time = 0;
       while(!_network->LSMEndOfSpeech(networkmode)){
-        _network->LSMNextTimeStep(++time,true,iii,NULL);
+        _network->LSMNextTimeStep(++time,true,iii,NULL,NULL);
       }
-//cout<<time<<endl;
-//      fclose(Fp);
-//      fclose(Foutp);
+      _network->LSMClearSignals();
+#ifdef CV
+      info = _network->LoadNextSpeechTrainCV(networkmode);
+#else
+      info = _network->LoadNextSpeech(true, networkmode);
+#endif
+    }
+//    _network->SearchForNeuronGroup("output")->LSMPrintInputSyns();
+//  }
+
+    count = 0;
+#ifdef CV
+    info = _network->LoadFirstSpeechTestCV(networkmode);
+#else
+    info = _network->LoadFirstSpeech(false, networkmode);
+#endif
+    while(info != -1){
+      Fp = NULL;
+      sprintf(filename,"outputs/spikepattern%d.dat",info);
+      Foutp = fopen(filename,"a");
+      assert(Foutp != NULL);
+      count++;
+      int time = 0;
+      while(!_network->LSMEndOfSpeech(networkmode)){
+        _network->LSMNextTimeStep(++time,false,1,Foutp,NULL);
+      }
+      if(file[info] != -1){
+        if(file[info] != Tid){
+        cout<<"Thread "<<Tid<<" tried to write file: "<<filename<<" but Thread "<<file[info]<<" is writing it!"<<endl;
+        assert(0);
+        }
+      }
+      file[info] = Tid;
+      assert(Foutp != NULL);
       fprintf(Foutp,"%d\t%d\n",-1,-1);
-//      fclose(Fp);
       fclose(Foutp);
       _network->LSMClearSignals();
 #ifdef CV

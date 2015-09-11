@@ -108,7 +108,7 @@ public:
   void ClearFiringStat(){_fired = 0;}
 /* ONLY FOR LIQUID STATE MACHINE */
   void LSMClear();
-  void LSMNextTimeStep(int,FILE *);
+  void LSMNextTimeStep(int,FILE *,FILE *);
   void LSMSetChannel(Channel*,channelmode_t);
   void LSMRemoveChannel();
   void LSMSetNeuronMode(neuronmode_t neuronmode){_mode = neuronmode;}

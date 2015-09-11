@@ -13,6 +13,8 @@
 #include<stdio.h>
 #include<math.h>
 
+//#define _DEBUG_NEURON
+
 using namespace std;
 
 extern int Current;
@@ -50,17 +52,17 @@ _D_lsm_state_EP(0),
 _D_lsm_state_EN(0),
 _D_lsm_state_IP(0),
 _D_lsm_state_IN(0),
-_D_lsm_tau_EP(4*2),
-_D_lsm_tau_EN(LSM_T_SYNE*2),
-_D_lsm_tau_IP(4*2),
-_D_lsm_tau_IN(LSM_T_SYNI*2),
+_D_lsm_tau_EP(4),
+_D_lsm_tau_EN(LSM_T_SYNE),
+_D_lsm_tau_IP(4),
+_D_lsm_tau_IN(LSM_T_SYNI),
 _D_lsm_tau_FO(LSM_T_FO),
 _t_next_spike(-1),
 _network(network),
 _calcium(LSM_CAL_MID-3),
 _calcium_pre(LSM_CAL_MID-3),
-_Unit(one),
-_Lsm_v_thresh(25),
+_Unit(unit),
+_Lsm_v_thresh(LSM_V_THRESH*unit),
 _teacherSignal(0){
   _name = new char[strlen(name)+2];
   strcpy(_name,name);
@@ -84,10 +86,10 @@ _D_lsm_state_EP(0),
 _D_lsm_state_EN(0),
 _D_lsm_state_IP(0),
 _D_lsm_state_IN(0),
-_D_lsm_tau_EP(4*2),
-_D_lsm_tau_EN(LSM_T_SYNE*2),
-_D_lsm_tau_IP(4*2),
-_D_lsm_tau_IN(LSM_T_SYNI*2),
+_D_lsm_tau_EP(4),
+_D_lsm_tau_EN(LSM_T_SYNE),
+_D_lsm_tau_IP(4),
+_D_lsm_tau_IN(LSM_T_SYNI),
 _D_lsm_tau_FO(LSM_T_FO),
 _t_next_spike(-1),
 _network(network),
@@ -485,7 +487,7 @@ void Neuron::ResizeSyn(){
 }
 
 
-void Neuron::LSMNextTimeStep(int t, FILE * Foutp){
+void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp){
 //if(t>=5) assert(0);
 //  if(_lsm_channel){
 //  int extra=0;
@@ -592,8 +594,10 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp){
   _D_lsm_v_mem += temp;
 //  if((_name[0] == 'r')&&(_name[9] == '_'))
 //    if(_D_lsm_v_mem <= -32) _D_lsm_v_mem = -32;
-//  if(strcmp(_name,"reservoir_15")==0) //cout<<_Unit<<"\t"<<_Lsm_v_thresh<<endl;
-//     cout<<_D_lsm_v_mem<<"\t"<<temp<<"\t"<<_D_lsm_state_EP<<"\t"<<_D_lsm_state_EN<<"\t"<<_D_lsm_state_IP<<"\t"<<_D_lsm_state_IN<<endl;
+#ifdef _DEBUG_NEURON
+  if(strcmp(_name,"reservoir_0")==0) //cout<<_Unit<<"\t"<<_Lsm_v_thresh<<endl;
+     cout<<_D_lsm_v_mem<<"\t"<<temp<<"\t"<<_D_lsm_state_EP<<"\t"<<_D_lsm_state_EN<<"\t"<<_D_lsm_state_IP<<"\t"<<_D_lsm_state_IN<<endl;
+#endif
 #else
   _lsm_v_mem -= ceil( _lsm_v_mem/LSM_T_M);
   for(iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++) _lsm_v_mem += (*iter)->LSMCurrent();
@@ -606,7 +610,12 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp){
   }
 
 #ifdef DIGITAL
-  if(_D_lsm_v_mem > (_Lsm_v_thresh)){
+  if(_D_lsm_v_mem > (_Lsm_v_thresh)){  
+#ifdef _DEBUG_NEURON  
+    if(strcmp(_name, "reservoir_0") == 0){
+      cout<<"the neuron : reservoir_0 fired!!"<<endl;
+    }
+#endif
       _D_lsm_calcium += _Unit;
 #else
   if(_lsm_v_mem > LSM_V_THRESH*_Unit){
@@ -630,6 +639,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp){
       if(_mode == STDP){
 	// if the synapse is not yet active, push it into the to-be-processed list
 	// do not consider the synapses connected from the reservoir to readout:
+	// only consider that the excitatory synapse:
 	if((*iter)->GetActiveStatus() == false && (*iter)->IsReadoutSyn() == false){
 	  // the second parameter passed into the function is a flag indicating stdp training in the reservoir:
 	  (*iter)->LSMActivate(_network, true);
@@ -652,7 +662,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp){
     _lsm_ref = LSM_T_REFRAC;
     if((_name[0]=='r')&&(_name[9]=='_')){
 //      cout<<atoi(_name+10)<<"\t"<<t<<endl;
-//     if(Fp != NULL) fprintf(Fp,"%d\t%d\n",atoi(_name+10),t);
+      if(Fp != NULL) fprintf(Fp,"%d\t%d\n",atoi(_name+10),t);
     }else if(Foutp != NULL) 
 	fprintf(Foutp,"%d\t%d\n",atoi(_name+7),t);
 

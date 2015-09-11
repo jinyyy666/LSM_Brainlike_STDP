@@ -124,8 +124,6 @@ void Network::LSMAddNeuronGroup(char * name, char * path_info_neuron, char * pat
   NeuronGroup * neuronGroup = new NeuronGroup(name, path_info_neuron, path_info_synapse,this); //This function helps to generate the reservoir with brain-like connectivity
   _groupNeurons.push_back(neuronGroup);
 
-  cout<<"after constructing the reservoir, _rsynapses has size: "<<_rsynapses.size()<<endl;
-
   for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
     _allNeurons.push_back(neuron);
     if(neuron->IsExcitatory()) _allExcitatoryNeurons.push_back(neuron);
@@ -615,7 +613,7 @@ void Network::LSMPrintAllNeurons(int count){
   }
   fclose(Fp_neuron);
 }
-void Network::LSMNextTimeStep(int t, bool train,int iteration, FILE * Foutp){
+void Network::LSMNextTimeStep(int t, bool train,int iteration, FILE * Foutp, FILE * Fp){
 //  struct timeval val1,val2,val3;
 
   _lsm_t = t;
@@ -624,13 +622,16 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration, FILE * Foutp){
   for(list<Synapse*>::iterator iter = _lsmActiveSyns.begin(); iter != _lsmActiveSyns.end(); iter++) (*iter)->LSMNextTimeStep();
   _lsmActiveSyns.clear();
 //  gettimeofday(&val2,&zone);
-  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMNextTimeStep(t,Foutp);
+  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMNextTimeStep(t,Foutp,Fp);
  
   // train the reservoir using STDP:
   if(_network_mode == TRAINRESERVOIR){
-    for(list<Synapse*>::iterator iter = _lsmActiveReservoirLearnSyns.begin(); iter != _lsmActiveReservoirLearnSyns.end(); iter++){
+    for(vector<Synapse*>::iterator iter = _rsynapses.begin(); iter != _rsynapses.end(); ++iter){
       // Update the local variable implememnting STDP with triplet pairing scheme:
-      (*iter)->LSMUpdate(t);      
+      (*iter)->LSMUpdate(t);        
+    }
+      
+    for(list<Synapse*>::iterator iter = _lsmActiveReservoirLearnSyns.begin(); iter != _lsmActiveReservoirLearnSyns.end(); iter++){   
       // train the reservoir synapse with STDP rule:
       (*iter)->LSMLiquidLearn(t);
     }

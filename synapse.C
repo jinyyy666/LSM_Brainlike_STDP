@@ -2,10 +2,14 @@
 #include"synapse.h"
 #include"neuron.h"
 #include"network.h"
-#include<math.h>
-#include<stdlib.h>
-#include<iostream>
-#include<assert.h>
+#include <math.h>
+#include <string.h>
+#include <stdlib.h>
+#include <iostream>
+#include <assert.h>
+
+//#define _DEBUG_SYN_UPDATE
+#define _DEBUG_SYN_LEARN
 
 using namespace std;
 
@@ -130,8 +134,8 @@ _lsm_active(false){
   
   }
   else if(pre_name[0] == 'i'){
-    _D_lsm_weight = _D_lsm_weight<<1;
-    _D_lsm_weight_limit = _D_lsm_weight<<1;
+    _D_lsm_weight = (_D_lsm_weight<<(NUM_BIT_SYN - NBT_STD_SYN));
+    _D_lsm_weight_limit = (_D_lsm_weight<<(NUM_BIT_SYN - NBT_STD_SYN));
   }
   else{
   assert(_liquid == true);
@@ -163,12 +167,10 @@ bool Synapse::IsReadoutSyn(){
   char * name_post = post->Name();
   // if the post neuron is the readout neuron:
   if(name_post[0] == 'o' && name_post[6] == '_'){
-    //cout<<"Synapse: "<<pre->Name()<<" to "<<post->Name()<<endl;
     assert(_fixed == false);
     return true;
   }
   else{
-    cout<<"Synapse: "<<pre->Name()<<" to "<<post->Name()<<endl;
     return false;
   }
 }
@@ -427,29 +429,34 @@ void Synapse::LSMNextTimeStep(){
 
 //* this function is used to update the trace x and trace y for STDP:
 void Synapse::LSMUpdate(int t){
-  // Remember the delay of deliverying the fired spike is one!!!
-  //t--;
   if(t < 0)
     return;
 
   _y_i2_last = _y_i2;
   // update the trace x:
+  if(_x_j > 0)
+    _x_j -= (_x_j/TAU_X_TRACE == 0) ? 1 : _x_j/TAU_X_TRACE;
+
   if(t == _t_spike_pre)
-    _x_j -= _x_j/TAU_X_TRACE + UNIT_DELTA;
-  else
-    _x_j -= _x_j/TAU_X_TRACE;
+    _x_j += UNIT_DELTA;
 
   // update the trace y_i1 and y_i2:
   _y_i2_last = _y_i2;	// need to keep track of the y_i2 before the update. y_i2_last is used in STDP learning
-  if(t == _t_spike_post){
-    _y_i1 -= _y_i1/TAU_Y1_TRACE + UNIT_DELTA;
-    _y_i2 -= _y_i2/TAU_Y2_TRACE + UNIT_DELTA;
-  }
-  else{
-    _y_i1 -= _y_i1/TAU_Y1_TRACE;
-    _y_i2 -= _y_i2/TAU_Y2_TRACE;
-  }
   
+  if(_y_i1 > 0)
+    _y_i1 -= _y_i1/TAU_Y1_TRACE == 0 ? 1 : _y_i1/TAU_Y1_TRACE;
+  if(_y_i2 > 0)
+    _y_i2 -= _y_i2/TAU_Y2_TRACE == 0 ? 1 : _y_i2/TAU_Y2_TRACE;
+  
+  if(t == _t_spike_post){
+    _y_i1 += UNIT_DELTA;
+    _y_i2 += UNIT_DELTA;
+  }
+   
+#ifdef _DEBUG_SYN_UPDATE
+  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9") && _x_j > 0)
+    cout<<"t: "<<t<<"\tx_j: "<<_x_j<<"\ty_i1: "<<_y_i1<<"\ty_i2: "<<_y_i2<<endl;
+#endif
 }
 
 //* this function is the implementation of the STDP learning rule, please find more details in the paper:
@@ -457,29 +464,46 @@ void Synapse::LSMUpdate(int t){
 void Synapse::LSMLiquidLearn(int t){
   // Remember that the delay of deliverying the fired spike is 1
   //t--;
-  if( t < 0 || (t != _t_spike_pre && t != _t_spike_post))
+  if( t < 0 || (t != _t_spike_pre && t != _t_spike_post) || (_t_spike_pre == _t_spike_post))
     return; 
 
   // you need to make sure that this synapse is active!
   // F_pos/F_neg is the STDP function for LTP and LTD:
   // LAMBDA is the learning rate here
-  int F_pos = LAMBDA*(_D_lsm_weight_limit - _D_lsm_weight);
-  int F_neg = LAMBDA*ALPHA*_D_lsm_weight;
+  int F_pos = _D_lsm_weight > 0 ? (_D_lsm_weight_limit - _D_lsm_weight) 
+                                : (_D_lsm_weight_limit +  _D_lsm_weight);
+  int F_neg = _D_lsm_weight;
   int delta_w_pos = 0, delta_w_neg = 0; // delta weight resulted from LTP and LTD
   // 1. LTP (Long-Time Potientation i.e. w+):
   if(t == _t_spike_post){
-    assert(_t_spike_pre <= _t_spike_post);
-    delta_w_pos = F_pos*_x_j*_y_i2_last;
+    assert(_t_spike_pre < _t_spike_post);
+    delta_w_pos = LAMBDA*F_pos*_x_j*_y_i2_last;
+    if(abs(delta_w_pos) > 10)
+      delta_w_pos = DAMPING*delta_w_pos;
+
+#ifdef _DEBUG_SYN_LEARN
+  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
+    cout<<"post firing time: "<<t<<"\tF_pos: "<<F_pos<<"\tx_j: "<<_x_j<<"\ty_i2_last: "<<_y_i2_last<<"\tdelta_w_pos: "<<delta_w_pos<<endl;
+#endif
   }
 
   // 2. LTD (Long-Time Depression i.e. w-):
   if(t == _t_spike_pre){
-    //cout<<"t: "<<t<<"\t_t_spike_pre: "<<_t_spike_pre<<"\t_t_spike_post: "<<_t_spike_post<<endl;
-    assert(_t_spike_pre >= _t_spike_post);
-    delta_w_neg = -1*F_neg*_y_i1;
+    assert(_t_spike_pre > _t_spike_post);
+    delta_w_neg = _D_lsm_weight > 0 ? -1*LAMBDA*ALPHA*F_neg*_y_i1 
+                                    : LAMBDA*ALPHA*F_neg*_y_i1;
+
+#ifdef _DEBUG_SYN_LEARN
+  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
+    cout<<"pre firing time: "<<t<<"\tF_neg: "<<F_neg<<"\ty_i1: "<<_y_i1<<"\tdelta_w_neg: "<<delta_w_neg<<endl;
+#endif
   }
 
   // 3. Update the weight:
+#ifdef _DEBUG_SYN_LEARN
+  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
+    cout<<"Weight increase: "<<delta_w_pos + delta_w_neg<<endl;
+#endif
   _D_lsm_weight += delta_w_pos + delta_w_neg;
   
   // 4. Check whether or not the weight is out of bound:
@@ -489,7 +513,7 @@ void Synapse::LSMLiquidLearn(int t){
 
 //* this function is to check whether or not the weight is out of bound:
 void Synapse::CheckWeightOutBound(){
-  if(_D_lsm_weight >= _D_lsm_weight_limit) _D_lsm_weight = _D_lsm_weight_limit-1;
+  if(_D_lsm_weight >= _D_lsm_weight_limit) _D_lsm_weight = _D_lsm_weight_limit;
   if(_D_lsm_weight < -_D_lsm_weight_limit) _D_lsm_weight = -_D_lsm_weight_limit;
 }
 
@@ -502,6 +526,10 @@ void Synapse::LSMClear(){
   _t_spike_pre = -1e8;
   _t_spike_post = -1e8;
   _lsm_delay = 0;
+  _x_j = 0;
+  _y_i1 = 0;
+  _y_i2 = 0;
+  _y_i2_last = 0;
 }
 
 void Synapse::LSMClearLearningSynWeights(){
@@ -519,7 +547,7 @@ void Synapse::LSMActivate(Network * network, bool stdp_flag){
   
   if(_fixed == true){
     // 2. For the reservoir synapses which are assumed to be fixed: 
-    if(stdp_flag == true && _lsm_active == false)
+    if(stdp_flag == true && _lsm_active == false && _excitatory == true)
       network->LSMAddReservoirActiveSyn(this);
   }
   else{

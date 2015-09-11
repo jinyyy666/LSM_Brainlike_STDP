@@ -118,7 +118,7 @@ public:
   void LSMPrintAllSyns(int);
   void LSMPrintAllLiquidSyns(int);
   void LSMPrintAllNeurons(int);
-  void LSMNextTimeStep(int,bool,int,FILE *);
+  void LSMNextTimeStep(int,bool,int,FILE *,FILE *);
 
   Neuron * SearchForNeuron(const char*);
   Neuron * SearchForNeuron(const char*, const char*);
