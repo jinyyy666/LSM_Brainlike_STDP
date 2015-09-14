@@ -143,7 +143,7 @@ _lsm_active(false){
      _D_lsm_weight_limit = (_D_lsm_weight_limit<<(NUM_BIT_SYN-NBT_STD_SYN));
   }
   
-  cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<_D_lsm_weight<<endl;
+ cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<_D_lsm_weight<<endl;
 }
 
 
@@ -216,7 +216,6 @@ void Synapse::SetLearningSynapse(int syn){
 
 void Synapse::LSMLearn(int iteration){
   assert((_fixed==false)&&(_lsm_active==true));
-  _lsm_active = false;
   int iter;
 
   if(iteration <= 10) iter = 1;
@@ -319,10 +318,6 @@ double state = _state_internal;
       if(_state_internal < 0) _state_internal = 0;
     }
   }
-}
-
-int Synapse::Weight(){
-  return _D_lsm_weight;
 }
 
 Neuron * Synapse::PreNeuron(){
@@ -429,7 +424,7 @@ void Synapse::LSMNextTimeStep(){
 
 //* this function is used to update the trace x and trace y for STDP:
 void Synapse::LSMUpdate(int t){
-  if(t < 0)
+  if(t < 0 || _t_spike_pre == _t_spike_post)
     return;
 
   _y_i2_last = _y_i2;
@@ -454,7 +449,8 @@ void Synapse::LSMUpdate(int t){
   }
    
 #ifdef _DEBUG_SYN_UPDATE
-  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9") && _x_j > 0)
+  //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9") && _x_j > 0)    
+  if(!strcmp(_pre->Name(), "reservoir_8") && !strcmp(_post->Name(), "reservoir_0"))
     cout<<"t: "<<t<<"\tx_j: "<<_x_j<<"\ty_i1: "<<_y_i1<<"\ty_i2: "<<_y_i2<<endl;
 #endif
 }
@@ -470,38 +466,55 @@ void Synapse::LSMLiquidLearn(int t){
   // you need to make sure that this synapse is active!
   // F_pos/F_neg is the STDP function for LTP and LTD:
   // LAMBDA is the learning rate here
+
+#ifdef ADDITIVE_STDP
+  int F_pos = A_POS;
+  int F_neg = A_NEG;
+#else
   int F_pos = _D_lsm_weight > 0 ? (_D_lsm_weight_limit - _D_lsm_weight) 
                                 : (_D_lsm_weight_limit +  _D_lsm_weight);
   int F_neg = _D_lsm_weight;
+#endif
   int delta_w_pos = 0, delta_w_neg = 0; // delta weight resulted from LTP and LTD
   // 1. LTP (Long-Time Potientation i.e. w+):
   if(t == _t_spike_post){
     assert(_t_spike_pre < _t_spike_post);
+#ifdef PAIR_BASED
+    delta_w_pos = LAMBDA*F_pos*_x_j;
+#else
     delta_w_pos = LAMBDA*F_pos*_x_j*_y_i2_last;
     if(abs(delta_w_pos) > 10)
       delta_w_pos = DAMPING*delta_w_pos;
+#endif
 
 #ifdef _DEBUG_SYN_LEARN
-  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
-    cout<<"post firing time: "<<t<<"\tF_pos: "<<F_pos<<"\tx_j: "<<_x_j<<"\ty_i2_last: "<<_y_i2_last<<"\tdelta_w_pos: "<<delta_w_pos<<endl;
+    //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
+    if(!strcmp(_pre->Name(), "reservoir_8") && !strcmp(_post->Name(), "reservoir_0"))
+      cout<<"post firing time: "<<t<<"\tF_pos: "<<F_pos<<"\tx_j: "<<_x_j<<"\ty_i2_last: "<<_y_i2_last<<"\tdelta_w_pos: "<<delta_w_pos<<endl;
 #endif
   }
 
   // 2. LTD (Long-Time Depression i.e. w-):
   if(t == _t_spike_pre){
     assert(_t_spike_pre > _t_spike_post);
+#ifdef PAIR_BASED
+    delta_w_neg = LAMDBA*ALPHA*F_neg*_y_i1;
+#else
     delta_w_neg = _D_lsm_weight > 0 ? -1*LAMBDA*ALPHA*F_neg*_y_i1 
                                     : LAMBDA*ALPHA*F_neg*_y_i1;
+#endif
 
 #ifdef _DEBUG_SYN_LEARN
-  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
-    cout<<"pre firing time: "<<t<<"\tF_neg: "<<F_neg<<"\ty_i1: "<<_y_i1<<"\tdelta_w_neg: "<<delta_w_neg<<endl;
+    //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
+    if(!strcmp(_pre->Name(), "reservoir_8") && !strcmp(_post->Name(), "reservoir_0"))
+      cout<<"pre firing time: "<<t<<"\tpost spike @"<<_t_spike_post<<"\tF_neg: "<<F_neg<<"\ty_i1: "<<_y_i1<<"\tdelta_w_neg: "<<delta_w_neg<<endl;
 #endif
   }
 
   // 3. Update the weight:
 #ifdef _DEBUG_SYN_LEARN
-  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
+  //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
+  if(!strcmp(_pre->Name(), "reservoir_8") && !strcmp(_post->Name(), "reservoir_0"))
     cout<<"Weight increase: "<<delta_w_pos + delta_w_neg<<endl;
 #endif
   _D_lsm_weight += delta_w_pos + delta_w_neg;
@@ -530,6 +543,7 @@ void Synapse::LSMClear(){
   _y_i1 = 0;
   _y_i2 = 0;
   _y_i2_last = 0;
+  _lsm_active = false;
 }
 
 void Synapse::LSMClearLearningSynWeights(){
@@ -542,6 +556,7 @@ void Synapse::LSMClearLearningSynWeights(){
 //  Add the active reservoir learning synapses (trained by STDP) into the network
 //  Add the active readout synapses into the network
 void Synapse::LSMActivate(Network * network, bool stdp_flag){
+  assert(_lsm_active == false);
   // 1. Add the synapses for firing processing:
   network->LSMAddActiveSyn(this);
   

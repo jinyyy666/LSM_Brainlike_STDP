@@ -252,9 +252,12 @@ void Simulator::LSMRun(long tid){
   networkmode = TRAINRESERVOIR;
   _network->LSMSetNetworkMode(networkmode);
 
+  // just a test to verify whether or not the weight will stay still!
+  //_network->LoadSynWeightsFromFile("reservoir", "reservoir_weights_9.txt");
+
   gettimeofday(&val1, &zone);
   // repeatedly training the reservoir for a certain amount of iterations:
-  for(int i = 0; i < 10; ++i){
+  for(int i = 0; i < 1; ++i){
     _network->LSMClearSignals();
     // no training of the readout synapses happens during this stage:
     info = _network->LoadFirstSpeech(false, networkmode);
@@ -266,19 +269,19 @@ void Simulator::LSMRun(long tid){
 #endif
       Foutp = NULL;
       int time = 0;
+      cout<<"Speech : "<<info<<endl;
       while(!_network->LSMEndOfSpeech(networkmode)){
         _network->LSMNextTimeStep(++time, false, 1, NULL, Fp);
       }
 #if NUM_THREADS == 1
       fclose(Fp);
 #endif
-      cout<<"Speech : "<<info<<endl;
       _network->LSMClearSignals();
       info = _network->LoadNextSpeech(false, networkmode);
     }
 #if NUM_THREADS == 1  
   // Write the weight back to file after training the reservoir with STDP:
-  sprintf(filename, "reservoir_weights_%d.txt", i);
+   sprintf(filename, "reservoir_weights_%d.txt", i);
   _network->WriteSynWeightsToFile("reservoir",filename);
 #endif       
 
@@ -288,13 +291,15 @@ void Simulator::LSMRun(long tid){
 
   assert(0);
 
-#if NUM_THREADS == 1  
   // Write the weight back to file after training the reservoir with STDP:
-  sprintf(filename, "reservoir_weights_%ld.txt", tid);
-  _network->WriteSynWeightsToFile("reservoir",filename);
-#endif
+  if(tid == 0){
+    sprintf(filename, "r_weights_info.txt");
+    _network->WriteSynWeightsToFile("reservoir", filename);
+  }
+
   // Load the weight from file:
-  
+  sprintf(filename, "r_weights_info.txt");
+  _network->LoadSynWeightsFromFile("reservoir", filename);
   
   // produce transient state
   networkmode = TRANSIENTSTATE;

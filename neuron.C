@@ -779,6 +779,7 @@ _firstCalled(false)
 
   cout<<"# of Reservoir Synapses = "<<count<<endl;
   delete [] token;
+  _subIndices = NULL;
 }    
 
 

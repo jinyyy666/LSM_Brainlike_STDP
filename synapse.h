@@ -83,7 +83,13 @@ public:
   void SendSpike();
   void SetLearningSynapse(int);
   void Learn(int);
-  int Weight();
+
+  //* Get the synaptic weights:
+  int Weight(){return _D_lsm_weight;}
+
+  //* Set the synaptic weights:
+  void Weight(int weight){_D_lsm_weight = weight;}
+
   Neuron * PreNeuron();
   Neuron * PostNeuron();
   void Print();

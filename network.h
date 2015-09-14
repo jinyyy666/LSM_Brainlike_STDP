@@ -29,6 +29,7 @@ private:
   std::list<Neuron*> _allInhibitoryNeurons;
   std::list<Synapse*> _synapses;
   std::vector<Synapse*> _rsynapses;       
+  std::vector<Synapse*> _rosynapses;
   std::list<Synapse*> _activeInputSyns;
   std::list<Synapse*> _activeOutputSyns;
   std::list<Synapse*> _lsmActiveLearnSyns;
@@ -189,6 +190,7 @@ public:
   void SpeechInfo();
   void DetermineNetworkNeuronMode(const networkmode_t &, neuronmode_t &, neuronmode_t &);
   void WriteSynWeightsToFile(const char * syn_type, char * filename);
+  void LoadSynWeightsFromFile(const char * syn_type, char * filename);
 };
 
 #endif

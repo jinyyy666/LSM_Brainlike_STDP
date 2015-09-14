@@ -59,12 +59,21 @@
 // learning rate for STDP:
 #define LAMBDA 0.0002 
 // asymmetry parameter for LTD:
-#define ALPHA 0.6
+#define ALPHA 1 // for multiplicative : 0.6
 // time constant for trace y1, y2: tau_1 < tau_2
 #define TAU_Y1_TRACE 8//16
 #define TAU_Y2_TRACE 16//32
 // time constant for trace x:
 #define TAU_X_TRACE  16//64 
+
+// control parameter for additive STDP rule:
+#define ADDITIVE_STDP
+#define A_POS 64
+#define A_NEG 128 // the negative "-" already contains in the code
+
+// control parameter for pair-based pairing rule:
+//#define PAIR_BASED
+
 
 #define LSM_T_M 32
 //#define LSM_T_SYNE 2.0

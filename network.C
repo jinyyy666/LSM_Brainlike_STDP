@@ -206,9 +206,12 @@ void Network::LSMAddSynapse(Neuron * pre, Neuron * post, int value, bool fixed, 
     assert((liquid == false)||(liquid == true));
     Synapse * synapse = new Synapse(pre, post, value, fixed, D_weight_limit, pre->IsExcitatory(),liquid);
     _synapses.push_back(synapse);
-    // push back the reservoir synapses into the list:
+    // push back the reservoir and readout synapses into the vector:
     if(!synapse->IsReadoutSyn() && !synapse->IsInputSyn())
       _rsynapses.push_back(synapse);
+    if(synapse->IsReadoutSyn())
+      _rosynapses.push_back(synapse);
+
     pre->AddPostSyn(synapse);
     post->AddPreSyn(synapse);	
 }
@@ -618,10 +621,12 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration, FILE * Foutp, FIL
 
   _lsm_t = t;
 
-//  gettimeofday(&val1,&zone);
+
   for(list<Synapse*>::iterator iter = _lsmActiveSyns.begin(); iter != _lsmActiveSyns.end(); iter++) (*iter)->LSMNextTimeStep();
   _lsmActiveSyns.clear();
-//  gettimeofday(&val2,&zone);
+
+  // Please remember that the neuron firing activity will change the list: 
+  // _lsmActiveSyns, _lsmActiveReservoirLearnSyns, and _lsmActiveLearnSyns:
   for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMNextTimeStep(t,Foutp,Fp);
  
   // train the reservoir using STDP:
@@ -638,9 +643,7 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration, FILE * Foutp, FIL
     _lsmActiveReservoirLearnSyns.clear();
   }
     
-//cout<<t<<"\t"<<_lsmActiveLearnSyns.size()<<endl;
 //  cout<<t<<"\t"<<((val2.tv_sec-val1.tv_sec)+double(val2.tv_usec-val1.tv_usec)*1e-6)<<"\t"<<((val3.tv_sec-val2.tv_sec)+double(val3.tv_usec-val2.tv_usec)*1e-6)<<endl;
-//if(_lsmActiveLearnSyns.size()>0)cout<<t<<"\t"<<_lsmActiveLearnSyns.size()<<endl;
   if(train == true) {
     for(list<Synapse*>::iterator iter = _lsmActiveLearnSyns.begin(); iter != _lsmActiveLearnSyns.end(); iter++) (*iter)->LSMLearn(iteration);
 //    cout<<"learning..."<<endl;
@@ -1258,6 +1261,10 @@ void Network::AnalogToSpike(){
 void Network::LSMClearSignals(){
   for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMClear();
   for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClear();
+  // Remember to clear the list to store the synapses:      
+  _lsmActiveLearnSyns.clear();                              
+  _lsmActiveSyns.clear();
+  _lsmActiveReservoirLearnSyns.clear(); 
 }
 void Network::LSMClearWeights(){
   for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClearLearningSynWeights();
@@ -1477,10 +1484,12 @@ void Network::IndexSpeech(){
 }
 
 
+//* This function is to write the synaptic weights back into a file:
+//* "syn_type" can be reservoir or readout
 void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
   ofstream f_out(filename);
   if(!f_out.is_open()){
-    cout<<"In Network::WriteSynWeightsToFile(), cannot open the file :"<<endl;
+    cout<<"In Network::WriteSynWeightsToFile(), cannot open the file : "<<filename<<endl;
     exit(EXIT_FAILURE);
   }
   
@@ -1489,22 +1498,68 @@ void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
     // Write reservoir syns into the file
     wrt_syn_type = RESERVOIR_SYN;
   }
+  else if(strcmp(syn_type, "readout") == 0){
+    wrt_syn_type = READOUT_SYN;
+  }
   else{
     cout<<"In Network::WriteSynWeightsToFile(), undefined synapse type: "<<syn_type<<endl;
     exit(EXIT_FAILURE);
   }
   
-  // write the reservoir synapse back to the file:
-  if(wrt_syn_type == RESERVOIR_SYN){
-    assert(!_rsynapses.empty());
+  const vector<Synapse*> & synapses = wrt_syn_type == RESERVOIR_SYN ? _rsynapses : 
+    (wrt_syn_type == READOUT_SYN ? _rosynapses : vector<Synapse*>());
+  
+  // write the synapse back to the file:
+  
+  assert(!synapses.empty());
     
-    cout<<"_rsynapse has size: "<<_rsynapses.size()<<endl;
-    for(size_t i = 0; i < _rsynapses.size(); ++i)
-      f_out<<i<<"\t"<<_rsynapses[i]->PreNeuron()->Name()
-	   <<"\t"<<_rsynapses[i]->PostNeuron()->Name()
-	   <<"\t"<<_rsynapses[i]->Weight()
-	   <<endl;
+  for(size_t i = 0; i < synapses.size(); ++i)
+    f_out<<i<<"\t"<<synapses[i]->PreNeuron()->Name()
+	 <<"\t"<<synapses[i]->PostNeuron()->Name()
+	 <<"\t"<<synapses[i]->Weight()
+	 <<endl;
+
+}
+
+//* This function is to load the synaptic weights from file and assign it to the synapses:
+//* "syn_type" can be reservoir or readout
+void Network::LoadSynWeightsFromFile(const char * syn_type, char * filename){
+  ifstream f_in(filename);
+  if(!f_in.is_open()){
+    cout<<"In Network::LoadSynWeightsFromFile(), cannot open the file: "<<filename<<endl;
+    exit(EXIT_FAILURE);
+  }
+
+  synapsetype_t read_syn_type = INVALID;
+  if(strcmp(syn_type, "reservoir") == 0){
+    read_syn_type = RESERVOIR_SYN;
+  }
+  else if(strcmp(syn_type, "readout") == 0){
+    read_syn_type = READOUT_SYN;
+  }
+  else{
+    cout<<"In Network::LoadSynWeightsFromFile(), undefined synapse type: "<<syn_type<<endl;
+    exit(EXIT_FAILURE);
+  }
+
+  const vector<Synapse*> & synapses = read_syn_type == RESERVOIR_SYN ? _rsynapses : 
+    (read_syn_type == READOUT_SYN ? _rosynapses : vector<Synapse*>());
+
+  // load the synaptic weights from file:
+  // the synaptic weight is stored in the file in the same order as the corresponding synapses store in the vector
+  int index;
+  string pre;
+  string post;
+  int weight;
+  while(f_in>>index>>pre>>post>>weight){
+    if(index < 0 || index >= synapses.size()){
+	cout<<"In Network::LoadSynWeightsFromFile(), the index of the synapse you read : "<<index<<" is out of bound of the container stores the synapses!!"<<endl;
+	exit(EXIT_FAILURE);
+    }
+
+    assert(strcmp(pre.c_str(), synapses[index]->PreNeuron()->Name()) == 0);
+    assert(strcmp(post.c_str(), synapses[index]->PostNeuron()->Name()) == 0);
+    synapses[index]->Weight(weight);
   }
   
 }
-
