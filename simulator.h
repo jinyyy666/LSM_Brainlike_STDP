@@ -14,7 +14,7 @@ public:
   Simulator(Network*);
   void SetEndTime(double);
   void SetStepSize(double);
-  void Run(bool);
+
   void LSMRun(long tid);
 };
 

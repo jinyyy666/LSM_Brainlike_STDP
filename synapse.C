@@ -1,7 +1,7 @@
-#include"def.h"
-#include"synapse.h"
-#include"neuron.h"
-#include"network.h"
+#include "def.h"
+#include "synapse.h"
+#include "neuron.h"
+#include "network.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -9,118 +9,114 @@
 #include <assert.h>
 
 //#define _DEBUG_SYN_UPDATE
-#define _DEBUG_SYN_LEARN
+//#define _DEBUG_SYN_LEARN
 
 using namespace std;
 
 extern int COUNTER_LEARN;
-#ifdef DIGITAL
+
+/** unit system defined for digital lsm **/
 extern const int one;
 extern const int unit;
 // the spike strength in STDP model:
-const int UNIT_DELTA = 1<<NBT_STD_SYN;
-#endif
+const int UNIT_DELTA = 1<<(NUM_DEC_DIGIT);
 
-Synapse::Synapse(Neuron * pre, Neuron * post, bool excitatory, bool fixed, int value){
-  _pre = pre;
-  _post = post;
-  _excitatory = excitatory;
-  _fixed = fixed;
-//  _min = -1;
-//  _max = -1;
-  _ini_min = -1;
-  _ini_max = -1;
-  _weight = value;
-  _state_internal = _weight;
-  _factor = 1;
 
-  _t_spike_pre = -1e8;
-  _t_last_pre = 0;
-  _t_spike_post = -1e8;
-//  _t_last_post = 0;
-
-  _mem_pos = 0;
-  _mem_neg = 0;
-#ifdef DIGITAL
-  assert(0);
-#endif
-}
-
-Synapse::Synapse(Neuron * pre, Neuron * post, bool excitatory, bool fixed, int factor, int ini_min, int ini_max){
-  _pre = pre;
-  _post = post;
-  _excitatory = excitatory;
-  _fixed = fixed;
-//  _min = min;
-//  _max = max;
-  _ini_min = ini_min;
-  _ini_max = ini_max;
-  if(ini_max == -1){
-    if(rand()%10000 < 10000*0.3) _weight = 1;
-    else _weight = 0;
-  }else if(ini_max == -2){
-    if(rand()%10000 < 10000*0.5) _weight = 1;
-    else _weight = 0;
-  }else if((ini_max==1)&&(ini_min==0)){
-    if(rand()%10000 < 10000*0.5) _weight = 1;
-    else _weight = 0;
-  }else _weight = (int) round( ((double)(rand()%10000))/10000*(ini_max-ini_min) + ini_min );
-  _state_internal = _weight;
-  _factor = factor;
-  _t_spike_pre = -1e8;
-  _t_last_pre = 0;
-  _t_spike_post = -1e8;
-//  _t_last_post = 0;
-
-  _mem_pos = 0;
-  _mem_neg = 0;
-#ifdef DIGITAL
-  assert(0);
-#endif
-}
-
-Synapse::Synapse(Neuron * pre, Neuron * post, double lsm_weight, bool fixed, double lsm_weight_limit):
+Synapse::Synapse(Neuron * pre, Neuron * post, double lsm_weight, bool fixed, double lsm_weight_limit, bool excitatory, bool liquid):
 _pre(pre),
 _post(post),
-_lsm_weight(lsm_weight),
+_excitatory(excitatory),
+_fixed(fixed),
+_liquid(liquid),
+_lsm_active(false),
+_lsm_stdp_active(false),
+_mem_pos(0),
+_mem_neg(0),
+_lsm_tau1(4),
 _lsm_state1(0),
 _lsm_state2(0),
-_lsm_spike(0),
 _lsm_state(0),
-_lsm_tau1(4),
+_lsm_spike(0),
+_D_lsm_spike(0),
 _lsm_delay(0),
-_fixed(fixed),
-_lsm_weight_limit(fabs(lsm_weight_limit)),
 _lsm_c(0),
-_lsm_active(false){
-  if(lsm_weight > 0) _lsm_tau2 = LSM_T_SYNE;
-  else _lsm_tau2 = LSM_T_SYNI;
+_lsm_weight(lsm_weight),
+_lsm_weight_limit(fabs(lsm_weight_limit)),
+_D_lsm_c(0),
+_D_lsm_weight(0),
+_D_lsm_weight_limit(0),
+_t_spike_pre(-1e8),
+_t_spike_post(-1e8),
+_t_last_pre(0),
+_t_last_post(0),
+_x_j(0),
+_y_i1(0),
+_y_i2(0),
+_y_i2_last(0),
+_D_x_j(0),
+_D_y_i1(0),
+_D_y_i2(0),
+_D_y_i2_last(0)
+{
 #ifdef DIGITAL
   assert(0);
 #endif
+
+  if(lsm_weight > 0) _lsm_tau2 = LSM_T_SYNE;
+  else _lsm_tau2 = LSM_T_SYNI;
+
+  cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<_lsm_weight<<endl;
+
 }
+
 
 Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int D_lsm_weight_limit, bool excitatory, bool liquid):
 _pre(pre),
 _post(post),
-_D_lsm_weight(D_lsm_weight),
-_lsm_state1(0),
-_lsm_state2(0),
-_D_lsm_spike(0),
-_lsm_state(0),
-_lsm_tau1(4),
-_lsm_delay(0),
+_excitatory(excitatory),
 _fixed(fixed),
 _liquid(liquid),
-_D_lsm_weight_limit(abs(D_lsm_weight_limit)),
+_lsm_active(false),
+_lsm_stdp_active(false),
+_mem_pos(0),
+_mem_neg(0),
+_lsm_tau1(4),
+_lsm_state1(0),
+_lsm_state2(0),
+_lsm_state(0),
+_lsm_spike(0),
+_D_lsm_spike(0),
+_lsm_delay(0),
+_lsm_c(0),
+_lsm_weight(0),
+_lsm_weight_limit(0),
 _D_lsm_c(0),
-_excitatory(excitatory),
-_lsm_active(false){
- assert((_liquid == false)||_liquid ==true);
- char * pre_name;
- pre_name = pre->Name();
- assert(pre_name != NULL);
- if((_liquid == false)&&(pre_name[0] != 'i')){
+_D_lsm_weight(D_lsm_weight),
+_D_lsm_weight_limit(abs(D_lsm_weight_limit)),
+_t_spike_pre(-1e8),
+_t_spike_post(-1e8),
+_t_last_pre(0),
+_t_last_post(0),
+_x_j(0),
+_y_i1(0),
+_y_i2(0),
+_y_i2_last(0),
+_D_x_j(0),
+_D_y_i1(0),
+_D_y_i2(0),
+_D_y_i2_last(0)
+{
+#ifndef DIGITAL
+  assert(0);
+#endif
+
+  if(D_lsm_weight > 0) _lsm_tau2 = LSM_T_SYNE;
+  else _lsm_tau2 = LSM_T_SYNI;
+
+  char * pre_name;
+  pre_name = pre->Name();
+  assert(pre_name != NULL);
+  if((_liquid == false)&&(pre_name[0] != 'i')){
 #if NUM_BIT_SYN > NBT_STD_SYN
     _D_lsm_weight = (_D_lsm_weight<<(NUM_BIT_SYN-NBT_STD_SYN));
     _D_lsm_weight_limit = (_D_lsm_weight_limit<<(NUM_BIT_SYN-NBT_STD_SYN));
@@ -128,10 +124,6 @@ _lsm_active(false){
     _D_lsm_weight = (_D_lsm_weight>>(NBT_STD_SYN-NUM_BIT_SYN));
     _D_lsm_weight_limit = (_D_lsm_weight_limit>>(NBT_STD_SYN-NUM_BIT_SYN));
 #endif
-#ifndef DIGITAL
-  assert(0);
-#endif
-  
   }
   else if(pre_name[0] == 'i'){
     _D_lsm_weight = (_D_lsm_weight<<(NUM_BIT_SYN - NBT_STD_SYN));
@@ -140,6 +132,7 @@ _lsm_active(false){
   else{
   assert(_liquid == true);
      _D_lsm_weight = (_D_lsm_weight<<(NUM_BIT_SYN-NBT_STD_SYN));
+     // just to limit the total change range of the reservoir synapses to avoid the weights being too high:
      _D_lsm_weight_limit = (_D_lsm_weight_limit<<(NUM_BIT_SYN-NBT_STD_SYN));
   }
   
@@ -162,7 +155,6 @@ void Synapse::SetPostSpikeT(double t){
 }*/
 
 bool Synapse::IsReadoutSyn(){
-  Neuron * pre = this->PreNeuron();
   Neuron * post = this->PostNeuron();
   char * name_post = post->Name();
   // if the post neuron is the readout neuron:
@@ -182,36 +174,6 @@ bool Synapse::IsInputSyn(){
     return true;
   else
     return false;
-}
-
-void Synapse::SetPreSpikeT(int t){
-  _t_spike_pre = t;
-}
-
-void Synapse::SetPostSpikeT(int t){
-  _t_spike_post = t;
-}
-
-void Synapse::SendSpike(){
-//  if(_fixed == false){
-    if(_state_internal > THETA_X){
-      _state_internal += (_t_spike_pre - _t_last_pre)*ALPHA;
-      if(_state_internal > X_MAX) _state_internal = X_MAX;
-    }else{
-      _state_internal -= (_t_spike_pre - _t_last_pre)*BETA;
-      if(_state_internal < 0) _state_internal = 0;
-    }
-//  }
-
-  if(_excitatory == true) _post->ReceiveSpike(Weight()*_factor);
-  else _post->ReceiveSpike(-Weight()*_factor);
-//  if(( strcmp(_pre->Name(),"input_377") == 0)&&( strcmp(_post->Name(),"output_66") == 0)) cout<<"9876543210\t"<<_t_spike_pre<<"\t"<<_state_internal<<endl;
-}
-
-void Synapse::SetLearningSynapse(int syn){
-  assert(_fixed == false);
-  _weight = syn;
-  _state_internal = (double)syn;
 }
 
 void Synapse::LSMLearn(int iteration){
@@ -245,7 +207,7 @@ void Synapse::LSMLearn(int iteration){
   }
 
   // modify the weight if it is out of bound: 
-  CheckWeightOutBound();
+  CheckReadoutWeightOutBound();
 #else
   _lsm_c = _post->GetCalciumPre();
   if(_lsm_c > LSM_CAL_MID){
@@ -286,39 +248,6 @@ void Synapse::LSMLearn(int iteration){
 #endif
 }
 
-void Synapse::Learn(int index){
-  if(index == 1) return;
-  if(_fixed == true) return;
-
-double state = _state_internal;
-
-  double c_pre = _post->GetCalciumPre();
-  if(_post->GetVMemPre() >= THETA_V){
-    if((c_pre>THETA_L_UP)&&(c_pre<THETA_H_UP)){
-      _state_internal += A;
-
-////////////////////////////////////////////////////////
-      if((state<THETA_X)&&(_state_internal>THETA_X)){
-        cout<<"----- potentiation\t"<<state<<"\t"<<_state_internal<<"\t"<<_pre->Name()<<"\t"<<_post->Name()<<"\t@ "<<_t_spike_pre<<endl;
-        cout<<"9999999999\t\t"<<_t_spike_pre<<endl;
-      }
-
-      if(_state_internal > X_MAX) _state_internal = X_MAX;
-    }
-  }else{
-    if(((c_pre>THETA_L_DN)&&(c_pre<THETA_H_DN))  ){// ||(c_pre>THETA_H_UP)){
-      _state_internal -= B;
-
-////////////////////////////////////////////////////////
-      if((state>THETA_X)&&(_state_internal<THETA_X)){
-        cout<<"----- depression\t"<<state<<"\t"<<_state_internal<<"\t"<<_pre->Name()<<"\t"<<_post->Name()<<"\t@ "<<_t_spike_pre<<endl;
-        cout<<"1111111111\t\t"<<_t_spike_pre<<endl;
-      }
-
-      if(_state_internal < 0) _state_internal = 0;
-    }
-  }
-}
 
 Neuron * Synapse::PreNeuron(){
   return _pre;
@@ -360,11 +289,11 @@ void Synapse::LSMPrintSyns(FILE * fp){
 // argument can only be 0 or 1
 void Synapse::LSMPreSpike(int delay){
   if(delay <= 0){
-    _lsm_state1 += 1;
-    _lsm_state2 += 1;
-    _lsm_spike = 1;
+#ifdef DIGITAL
     _D_lsm_spike = 1;
-    _lsm_state += 1/LSM_T_FO;
+#else
+    _lsm_spike = 1;
+#endif
   }
   else{
 //cout<<_pre->Name()<<" fired!"<<endl;
@@ -380,22 +309,6 @@ double Synapse::LSMCurrent(){
 #endif
 }
 
-double Synapse::LSMStaticCurrent(){
-#ifdef DIGITAL
-  assert(0);
-#endif
-  double current =  _lsm_spike*_lsm_weight;
-  _lsm_spike = 0;
-  return current;
-
-}
-
-void Synapse::DLSMStaticCurrent(int*pos,int*value){
-  if(_excitatory) *pos = 1;
-  else *pos = -1;
-  *value = _D_lsm_spike*_D_lsm_weight;
-  _D_lsm_spike = 0;
-}
 
 double Synapse::LSMFirstOrderCurrent(){
 #ifdef DIGITAL
@@ -417,9 +330,7 @@ void Synapse::LSMNextTimeStep(){
 #endif
     }
   }
-  // Remember to deactivate the synapses here:
-  assert(_lsm_active == true);
-  _lsm_active = false;
+
 }
 
 //* this function is used to update the trace x and trace y for STDP:
@@ -427,37 +338,49 @@ void Synapse::LSMUpdate(int t){
   if(t < 0 || _t_spike_pre == _t_spike_post)
     return;
 
-  _y_i2_last = _y_i2;
+  _D_y_i2_last = _D_y_i2;
   // update the trace x:
-  if(_x_j > 0)
-    _x_j -= (_x_j/TAU_X_TRACE == 0) ? 1 : _x_j/TAU_X_TRACE;
+  if(_D_x_j > 0)
+    _D_x_j -= (_D_x_j/TAU_X_TRACE == 0) ? 1 : _D_x_j/TAU_X_TRACE;
 
   if(t == _t_spike_pre)
-    _x_j += UNIT_DELTA;
+#ifdef NEAREST_NEIGHBOR
+    _D_x_j = UNIT_DELTA;
+#else
+    _D_x_j += UNIT_DELTA;
+#endif
 
   // update the trace y_i1 and y_i2:
-  _y_i2_last = _y_i2;	// need to keep track of the y_i2 before the update. y_i2_last is used in STDP learning
+  _D_y_i2_last = _D_y_i2;	// need to keep track of the y_i2 before the update. y_i2_last is used in STDP learning
   
-  if(_y_i1 > 0)
-    _y_i1 -= _y_i1/TAU_Y1_TRACE == 0 ? 1 : _y_i1/TAU_Y1_TRACE;
+  if(_D_y_i1 > 0)
+    _D_y_i1 -= _y_i1/TAU_Y1_TRACE == 0 ? 1 : _D_y_i1/TAU_Y1_TRACE;
   if(_y_i2 > 0)
-    _y_i2 -= _y_i2/TAU_Y2_TRACE == 0 ? 1 : _y_i2/TAU_Y2_TRACE;
+    _D_y_i2 -= _y_i2/TAU_Y2_TRACE == 0 ? 1 : _D_y_i2/TAU_Y2_TRACE;
   
   if(t == _t_spike_post){
-    _y_i1 += UNIT_DELTA;
-    _y_i2 += UNIT_DELTA;
+#ifdef NEAREST_NEIGHBOR
+    _D_y_i1 = UNIT_DELTA;
+    _D_y_i2 = UNIT_DELTA;
+#else
+    _D_y_i1 += UNIT_DELTA;
+    _D_y_i2 += UNIT_DELTA;
+#endif
   }
    
 #ifdef _DEBUG_SYN_UPDATE
   //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9") && _x_j > 0)    
-  if(!strcmp(_pre->Name(), "reservoir_8") && !strcmp(_post->Name(), "reservoir_0"))
-    cout<<"t: "<<t<<"\tx_j: "<<_x_j<<"\ty_i1: "<<_y_i1<<"\ty_i2: "<<_y_i2<<endl;
+  if(!strcmp(_pre->Name(), "reservoir_1") && !strcmp(_post->Name(), "reservoir_0"))
+    cout<<"t: "<<t<<"\tx_j: "<<_D_x_j<<"\ty_i1: "<<_D_y_i1<<"\ty_i2: "<<_D_y_i2<<endl;
 #endif
 }
 
 //* this function is the implementation of the STDP learning rule, please find more details in the paper:
 //* "Phenomenological models of synaptic plasticity based on spike timing" 
 void Synapse::LSMLiquidLearn(int t){
+  assert(_lsm_stdp_active == true);
+  _lsm_stdp_active = false;
+  
   // Remember that the delay of deliverying the fired spike is 1
   //t--;
   if( t < 0 || (t != _t_spike_pre && t != _t_spike_post) || (_t_spike_pre == _t_spike_post))
@@ -480,16 +403,16 @@ void Synapse::LSMLiquidLearn(int t){
   if(t == _t_spike_post){
     assert(_t_spike_pre < _t_spike_post);
 #ifdef PAIR_BASED
-    delta_w_pos = LAMBDA*F_pos*_x_j;
+    delta_w_pos = (F_pos*_x_j);//>>(LAMBDA_BIT);
+#elif NEAREST_NEIGHBOR
+    delta_w_pos = (F_pos*_x_j);//>>(LAMBDA_BIT + NN_BIT_P);
 #else
-    delta_w_pos = LAMBDA*F_pos*_x_j*_y_i2_last;
-    if(abs(delta_w_pos) > 10)
-      delta_w_pos = DAMPING*delta_w_pos;
+    delta_w_pos = (F_pos*_x_j*_y_i2_last);//>>(LAMBDA_BIT + DAMPING_BIT);
 #endif
 
 #ifdef _DEBUG_SYN_LEARN
     //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
-    if(!strcmp(_pre->Name(), "reservoir_8") && !strcmp(_post->Name(), "reservoir_0"))
+    if(!strcmp(_pre->Name(), "reservoir_1") && !strcmp(_post->Name(), "reservoir_0"))
       cout<<"post firing time: "<<t<<"\tF_pos: "<<F_pos<<"\tx_j: "<<_x_j<<"\ty_i2_last: "<<_y_i2_last<<"\tdelta_w_pos: "<<delta_w_pos<<endl;
 #endif
   }
@@ -498,15 +421,19 @@ void Synapse::LSMLiquidLearn(int t){
   if(t == _t_spike_pre){
     assert(_t_spike_pre > _t_spike_post);
 #ifdef PAIR_BASED
-    delta_w_neg = LAMDBA*ALPHA*F_neg*_y_i1;
+    delta_w_neg = _D_lsm_weight >= 0 ? -1*((F_neg*_y_i1))
+				        : (F_neg*_y_i1);
+#elif NEAREST_NEIGHBOR
+     delta_w_neg = _D_lsm_weight >= 0 ? -1*((F_neg*_y_i1)) 
+					: (F_neg*_y_i1);
 #else
-    delta_w_neg = _D_lsm_weight > 0 ? -1*LAMBDA*ALPHA*F_neg*_y_i1 
-                                    : LAMBDA*ALPHA*F_neg*_y_i1;
+    delta_w_neg = _D_lsm_weight >= 0 ? -1*((F_neg*_y_i1))
+                                     : (F_neg*_y_i1));
 #endif
 
 #ifdef _DEBUG_SYN_LEARN
     //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
-    if(!strcmp(_pre->Name(), "reservoir_8") && !strcmp(_post->Name(), "reservoir_0"))
+    if(!strcmp(_pre->Name(), "reservoir_1") && !strcmp(_post->Name(), "reservoir_0"))
       cout<<"pre firing time: "<<t<<"\tpost spike @"<<_t_spike_post<<"\tF_neg: "<<F_neg<<"\ty_i1: "<<_y_i1<<"\tdelta_w_neg: "<<delta_w_neg<<endl;
 #endif
   }
@@ -514,36 +441,92 @@ void Synapse::LSMLiquidLearn(int t){
   // 3. Update the weight:
 #ifdef _DEBUG_SYN_LEARN
   //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_9"))
-  if(!strcmp(_pre->Name(), "reservoir_8") && !strcmp(_post->Name(), "reservoir_0"))
-    cout<<"Weight increase: "<<delta_w_pos + delta_w_neg<<endl;
+  if(!strcmp(_pre->Name(), "reservoir_1") && !strcmp(_post->Name(), "reservoir_0"))
+    cout<<(delta_w_pos + delta_w_neg >= 0 ? "Weight increase: " : "Weight decrease: ")<<delta_w_pos + delta_w_neg<<" Calicium of the post: "<<_post->DLSMGetCalciumPre()<<endl;
 #endif
+
+#ifdef STOCHASTIC_STDP 
+  //Here I adopt the abstract learning rule:
+  _D_lsm_c = _post->DLSMGetCalciumPre();
+  const int temp1 = one<<21;
+  const int temp2 = one<<(18+NUM_BIT_SYN-NBT_STD_SYN);
+  int temp_delta = delta_w_pos + delta_w_neg;
+  if(_D_lsm_c > LSM_CAL_MID*unit){
+    if((_D_lsm_c < (LSM_CAL_MID+3)*unit) &&  temp_delta > 0){
+#ifdef ADDITIVE_STDP
+      _D_lsm_weight += (rand()%temp1<(temp_delta))?1:0;
+#else
+      _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT))?1:0;
+#endif
+    }
+  }else{
+    if((_D_lsm_c > (LSM_CAL_MID- 3)*unit) && temp_delta < 0){
+#ifdef ADDITIVE_STDP
+      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta))?1:0;
+#else
+      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP))?1:0;
+#endif
+    }
+  }
+#else
   _D_lsm_weight += delta_w_pos + delta_w_neg;
-  
+#endif
+
   // 4. Check whether or not the weight is out of bound:
-  CheckWeightOutBound();
+  CheckReservoirWeightOutBound();
 
 }
 
-//* this function is to check whether or not the weight is out of bound:
-void Synapse::CheckWeightOutBound(){
+//* this function is to check whether or not the synaptic weights in the reservoir is out of bound:
+void Synapse::CheckReservoirWeightOutBound(){
+  // for excitatory synapses:
+  if(_excitatory){
+    if(_D_lsm_weight >= _D_lsm_weight_limit) _D_lsm_weight = _D_lsm_weight_limit;
+    if(_D_lsm_weight < 0) _D_lsm_weight = 0;
+  }
+  else{
+    if(_D_lsm_weight < -_D_lsm_weight_limit) _D_lsm_weight = -_D_lsm_weight_limit;
+    if(_D_lsm_weight > 0) _D_lsm_weight = 0;
+  }
+}
+
+void Synapse::CheckReadoutWeightOutBound(){
   if(_D_lsm_weight >= _D_lsm_weight_limit) _D_lsm_weight = _D_lsm_weight_limit;
   if(_D_lsm_weight < -_D_lsm_weight_limit) _D_lsm_weight = -_D_lsm_weight_limit;
 }
 
 void Synapse::LSMClear(){
+  _lsm_active = false;
+  _lsm_stdp_active = false;
+
+  _mem_pos = 0;
+  _mem_neg = 0;    
+
   _lsm_state1 = 0;
   _lsm_state2 = 0;
+  _lsm_state = 0;
   _lsm_spike = 0;
   _D_lsm_spike = 0;
-  _lsm_state = 0;
+  _lsm_delay = 0;
+  _lsm_c = 0;
+  _D_lsm_c = 0;
+
+
   _t_spike_pre = -1e8;
   _t_spike_post = -1e8;
-  _lsm_delay = 0;
+  _t_last_pre = 0;
+  _t_last_post = 0;
+  
+
   _x_j = 0;
   _y_i1 = 0;
   _y_i2 = 0;
   _y_i2_last = 0;
-  _lsm_active = false;
+
+  _D_x_j = 0,
+  _D_y_i1 = 0,
+  _D_y_i2 = 0,
+  _D_y_i2_last = 0;
 }
 
 void Synapse::LSMClearLearningSynWeights(){
@@ -552,26 +535,31 @@ void Synapse::LSMClearLearningSynWeights(){
   _lsm_weight = 0;
 }
 
-//  Add the active synapses (reservoir/readout synapses) into the network
-//  Add the active reservoir learning synapses (trained by STDP) into the network
-//  Add the active readout synapses into the network
+//**  Add the active firing synapses (reservoir/readout synapses) into the network
+//**  Add the active readout synapses into the network
 void Synapse::LSMActivate(Network * network, bool stdp_flag){
-  assert(_lsm_active == false);
-  // 1. Add the synapses for firing processing:
-  network->LSMAddActiveSyn(this);
+    assert(_lsm_active == false);
+    // 1. Add the synapses for firing processing
   
-  if(_fixed == true){
-    // 2. For the reservoir synapses which are assumed to be fixed: 
-    if(stdp_flag == true && _lsm_active == false && _excitatory == true)
-      network->LSMAddReservoirActiveSyn(this);
-  }
-  else{
-    // 3. For the readout synapses, if we are using stdp in reservoir, just ignore the learning in the readout: 
-    if(stdp_flag == false)
+    network->LSMAddActiveSyn(this);
+  
+    // 2. For the readout synapses, if we are using stdp in reservoir, just ignore the learning in the readout: 
+    if(stdp_flag == false && _fixed == false){
       network->LSMAddActiveLearnSyn(this);
-  }
-  // 4. Mark the synapse active state:
-  _lsm_active = true;  
+      // 3. Mark the readout synapse active state:
+      _lsm_active = true;
+    }
+}
+
+//** Activate the reservoir synapses to be trained by STDP
+void Synapse::LSMActivateReservoirSyns(Network * network){
+  assert(_lsm_stdp_active == false && !IsReadoutSyn() && !IsInputSyn());
+
+  /** only train the excitatory reservoir synapses **/
+  if(_excitatory == true)
+    network->LSMAddReservoirActiveSyn(this);
+
+  _lsm_stdp_active = true;
 }
 
 

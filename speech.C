@@ -1,7 +1,8 @@
-#include"speech.h"
-#include"channel.h"
-#include<assert.h>
-#include<iostream>
+#include "speech.h"
+#include "channel.h"
+#include <assert.h>
+#include <iostream>
+#include <cstdio>
 
 using namespace std;
 
@@ -61,3 +62,27 @@ void Speech::Info(){
   cout<<endl;
 }
 
+void Speech::PrintSpikes(int info){
+  FILE * Fp_input;
+  FILE * Fp_reservoir;
+  char filename[64];
+  sprintf(filename,"Input_Response/input_spikes_%d.dat",info);
+  Fp_input = fopen(filename,"w");
+  assert(Fp_input != NULL);
+  for(int i = 0; i < _channels.size(); i++){ 
+    fprintf(Fp_input,"%d\n",-1);
+    _channels[i]->Print(Fp_input);
+  }
+  fprintf(Fp_input,"%d\n",-1);
+  fclose(Fp_input);
+
+  sprintf(filename,"Reservoir_Response/reservoir_spikes_%d.dat",info);
+  Fp_reservoir = fopen(filename,"w");
+  assert(Fp_reservoir != NULL);
+  for(int i = 0; i < _rChannels.size(); i++){
+    fprintf(Fp_reservoir,"%d\n",-1);
+    _rChannels[i]->Print(Fp_reservoir);
+  }
+  fprintf(Fp_reservoir,"%d\n",-1);
+  fclose(Fp_reservoir); 
+}

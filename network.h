@@ -10,15 +10,7 @@
 class Neuron;
 class Synapse;
 class NeuronGroup;
-class Pattern;
 class Speech;
-
-struct Probe{
-  int _probeFlag;
-  std::list<int> _probeSpiking;
-  std::vector<const char*> _nameInputs;
-  int **_probeStats;
-};
 
 class Network{
 private:
@@ -35,17 +27,6 @@ private:
   std::list<Synapse*> _lsmActiveLearnSyns;
   std::list<Synapse*> _lsmActiveSyns;
   std::list<Synapse*> _lsmActiveReservoirLearnSyns;
-  std::list<Pattern*> _patternsTrain;
-  std::list<Pattern*> _patternsTest;
-  std::list<Pattern*> * _patterns;
-  std::list<Pattern*>::iterator _iter;
-  bool _iter_started;
-  int _learning;
-  Pattern * _currentPattern;
-  Probe _probe;
-  int _numNames;
-  int * _voteCounts;
-  bool _hasInputs;
 
   // for LSM
   std::vector<Speech*> _speeches;
@@ -74,44 +55,14 @@ public:
   void AddNeuronGroup(char*,int,bool);
   void LSMAddNeuronGroup(char*,int,int,int);
   void LSMAddNeuronGroup(char*,char*,char*); //reservoir, path_info_neuron, path_info_synapse
-
-  void AddSynapse(Neuron*,Neuron*,bool,bool,int);
-  void AddSynapse(Neuron*,NeuronGroup*,bool,bool,int);
-  void AddSynapse(NeuronGroup*,Neuron*,bool,bool,int);
-  void AddSynapse(NeuronGroup*,NeuronGroup*,bool,bool,int);
-  void AddSynapse(char*,char*,bool,bool,int);
-
-  void LSMAddSynapse(Neuron*,Neuron*,double,bool,double);
-  void LSMAddSynapse(Neuron*,NeuronGroup*,double,bool,double);
-  void LSMAddSynapse(NeuronGroup*,Neuron*,double,bool,double);
-  void LSMAddSynapse(NeuronGroup*,NeuronGroup*,double,bool,double);
-  void LSMAddSynapse(char*,char*,double,bool,double);
-
-  void LSMAddSynapse(Neuron*,Neuron*,int,bool,int,bool);
+  
   void LSMAddSynapse(char*,char*,int,int,int,int,bool);
   void LSMAddSynapse(Neuron*,NeuronGroup*,int,int,int,bool);
   void LSMAddSynapse(NeuronGroup*,NeuronGroup*,int,int,int,int,bool);
 
-/*
-  void AddSynapse(Neuron*,Neuron*,bool,bool,int,int,int,int);
-  void AddSynapse(Neuron*,NeuronGroup*,bool,bool,int,int,int,int);
-  void AddSynapse(NeuronGroup*,Neuron*,bool,bool,int,int,int,int);
-  void AddSynapse(NeuronGroup*,NeuronGroup*,bool,bool,int,int,int,int);
-  void AddSynapse(char*,char*,bool,bool,int,int,int,int);
-*/
-  void AddSynapse(Neuron*,Neuron*,bool,bool,int,int,int);
-  void AddSynapse(Neuron*,NeuronGroup*,bool,bool,int,int,int);
-  void AddSynapse(NeuronGroup*,Neuron*,bool,bool,int,int,int);
-  void AddSynapse(NeuronGroup*,NeuronGroup*,bool,bool,int,int,int);
-  void AddSynapse(char*,char*,bool,bool,int,int,int);
-
   void PrintSize();
   void PrintAllNeuronName();
 
-  void UpdateNeurons(double,double);
-  void UpdateExcitatoryNeurons(double,double);
-  void UpdateInhibitoryNeurons(double,double);
-  void UpdateSynapses();
   int LSMSumAllOutputSyns();
   int LSMSizeAllNeurons();
   void LSMTruncSyns(int);
@@ -124,42 +75,7 @@ public:
   Neuron * SearchForNeuron(const char*);
   Neuron * SearchForNeuron(const char*, const char*);
   NeuronGroup * SearchForNeuronGroup(const char*);
-  void ActivateInputs(Pattern*);
-  void ClearInputs();
-  bool HasInputs(){return _hasInputs;}
-  void LoadPatternsTrain();
-  void LoadPatternsTest();
-  void AddPattern(Pattern*);
-  Pattern * FirstPattern();
-  Pattern * NextPattern();
 
-  void ClearProbe();
-  int ReadProbe();
-  void SetProbe(const char*);
-  void ProbeStat(int);
-  Probe * GetProbe(){return &_probe;}
-  void SetTeacherSignal(const char*,const char*,int);
-  void SetTeacherSignalGroup(const char*,const char*,int);
-  void SetTeacherSignalOneInGroup(char*,char*,int);
-  void PatternStat();
-  void SetLearning(int);
-  void AddPatternStat(int,Pattern*);
-  void PrintProbeStats();
-  void NeuronStatAccumulate();
-  void SetCurrentPattern(Pattern*);
-  Pattern * GetCurrentPattern(){return _currentPattern;}
-  int PatternNum(){return (_patterns == NULL) ? 0 : _patterns->size();}
-  void SetLabel();
-  void SetLabel(const char*);
-  void SaveLabel();
-  void ReadLabel();
-  int Vote();
-  void PatternToFile(char*);
-  void PatternToFile();
-  void Print();
-  void PrintTrainingResponse();
-  void PatternsNormalization();
-  void CodingLevel();
   void IndexSpeech();
 
   // for LSM
@@ -186,11 +102,27 @@ public:
   int LoadFirstSpeechTestCV(networkmode_t);
   int LoadNextSpeechTestCV(networkmode_t);
   
-  int myrandom(int);
   void SpeechInfo();
+  // print the spikes into the file
+  void SpeechPrint(int info);
   void DetermineNetworkNeuronMode(const networkmode_t &, neuronmode_t &, neuronmode_t &);
   void WriteSynWeightsToFile(const char * syn_type, char * filename);
   void LoadSynWeightsFromFile(const char * syn_type, char * filename);
+
+ template<class T>
+ void LSMAddSynapse(Neuron * pre, Neuron * post, T weight, bool fixed, T weight_limit,bool liquid){
+    Synapse * synapse = new Synapse(pre, post, weight, fixed, weight_limit, pre->IsExcitatory(),liquid);
+    _synapses.push_back(synapse);
+    // push back the reservoir and readout synapses into the vector:
+    if(!synapse->IsReadoutSyn() && !synapse->IsInputSyn())
+      _rsynapses.push_back(synapse);
+    if(synapse->IsReadoutSyn())
+      _rosynapses.push_back(synapse);
+
+    pre->AddPostSyn(synapse);
+    post->AddPreSyn(synapse);	
+  } 
+
 };
 
 #endif

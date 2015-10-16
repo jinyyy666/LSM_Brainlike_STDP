@@ -1,8 +1,8 @@
 #ifndef PATTERN_H
 #define PATTERN_H
 
-#include<vector>
-#include<iostream>
+#include <vector>
+#include <iostream>
 
 class Neuron;
 class Network;
@@ -14,8 +14,6 @@ private:
   char * _name;
 public:
   void AddNeuron(Neuron*, double);
-  void Activate();
-  void Deactivate();
   void SetName(char*);
   const char * Name();
   void FixPattern();

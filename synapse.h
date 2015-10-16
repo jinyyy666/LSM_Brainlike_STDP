@@ -1,7 +1,8 @@
 #ifndef SYNAPSE_H
 #define SYNAPSE_H
 
-#include<stdio.h>
+#include <stdio.h>
+#include <assert.h>
 
 class Neuron;
 class Network;
@@ -14,20 +15,16 @@ private:
   bool _excitatory;
   bool _fixed;
   bool _liquid;
-//  int _min;
-//  int _max;
-  int _ini_min;
-  int _ini_max;
-  int _weight;
-  double _state_internal;
-  int _factor;
 
-  //double _t_spike_pre;
-  //double _t_last_pre;
-  //double _t_spike_post;
-//  double _t_last_post;
+  // _lsm_active is to indicate whether or not 
+  // there is readout synapse to be trained
+  bool _lsm_active;
 
-  double _mem_pos;
+  // _lsm_stdp_active is to indicate whether or not 
+  // the synapse is being trained by STDP rule
+  bool _lsm_stdp_active;
+
+  double _mem_pos;  // those two variables are current not used
   double _mem_neg;
 
 /* ONLY FOR LIQUID STATE MACHINE */
@@ -35,19 +32,20 @@ private:
   double _lsm_tau2;
   double _lsm_state1;
   double _lsm_state2;
+  double _lsm_state;
+
   double _lsm_spike;
   int _D_lsm_spike;
-  double _lsm_state;
+
   int _lsm_delay;
-  // this variable is to indicate whether or not there is a fired spike or the synapse is activated by the pre/post-spike, which is a condition for STDP training: 
-  bool _lsm_active;
+
+  double _lsm_c;
+  double _lsm_weight;
+  double _lsm_weight_limit;
+
   int _D_lsm_c;
   int _D_lsm_weight;
   int _D_lsm_weight_limit;
-
-  double _lsm_weight;
-  double _lsm_weight_limit;
-  double _lsm_c;
 
 /* ONLY FOR STDP Model */
 
@@ -56,20 +54,23 @@ private:
   int _t_last_pre;
   int _t_last_post;
 
-  int _x_j;   // trace x_j induced by pre-spike
-  int _y_i1; // fast trace y_i_1 induced by post-spike
-  int _y_i2; // slow trace y_i_2 induced by post-spike
-  int _y_i2_last ; // keep track of the _y_i_2 at the last time
+  double _x_j;   // trace x_j induced by pre-spike
+  double _y_i1;  // fast trace y_i_1 induced by post-spike
+  double _y_i2;  // slow trace y_i_2 induced by post-spike
+  double _y_i2_last; // keep track of the _y_i_2 at the last time
+
+  int _D_x_j;     // digital version
+  int _D_y_i1; 
+  int _D_y_i2; 
+  int _D_y_i2_last; 
 public:
-  Synapse(Neuron*,Neuron*,bool,bool,int);
-  Synapse(Neuron*,Neuron*,bool,bool,int,int,int);
-  Synapse(Neuron*,Neuron*,double,bool,double); // only for liquid state machine
-//Synapse(Neuron*,Neuron*,int,bool,int,bool); // only for liquid state machine
-  Synapse(Neuron*,Neuron*,int,bool,int,bool,bool); // only for liquid state machine (including initializing synapse in liquid)
-  //void SetPreSpikeT(double);
-  //void SetPostSpikeT(double);
+  Synapse(Neuron*,Neuron*,double,bool,double,bool,bool); // only for non-digital liquid state machine
+  Synapse(Neuron*,Neuron*,int,bool,int,bool,bool); // only for digital liquid state machine (including initializing synapse in liquid)
+
   //* Get the _lsm_active of the synapse, which is the flag indicating whether or not the synapse is activated:
   bool GetActiveStatus(){return _lsm_active;}
+
+  bool GetActiveSTDPStatus(){return _lsm_stdp_active;}
 
   //* Set the _lsm_active of the synapse.  
   bool SetActiveStatus(bool status){_lsm_active = status;}
@@ -78,11 +79,8 @@ public:
   bool IsReadoutSyn();
   //* Determine whether or not the synapse is the input synapse:
   bool IsInputSyn();
-  void SetPreSpikeT(int);
-  void SetPostSpikeT(int);
-  void SendSpike();
-  void SetLearningSynapse(int);
-  void Learn(int);
+  void SetPreSpikeT(int t){_t_spike_pre = t;}
+  void SetPostSpikeT(int t){_t_spike_post = t;}
 
   //* Get the synaptic weights:
   int Weight(){return _D_lsm_weight;}
@@ -102,13 +100,12 @@ public:
   void LSMPreSpike(int); // argument can only be 0 or 1
   void LSMNextTimeStep();
   double LSMCurrent();
-  double LSMStaticCurrent();
-  void DLSMStaticCurrent(int*,int*);
+
   double LSMFirstOrderCurrent();
   void LSMClear();
   void LSMClearLearningSynWeights();
   void LSMLearn(int);
-  void LSMActivate(Network* network, bool stdp_flag = false);
+  void LSMActivate(Network * network, bool stdp_flag = false);
   void LSMActivateReservoirSyns(Network*);
   void LSMDeactivate();
   bool LSMGetLiquid();
@@ -116,7 +113,33 @@ public:
 /* ONLY FOR STDP */
   void LSMUpdate(int);
   void LSMLiquidLearn(int);
-  void CheckWeightOutBound();
+  void CheckReservoirWeightOutBound();
+  void CheckReadoutWeightOutBound();
+
+
+  /** Definition for inline functions: **/
+  inline 
+  void LSMStaticCurrent(int * pos, double * value){
+#ifdef DIGITAL
+    assert(0);
+#endif
+    *pos = _excitatory ? 1 : -1;
+    *value = _lsm_spike == 0 ? 0 : _lsm_spike*_lsm_weight;
+    _lsm_spike = 0;
+  }
+
+
+  inline 
+  void DLSMStaticCurrent(int* pos,int * value){
+#ifndef DIGITAL
+    assert(0);
+#endif
+    *pos = _excitatory ? 1 : -1;  
+    *value = _D_lsm_spike*_D_lsm_weight;
+    _D_lsm_spike = 0;
+  }
+
+
 };
 
 #endif

@@ -1,17 +1,16 @@
-#include"def.h"
-#include"neuron.h"
-#include"synapse.h"
-#include"network.h"
-#include"pattern.h"
-#include"speech.h"
-#include"channel.h"
-#include<stdlib.h>
-#include<iostream>
-#include<fstream>
-#include<assert.h>
-#include<string.h>
-#include<stdio.h>
-#include<math.h>
+#include "def.h"
+#include "synapse.h"
+#include "neuron.h"
+#include "network.h"
+#include "speech.h"
+#include "channel.h"
+#include <stdlib.h>
+#include <iostream>
+#include <fstream>
+#include <assert.h>
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
 
 //#define _DEBUG_NEURON
 
@@ -20,19 +19,11 @@ using namespace std;
 extern int Current;
 extern int Threshold;
 extern double TSstrength;
-//extern FILE * Fp;
-//extern FILE * Foutp;
-extern std::fstream Fs;
-extern std::fstream Fouts;
-//extern FILE * Fp_syn;
 
-#ifdef DIGITAL
+/** unit defined for digital system but not used in continuous model **/
 extern const int one = 1;
 extern const int unit = (one<<NUM_DEC_DIGIT);
-//int unit = 1;
-//int Unit = 1 << NUM_DEC_DIGIT;
 
-#endif
 
 // ONLY FOR RESERVOIR
 Neuron::Neuron(char * name, bool excitatory, Network * network):
@@ -40,8 +31,18 @@ _mode(NORMAL),
 _excitatory(excitatory),
 _lsm_v_mem(0),
 _lsm_v_mem_pre(0),
-_lsm_all_inputs(0),
-_lsm_t(0),
+_lsm_calcium(0),
+_lsm_calcium_pre(0),
+_lsm_state_EP(0),
+_lsm_state_EN(0),
+_lsm_state_IP(0),
+_lsm_state_IN(0),
+_lsm_tau_EP(4.0),
+_lsm_tau_EN(LSM_T_SYNE),
+_lsm_tau_IP(4.0),
+_lsm_tau_IN(LSM_T_SYNI),
+_lsm_tau_FO(LSM_T_FO),
+_lsm_v_thresh(LSM_V_THRESH),
 _lsm_ref(0),
 _lsm_channel(NULL),
 _D_lsm_v_mem(0),
@@ -57,25 +58,37 @@ _D_lsm_tau_EN(LSM_T_SYNE),
 _D_lsm_tau_IP(4),
 _D_lsm_tau_IN(LSM_T_SYNI),
 _D_lsm_tau_FO(LSM_T_FO),
+_D_lsm_v_thresh(LSM_V_THRESH*unit),
 _t_next_spike(-1),
 _network(network),
-_calcium(LSM_CAL_MID-3),
-_calcium_pre(LSM_CAL_MID-3),
 _Unit(unit),
-_Lsm_v_thresh(LSM_V_THRESH*unit),
-_teacherSignal(0){
+_teacherSignal(0)
+{
   _name = new char[strlen(name)+2];
   strcpy(_name,name);
+
+  _indexInGroup = -1;
   _del = false;
 }
 
 //FOR INPUT AND OUTPUT
 Neuron::Neuron(char * name, Network * network):
 _mode(NORMAL),
+_excitatory(false),
 _lsm_v_mem(0),
 _lsm_v_mem_pre(0),
-_lsm_all_inputs(0),
-_lsm_t(0),
+_lsm_calcium(0),
+_lsm_calcium_pre(0),
+_lsm_state_EP(0),
+_lsm_state_EN(0),
+_lsm_state_IP(0),
+_lsm_state_IN(0),
+_lsm_tau_EP(4.0),
+_lsm_tau_EN(LSM_T_SYNE),
+_lsm_tau_IP(4.0),
+_lsm_tau_IN(LSM_T_SYNI),
+_lsm_tau_FO(LSM_T_FO),
+_lsm_v_thresh(LSM_V_THRESH),
 _lsm_ref(0),
 _lsm_channel(NULL),
 _D_lsm_v_mem(0),
@@ -91,45 +104,22 @@ _D_lsm_tau_EN(LSM_T_SYNE),
 _D_lsm_tau_IP(4),
 _D_lsm_tau_IN(LSM_T_SYNI),
 _D_lsm_tau_FO(LSM_T_FO),
+_D_lsm_v_thresh(LSM_V_THRESH*unit),
 _t_next_spike(-1),
 _network(network),
-_calcium(LSM_CAL_MID-3),
-_calcium_pre(LSM_CAL_MID-3),
 _Unit(unit),
-_Lsm_v_thresh(LSM_V_THRESH*unit){
+_teacherSignal(-1)
+{
   _name = new char[strlen(name)+2];
   strcpy(_name,name);
 
-  _v_mem = VREST + rand()%(VTHRE-VREST);
-  _v_mem_pre = _v_mem;
-  _calcium = 0;
-  _calcium_pre = _calcium;
-  _t = -1000000;
-  _externalInput = 0;
-  _probe = NULL;
-  _voteCounts = NULL;
-  _namesInputs = NULL;
-  _numNames = -1;
   _indexInGroup = -1;
-  _teacherSignal = -1;
-  _fired = 0;
-  _label = -1;
-  _excitatory = false;
   _del = false;
 }
 
 Neuron::~Neuron(){
   if(_name != NULL) delete [] _name;
-  if(_voteCounts != NULL) delete _voteCounts;
-  if(_namesInputs != NULL) delete _namesInputs;
-}
 
-void Neuron::SetInput(double input){
-  _externalInput = input;
-}
-
-void Neuron::ClearInput(){
-  _externalInput = 0;
 }
 
 char * Neuron::Name(){
@@ -142,87 +132,6 @@ void Neuron::AddPostSyn(Synapse * postSyn){
 
 void Neuron::AddPreSyn(Synapse * preSyn){
   _inputSyns.push_back(preSyn);
-}
-
-int counter = 0;
-
-void Neuron::Update(list<Synapse*> * inputSyns, list<Synapse*> * outputSyns, double t_step, double t){
-  if(_excitatory == true){
-    _v_mem_pre = _v_mem;
-    _calcium_pre = _calcium;
-
-    _calcium *= (1-t_step/TAU_C);
-
-    if(_externalInput > 1e-6){
-      if(rand()%10000 < 500*_externalInput) _v_mem = 10000;
-      else _v_mem = 0;
-    }
-    if(_network->HasInputs() == false) _all_inputs = 0;
-    _v_mem += _all_inputs;
-    _v_mem -= LAMBDA;
-    if(_v_mem < VREST) _v_mem = VREST;
-    _all_inputs = 0;
-
-#ifdef SUPERVISED
-    if(_teacherSignal == 1){
-      _v_mem += rand()%81;
-    }
-    //else if(_probe != NULL) _v_mem = 0;
-#endif
-
-    if(_v_mem >= VTHRE){
-//if(strcmp(_name, "input_546") == 0)cout<<"firing\t"<<t<<"\t"<<++counter<<"\t"<<500*_externalInput<<"\t"<<_v_mem<<"\t"<<RAND_MAX<<endl;
-      _calcium += J_C;
-      if(_probe != NULL){
-        (_probe->_probeSpiking).push_back(_indexInGroup);
-        _fired++;
-      }
-      _v_mem = VH;
-      list<Synapse*>::iterator iter;
-      for(iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++){
-        (*iter)->SetPostSpikeT(t);
-        inputSyns->push_back(*iter);
-      }
-      for(iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++){
-        (*iter)->SetPreSpikeT(t);
-        outputSyns->push_back(*iter);
-      }
-    }
-
-//if((_name[0]=='o')&&(_name[1]=='u')&&(_name[2]=='t')) cout<<"1234567890"<<(_name+7)<<"\t\t"<<_calcium<<endl;
-//if(strcmp(_name, "output_68")==0) cout<<"1234567890"<<"\t\t"<<_calcium<<endl;
-
-  }else{
-    _v_mem += _all_inputs;
-    _all_inputs = 0;
-    if(_v_mem >= VTHRE){
-      _v_mem = VH;
-      for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++) outputSyns->push_back(*iter);
-    }
-  }
-}
-
-void Neuron::ReceiveSpike(int weight){
-//  if(strcmp(_name, "output_3") == 0) cout<<"increase"<<weight<<endl;
-  _all_inputs += weight;
-}
-
-void Neuron::PrintInputSyns(){
-  int counter = 0;
-  int counter2 = 0;
-  FILE * fp = fopen(_name,"w");
-  for(list<Synapse*>::iterator iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++){
-    (*iter)->Print(fp);
-    fprintf(fp,"\t"); // cout<<'\t';
-    counter++;
-    if(counter == 28){
-      counter = 0;
-      counter2++;
-      fprintf(fp,"\n"); // cout<<endl;
-    }
-    if(counter2 == 28) break;
-  }
-  fclose(fp);
 }
 
 void Neuron::LSMPrintInputSyns(){
@@ -244,129 +153,38 @@ void Neuron::LSMPrintInputSyns(){
   fclose(fp);
 }
 
-void Neuron::ReadInputSyns(){
-  int total_input, i, syn;
-  list<Synapse*>::iterator iter;
-  ifstream filesyns;
-  total_input = 28*28;
-
-  filesyns.open(_name);
-  iter = _inputSyns.begin();
-  for(int i = 0; i < total_input; i++){
-    assert(iter != _inputSyns.end());
-    filesyns >> syn;
-    (*iter)->SetLearningSynapse(syn);
-    iter++;
-  }
-  filesyns.close();
-}
-
-int Neuron::Active(){
-  if(_externalInput > 0) return 1;
-  else return 0;
-}
-
-void Neuron::AddProbe(Probe * probe){
-  _probe = probe;
-}
-
-void Neuron::Fire(){
-  _v_mem = 100000000;
-}
-
-void Neuron::SetTeacherSignal(int signal){
-  assert((signal >= -1)&&(signal <= 1));
+inline void Neuron::SetTeacherSignal(int signal){
+  assert((signal >= -1) && (signal <= 1));
   _teacherSignal = signal;
 }
 
-void Neuron::PrintTeacherSignal(){
+inline void Neuron::PrintTeacherSignal(){
   cout<<"Teacher signal of "<<_name<<": "<<_teacherSignal<<endl;
 }
 
-void Neuron::PrintMembranePotential(){
-  //cout<<"Membrane potential of "<<_name<<": "<<_v_mem<<endl;
-  cout<<'\t'<<_v_mem;
-}
-
-void Neuron::SetUpForUnsupervisedLearning(std::vector<const char*> * nameInputs){
-  _numNames = nameInputs->size();
-  _voteCounts = new double[_numNames];
-  _namesInputs = new const char*[_numNames];
-
-  for(int i = 0; i < _numNames; i++){
-    _namesInputs[i] = (*nameInputs)[i];
-    _voteCounts[i] = 0;
-  }
-}
-
-void Neuron::StatAccumulate(){
-  if(_probe == NULL) return;
-  if(_fired > 0){
-    int i;
-//    for(i = 0; i < _numNames; i++) _voteCounts[i] *= 0.9;
-    for(i = 0; i < _numNames; i++){
-      if(strcmp(_network->GetCurrentPattern()->Name(), _namesInputs[i]) == 0) break;
-    }
-    assert(i < _numNames);
-    _voteCounts[i] += 1;
-    _fired = 0;
-//COUNTER++;
-//cout<<"......"<<COUNTER<<endl;
-  }
-}
-
-int Neuron::PrintTrainingResponse(){
-  if(_probe == NULL) return -1;
-  cout<<_name;
-  for(int i = 0; i < _numNames; i++) cout<<"\t"<<(int)_voteCounts[i];
-  if(_label == -1) cout<<"\t\t"<<_label<<endl;
-  else cout<<'\t'<<_namesInputs[_label]<<endl;
-  return _label;
-}
-
-void Neuron::SetLabel(){
-  if(_probe == NULL) return;
-  int i, maxindex;
-  double maxcount = -1;
-  maxindex = -1;
-  for(i = 0; i < _numNames; i++){
-    if((maxcount < _voteCounts[i])&&(_voteCounts[i] > 0)){
-      maxcount = _voteCounts[i];
-      maxindex = i;
-    }
-  }
-  _label = maxindex;
-}
-
-int Neuron::Vote(){
-  if((_probe == NULL)||(_fired < 7)) return (-1);
-  _fired = 0;
-  return _label;
-}
-
-double Neuron::GetCalciumPre(){
-  return _calcium_pre;
-}
-
-int Neuron::DLSMGetCalciumPre(){
-  return _D_lsm_calcium_pre;
-}
-
-void Neuron::SetExcitatory(){
-  _excitatory = true;
-  _v_mem = 0;
+inline void Neuron::PrintMembranePotential(){
+#ifdef DIGITAL
+  cout<<"Membrane potential of "<<_name<<": "<<_D_lsm_v_mem<<endl;
+#else
+  cout<<"Membrane potential of "<<_name<<": "<<_lsm_v_mem<<endl;
+#endif
 }
 
 void Neuron::LSMClear(){
-  _lsm_v_mem = 0;
-  _lsm_all_inputs = 0;
   _lsm_ref = 0;
-  _lsm_t = 0;
-  _calcium = LSM_CAL_MID-3;
+
+  _lsm_v_mem = 0;
   _lsm_v_mem_pre = 0;
-  _calcium_pre = LSM_CAL_MID-3;
+  _lsm_calcium = 0;        // both of calicum might be LSM_CAL_MID-3;
+  _lsm_calcium_pre = 0; 
+  _lsm_state_EP = 0;
+  _lsm_state_EN = 0;
+  _lsm_state_IP = 0;
+  _lsm_state_IN = 0;
+
   _t_next_spike = -1;
   _teacherSignal = 0;
+
   _D_lsm_v_mem = 0;
   _D_lsm_v_mem_pre = 0;
   _D_lsm_calcium = 0;
@@ -378,47 +196,364 @@ void Neuron::LSMClear(){
 }
 
 
-int Neuron::SizeOutputSyns(){
-  return _outputSyns.size();
+inline void Neuron::ExpDecay(int& var, const int time_c){
+  var -= (var/time_c == 0) ? 1 : var/time_c;
+  if(var < 0) var = 0;
+#ifndef DIGITAL
+  assert(0);
+#endif
 }
 
-void Neuron::DeleteAllSyns(){
-  _inputSyns.clear();
-  _outputSyns.clear();
-  _del = true;
+inline void Neuron::ExpDecay(double & var, const int time_c){
+  var -= var/time_c;
+#ifdef DIGITAL
+  assert(0);
+#endif
 }
 
-void Neuron::DeleteBrokenSyns(){
+/** collect the synaptic response and accumulate them **/
+inline void Neuron::AccumulateSynapticResponse(int pos, double value){
+#ifdef DIGITAL
+  assert(0);
+#endif
+ 
+#ifdef SYN_ORDER_2
+  if(pos > 0){
+    _lsm_state_EP += value;
+    _lsm_state_EN += value;
+  }
+  else{
+    _lsm_state_IP += value;
+    _lsm_state_IN += value;
+  }
+#elif SYN_ORDER_1
+  if(pos > 0) _lsm_state_EP += value;
+  else _lsm_state_EP -= value;
+#else
+  if(pos > 0) _lsm_state_EP += value;
+  else _lsm_state_EP -= value;
+#endif
+
+}
+
+/** Digital version of collecting the synaptic response **/
+inline void Neuron::DAccumulateSynapticResponse(int pos, int value){
+#ifndef DIGITAL
+  assert(0);
+#endif
+
+#ifdef SYN_ORDER_2
+  if(pos > 0){
+    _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+    _D_lsm_state_EN += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+  }
+  else{
+    _D_lsm_state_IP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+    _D_lsm_state_IN += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+  }
+#elif SYN_ORDER_1
+  if(pos > 0) _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+  else _D_lsm_state_EP -= (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+#else
+  if(pos > 0) _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+  else _D_lsm_state_EP -= (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+#endif
+
+}
+
+/** Calculate the whole response together **/
+inline double Neuron::NOrderSynapticResponse(){
+#ifdef DIGITAL
+  assert(0);
+#endif
+
+#ifdef SYN_ORDER_2
+  return (_lsm_state_EP-_lsm_state_EN)/(_lsm_tau_EP-_lsm_tau_EN)+(_lsm_state_IP-_lsm_state_IN)/(_lsm_tau_IP-_lsm_tau_IN);
+#elif SYN_ORDER_1
+  return _lsm_state_EP/_lsm_tau_FO;
+#else
+  return _lsm_state_EP;
+#endif
+
+}
+
+/** Digital version of calculation of the whole response **/
+inline int Neuron::DNOrderSynapticResponse(){
+#ifndef DIGITAL
+  assert(0);
+#endif
+
+#ifdef SYN_ORDER_2
+  return (_D_lsm_state_EP-_D_lsm_state_EN)/(_D_lsm_tau_EP-_D_lsm_tau_EN)+(_D_lsm_state_IP-_D_lsm_state_IN)/(_D_lsm_tau_IP-_D_lsm_tau_IN);
+#elif SYN_ORDER_1
+  return _D_lsm_state_EP/_D_lsm_tau_FO;
+#else
+  return  _D_lsm_state_EP;
+#endif
+
+}
+
+
+/** Set the t_post of _inputSyns when the neuron fires and activate the syns **/
+inline void Neuron::SetPostNeuronSpikeT(int time){
+  for(list<Synapse*>::iterator iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++){
+    (*iter)->SetPostSpikeT(time);
+    
+    // if the synapse is not yet active for STDP training
+    // push it into the reservoir learning synapse list. 
+    // note that I do not train the input layer synapses using STDP at this stage
+    // do not train readut synapses too
+    if((*iter)->GetActiveSTDPStatus() == false && (*iter)->IsInputSyn() == false && (*iter)->IsReadoutSyn() == false)
+      (*iter)->LSMActivateReservoirSyns(_network);
+  }
+}
+      
+inline void Neuron::HandleFiringActivity(bool isInput, int time){
+
+  for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++){
+    (*iter)->LSMPreSpike(1);  
+    (*iter)->SetPreSpikeT(time);
+    
+    if(_mode == STDP && !isInput){
+      // for excitatory reservoir synapse:
+      if((*iter)->IsReadoutSyn() == false){
+        // if the synapse is not yet active, push it into the to-be-processed list
+	// the second parameter is a flag indicating stdp training in the reservoir
+	(*iter)->LSMActivate(_network, true);
+
+	// remember to active this reservoir for STDP training
+	if((*iter)->GetActiveSTDPStatus() == false)
+	  (*iter)->LSMActivateReservoirSyns(_network);	  
+      }
+    }
+    else if(isInput){
+      // for input synapses in TRANSIENT/TRAINRESERVOIR STATE:
+      if(_name[0] == 'i')
+        (*iter)->LSMActivate(_network);
+      else{
+        // for reservoir-output synapse in READOUT STATE:
+        if((*iter)->IsReadoutSyn())
+	  (*iter)->LSMActivate(_network);
+      }
+    }
+    else{
+      // for reservoir-reservoir and reservoir-output in TRANSIENT STATE
+      // for possible future synapses coming out from readout in READOUT STATE:
+      if((*iter)->GetActiveStatus() == false)
+	(*iter)->LSMActivate(_network);
+    }
+	
+  }
+
+}
+void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp){
+
+  if(_mode == DEACTIVATED) return;
+  if(_mode == READCHANNEL){
+    if(_t_next_spike == -1) return;
+    if(t < _t_next_spike) return;
+
+    cout<<_name<<" firing @ "<<t<<"\tinfluencing "<<_outputSyns.size()<<" neurons: "<<(*_outputSyns.begin())->PostNeuron()->Name()<<" ..."<<endl;
+    
+    /** Hand the firing behavior here for both input neurons and reservoir neurons */
+    /** The 1st parameter taken:  isInput **/
+    HandleFiringActivity(true, t);
+
+    _t_next_spike = _lsm_channel->NextSpikeT();
+    if(_t_next_spike == -1) {
+      _network->LSMChannelDecrement(_lsm_channel->Mode()); 
+    }
+    return;
+  }
+  
+  // the following code is to simulate the mode of NORMAL, WRITECHANNEL, and STDP
+#ifdef DIGITAL
+  _D_lsm_v_mem_pre = _D_lsm_v_mem;
+  _D_lsm_calcium_pre = _D_lsm_calcium;
+  _D_lsm_calcium -= _D_lsm_calcium/TAU_C;
+#else
+  _lsm_v_mem_pre = _lsm_v_mem;
+  _lsm_calcium_pre = _lsm_calcium;
+  _lsm_calcium -= _lsm_calcium/TAU_C;
+#endif
+
+#ifdef DIGITAL
+  if((_teacherSignal==1)&&(_D_lsm_calcium < (LSM_CAL_MID+1)*unit)){
+    _D_lsm_v_mem += 20*unit;
+  }else if((_teacherSignal==-1)&&(_D_lsm_calcium > (LSM_CAL_MID-1)*unit)){
+    _D_lsm_v_mem -= 15*unit;
+  }
+#else
+  if((_teacherSignal==1)&&(_lsm_calcium < LSM_CAL_MID+1)){
+    _lsm_v_mem += 20;
+  }else if((_teacherSignal==-1)&&(_lsm_calcium > LSM_CAL_MID-1)){
+    _lsm_v_mem -= 15;
+  }
+
+#endif
+
+  list<Synapse*>::iterator iter;
+
+#ifdef DIGITAL
+  /* this is for digital case */
+  int pos, value;
+  ExpDecay(_D_lsm_v_mem, LSM_T_M);
+#ifdef SYN_ORDER_2 
+  ExpDecay(_D_lsm_state_EP, _D_lsm_tau_EP);
+  ExpDecay(_D_lsm_state_EN, _D_lsm_tau_EN);
+  ExpDecay(_D_lsm_state_IP, _D_lsm_tau_IP);
+  ExpDecay(_D_lsm_state_IN, _D_lsm_tau_IN);
+#elif SYN_ORDER_1
+  ExpDecay(_D_lsm_state_EP, _D_lsm_tau_EP);
+#elif SYN_ORDER_0
+  _D_lsm_state_EP = 0;
+#else
+  assert(0);
+#endif
+#else
+  /* this is for continuous case: */
+  int pos;
+  double value;
+  ExpDecay(_lsm_v_mem, LSM_T_M);
+#ifdef SYN_ORDER_2 
+  ExpDecay(_lsm_state_EP, _lsm_tau_EP);
+  ExpDecay(_lsm_state_EN, _lsm_tau_EN);
+  ExpDecay(_lsm_state_IP, _lsm_tau_IP);
+  ExpDecay(_lsm_state_IN, _lsm_tau_IN);
+#elif SYN_ORDER_1
+  ExpDecay(_lsm_state_EP, _lsm_tau_EP);
+#elif SYN_ORDER_0
+  _lsm_state_EP = 0;
+#else
+  assert(0);
+#endif
+#endif  
+  for(iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++){
+#ifdef DIGITAL
+    (*iter)->DLSMStaticCurrent(&pos, &value);
+#else
+    (*iter)->LSMStaticCurrent(&pos, &value);
+#endif
+    /*** this is for both reservoir, readout and input synaptic response : ***/
+    if(value != 0){
+#ifdef DIGITAL
+      AccumulateSynapticResponse(pos, value);
+#else
+      DAccumulateSynapticResponse(pos, value);
+#endif
+    }
+  }
+  
+#ifdef DIGITAL
+  int temp = NOrderSynapticResponse();
+  _D_lsm_v_mem += temp;
+#else
+  double temp = DNOrderSynapticResponse();
+  _lsm_v_mem += temp;
+#endif
+
+
+#ifdef _DEBUG_NEURON
+  if(strcmp(_name,"reservoir_0")==0) //cout<<_Unit<<"\t"<<_D_lsm_v_thresh<<endl;
+     cout<<_D_lsm_v_mem<<"\t"<<temp<<"\t"<<_D_lsm_state_EP<<"\t"<<_D_lsm_state_EN<<"\t"<<_D_lsm_state_IP<<"\t"<<_D_lsm_state_IN<<endl;
+#endif
+
+  if(_lsm_ref > 0){
+    _lsm_ref--;
+    _lsm_v_mem = LSM_V_REST;
+    _D_lsm_v_mem = LSM_V_REST*_Unit;
+    return;
+  }
+
+#ifdef DIGITAL
+  if(_D_lsm_v_mem > _D_lsm_v_thresh){  
+    _D_lsm_calcium += _Unit;
+#else
+  if(_lsm_v_mem > _lsm_v_thresh){
+    _lsm_calcium += one;
+#endif
+
+    if(_mode == STDP){
+      // keep track of the t_spike_post for the _inputSyns and activate this syn:
+      SetPostNeuronSpikeT(t);
+    }
+
+    // 1. handle the _outputSyns after the neuron fires and activate the _outputSyns
+    // 2. keep track of the t_spike_pre for the corresponding syns
+    // 3. the 1st parameter taken-in means whether or not the current neuron is input
+    HandleFiringActivity(false, t);
+
+#ifdef DIGITAL
+    _D_lsm_v_mem = LSM_V_RESET*_Unit;
+#else
+    _lsm_v_mem = LSM_V_RESET;
+#endif
+
+    _lsm_ref = LSM_T_REFRAC;
+
+    if((_name[0]=='r')&&(_name[9]=='_')){
+      if(Fp != NULL) fprintf(Fp,"%d\t%d\n",atoi(_name+10),t);
+    }else if(Foutp != NULL) 
+	fprintf(Foutp,"%d\t%d\n",atoi(_name+7),t);
+
+    if(_mode == WRITECHANNEL){
+      _lsm_channel->AddSpike(t);
+    }
+
+  }
+}
+
+void Neuron::LSMSetChannel(Channel * channel, channelmode_t channelmode){
+  _lsm_channel = channel;
+  _t_next_spike = _lsm_channel->FirstSpikeT();
+  if(_t_next_spike == -1) _network->LSMChannelDecrement(channelmode);
+}
+
+void Neuron::LSMRemoveChannel(){
+  _lsm_channel = NULL;
+}
+
+/* Remove/Resize the outputs synapse */
+void Neuron::ResizeSyn(){
+  int n,m,i;
   Neuron * pre;
   Neuron * post;
-//  char * _name_pre;
-//  char * _name_post;
- 
-  for(list<Synapse*>::iterator iter = _inputSyns.begin(); iter != _inputSyns.end(); ){
-    pre = (*iter)->PreNeuron();
+  char * _name_pre;
+  char * _name_post;
+  n = _outputSyns.size();
+  if((n-10) == 0) return;
+  if((n-10) == 1) {
+    list<Synapse*>::iterator iter = _outputSyns.begin();
     post = (*iter)->PostNeuron(); 
+    _name_post = post->Name();
+    assert((_name_post[0] == 'r')&&(_name_post[1] == 'e')&&(_name_post[2] == 's'));
     assert(post->GetStatus() == false);
-    if(pre->GetStatus() == true)   
-      iter = _inputSyns.erase(iter);
-    else
-      iter++;
+    iter = _outputSyns.erase(iter);
+    return;
   }
- 
-  for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); ){
-    pre = (*iter)->PreNeuron();
-    post = (*iter)->PostNeuron(); 
-    assert(pre->GetStatus() == false);
-    if(post->GetStatus() == true)   
-      iter = _outputSyns.erase(iter);
-    else
-      iter++;
+  assert(n>= 2);
+
+  m = rand()%(n-10);
+  i = 0;
+
+  for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++){
+    if(i == m){
+      pre = (*iter)->PreNeuron();
+      post = (*iter)->PostNeuron(); 
+      _name_pre = pre->Name();
+      _name_post = post->Name();
+      assert((_name_pre[0] == 'r')&&(_name_pre[9] == '_'));
+    //  if((_name_post[0] == 'o')&&(_name_post[1] == 't')) continue;
+      assert((_name_post[0] == 'r')&&(_name_post[9] == '_'));
+      assert(post->GetStatus() == false);   
+      iter = _outputSyns.erase(iter);   //Remove the selected synapse.
+      
+      break;
+    }
+    else i++;
   }
 }
 
-bool Neuron::GetStatus(){
-  if(_del == true) return true;
-  else return false;
-}
 
 void Neuron::LSMPrintOutputSyns(FILE * fp){
   for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++) (*iter)->LSMPrintSyns(fp);
@@ -442,251 +577,44 @@ void Neuron::LSMPrintLiquidSyns(FILE * fp){
     }
   return;
 }
-  
-     	
-void Neuron::ResizeSyn(){
-  int n,m,i;
+
+void Neuron::DeleteAllSyns(){
+  _inputSyns.clear();
+  _outputSyns.clear();
+  _del = true;
+}
+
+void Neuron::DeleteBrokenSyns(){
   Neuron * pre;
   Neuron * post;
-  char * _name_pre;
-  char * _name_post;
-  n = _outputSyns.size();
-  if((n-10) == 0) return;
-  if((n-10) == 1) {
-    list<Synapse*>::iterator iter = _outputSyns.begin();
+ 
+  for(list<Synapse*>::iterator iter = _inputSyns.begin(); iter != _inputSyns.end(); ){
+    pre = (*iter)->PreNeuron();
     post = (*iter)->PostNeuron(); 
-    _name_post = post->Name();
-    assert((_name_post[0] == 'r')&&(_name_post[1] == 'e')&&(_name_post[2] == 's'));
     assert(post->GetStatus() == false);
-    iter = _outputSyns.erase(iter);
-    return;
+    if(pre->GetStatus() == true)   
+      iter = _inputSyns.erase(iter);
+    else
+      iter++;
   }
-  assert(n>= 2);
-
-  m = rand()%(n-10);
-//  cout<<"m = "<<m<<endl;
-  i = 0;
-
-
-  for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++){
-    if(i == m){
-      pre = (*iter)->PreNeuron();
-      post = (*iter)->PostNeuron(); 
-      _name_pre = pre->Name();
-      _name_post = post->Name();
-      assert((_name_pre[0] == 'r')&&(_name_pre[9] == '_'));
-    //  if((_name_post[0] == 'o')&&(_name_post[1] == 't')) continue;
-      assert((_name_post[0] == 'r')&&(_name_post[9] == '_'));
-      assert(post->GetStatus() == false);   
-      iter = _outputSyns.erase(iter);   //Remove the selected synapse.
-      
-      break;
-    }
-    else i++;
+ 
+  for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); ){
+    pre = (*iter)->PreNeuron();
+    post = (*iter)->PostNeuron(); 
+    assert(pre->GetStatus() == false);
+    if(post->GetStatus() == true)   
+      iter = _outputSyns.erase(iter);
+    else
+      iter++;
   }
 }
 
 
-void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp){
-//if(t>=5) assert(0);
-//  if(_lsm_channel){
-//  int extra=0;
-  if(_mode == DEACTIVATED) return;
-  if(_mode == READCHANNEL){
-    if(_t_next_spike == -1) return;
-    if(t < _t_next_spike) return;
-
-//cout<<_name<<" firing @ "<<t<<"\tinfluencing "<<_outputSyns.size()<<" neurons: "<<(*_outputSyns.begin())->PostNeuron()->Name()<<" ..."<<endl;
-    for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++){
-      (*iter)->LSMPreSpike(1);
-      (*iter)->LSMActivate(_network);
-      (*iter)->SetPreSpikeT(t);
-    }
-    _t_next_spike = _lsm_channel->NextSpikeT();
-    if(_t_next_spike == -1) {
-      _network->LSMChannelDecrement(_lsm_channel->Mode()); 
-//      fprintf(Fp,"%d\t%d\n",-1,t);
-    }
-    return;
-  }
-  
-  // the following code is to simulate the mode of NORMAL, WRITECHANNEL, and STDP
-#ifdef DIGITAL
-  _D_lsm_v_mem_pre = _D_lsm_v_mem;
-  _D_lsm_calcium_pre = _D_lsm_calcium;
-  _D_lsm_calcium -= _D_lsm_calcium/TAU_C;
-#else
-  _lsm_v_mem_pre = _lsm_v_mem;
-  _calcium_pre = _calcium;
-  _calcium -= _calcium/TAU_C;
-#endif
-
-#ifdef DIGITAL
-  if((_teacherSignal==1)&&(_D_lsm_calcium < (LSM_CAL_MID+1)*unit)){
-    _D_lsm_v_mem += 20*unit;
-  }else if((_teacherSignal==-1)&&(_D_lsm_calcium > (LSM_CAL_MID-1)*unit)){
-    _D_lsm_v_mem -= 15*unit;
-  }
-#else
-  if((_teacherSignal==1)&&(_calcium < LSM_CAL_MID+1)){
-//cout<<"positive!!!!!!!!!!!!!!!!!!!!!!!!"<<endl;
-    _lsm_v_mem += 20;
-//    _lsm_v_mem += (double(rand()%10000)/5000)*LSM_V_THRESH/7 + 1.6;
-  }else if((_teacherSignal==-1)&&(_calcium > LSM_CAL_MID-1)){
-//cout<<"negative!!!!!!!!!!!!!!!!!!!!!!!!"<<endl;
-    _lsm_v_mem -= 10;
-  }
-//  if((_teacherSignal == 1)&&(rand()%15000 < 1000)){
-//    _lsm_v_mem += 1e6;
-//  }
-
-//if(_name[0]=='o') cout<<t<<"\t"<<_name<<"\t"<<_teacherSignal<<"\t"<<_calcium<<endl;
-#endif
-
-  list<Synapse*>::iterator iter;
-
-#ifdef DIGITAL
-  int pos, value;
-  bool liquid;
-  _D_lsm_v_mem -= ceil(_D_lsm_v_mem/LSM_T_M);
-#ifdef SYN_ORDER_2 
-  _D_lsm_state_EP -= ceil(_D_lsm_state_EP/_D_lsm_tau_EP);
-  _D_lsm_state_EN -= ceil(_D_lsm_state_EN/_D_lsm_tau_EN);
-  _D_lsm_state_IP -= ceil(_D_lsm_state_IP/_D_lsm_tau_IP);
-  _D_lsm_state_IN -= ceil(_D_lsm_state_IN/_D_lsm_tau_IN);
-#elif SYN_ORDER_1
-  _D_lsm_state_EP -= _D_lsm_state_EP/_D_lsm_tau_FO;
-#elif SYN_ORDER_0
-  _D_lsm_state_EP = 0;
-#else
-  assert(0);
-#endif
-  for(iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++){
-    (*iter)->DLSMStaticCurrent(&pos,&value);
-    // this is for both reservoir and readout:
-    if(value != 0){
-#ifdef SYN_ORDER_2
-        if(pos > 0){
-             _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-             _D_lsm_state_EN += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-        }
-        else{
-            _D_lsm_state_IP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-            _D_lsm_state_IN += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-        }
-#elif SYN_ORDER_1
-        if(pos > 0) _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-        else _D_lsm_state_EP -= (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-#else
-        if(pos > 0) _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-        else _D_lsm_state_EP -= (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-#endif
-      }
-    }
-  
-#ifdef SYN_ORDER_2
-  int temp = (_D_lsm_state_EP-_D_lsm_state_EN)/(_D_lsm_tau_EP-_D_lsm_tau_EN)+(_D_lsm_state_IP-_D_lsm_state_IN)/(_D_lsm_tau_IP-_D_lsm_tau_IN);
-#elif SYN_ORDER_1
-  int temp = _D_lsm_state_EP/_D_lsm_tau_FO;
-#else
-  int temp = _D_lsm_state_EP;
-#endif
-  _D_lsm_v_mem += temp;
-//  if((_name[0] == 'r')&&(_name[9] == '_'))
-//    if(_D_lsm_v_mem <= -32) _D_lsm_v_mem = -32;
-#ifdef _DEBUG_NEURON
-  if(strcmp(_name,"reservoir_0")==0) //cout<<_Unit<<"\t"<<_Lsm_v_thresh<<endl;
-     cout<<_D_lsm_v_mem<<"\t"<<temp<<"\t"<<_D_lsm_state_EP<<"\t"<<_D_lsm_state_EN<<"\t"<<_D_lsm_state_IP<<"\t"<<_D_lsm_state_IN<<endl;
-#endif
-#else
-  _lsm_v_mem -= ceil( _lsm_v_mem/LSM_T_M);
-  for(iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++) _lsm_v_mem += (*iter)->LSMCurrent();
-#endif
-  if(_lsm_ref > 0){
-    _lsm_ref--;
-    _lsm_v_mem = 0;
-    _D_lsm_v_mem = 0;
-    return;
-  }
-
-#ifdef DIGITAL
-  if(_D_lsm_v_mem > (_Lsm_v_thresh)){  
-#ifdef _DEBUG_NEURON  
-    if(strcmp(_name, "reservoir_0") == 0){
-      cout<<"the neuron : reservoir_0 fired!!"<<endl;
-    }
-#endif
-      _D_lsm_calcium += _Unit;
-#else
-  if(_lsm_v_mem > LSM_V_THRESH*_Unit){
-    _calcium += 1;
-#endif
-    if(_mode == STDP){
-      // keep track of the t_spike_pre and t_spike_post:
-      for(iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++){
-	(*iter)->SetPostSpikeT(t);
-
-	// if the synapse is not yet active, push it into the to-be-processed list
-	if((*iter)->GetActiveStatus() == false)
-	  (*iter)->LSMActivate(_network, true);
-      }
-    }
-
-    for(iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++){
-      (*iter)->LSMPreSpike(1);  
-      (*iter)->SetPreSpikeT(t);
-    
-      if(_mode == STDP){
-	// if the synapse is not yet active, push it into the to-be-processed list
-	// do not consider the synapses connected from the reservoir to readout:
-	// only consider that the excitatory synapse:
-	if((*iter)->GetActiveStatus() == false && (*iter)->IsReadoutSyn() == false){
-	  // the second parameter passed into the function is a flag indicating stdp training in the reservoir:
-	  (*iter)->LSMActivate(_network, true);
-	}
-      }
-      else{
-	// if the synapse is not yet active, push it into the to-be-processed list:
-	if((*iter)->GetActiveStatus() == false)
-	  (*iter)->LSMActivate(_network, false);
-      }
-	
-    }
-
-#ifdef DIGITAL
-    _D_lsm_v_mem = LSM_V_RESET*_Unit;
-#else
-    _lsm_v_mem = LSM_V_RESET;
-#endif
-
-    _lsm_ref = LSM_T_REFRAC;
-    if((_name[0]=='r')&&(_name[9]=='_')){
-//      cout<<atoi(_name+10)<<"\t"<<t<<endl;
-      if(Fp != NULL) fprintf(Fp,"%d\t%d\n",atoi(_name+10),t);
-    }else if(Foutp != NULL) 
-	fprintf(Foutp,"%d\t%d\n",atoi(_name+7),t);
-
-    if(_mode == WRITECHANNEL){
-//cout<<"write"<<endl;
-      _lsm_channel->AddSpike(t);
-    }
-//cout<<_name<<"\t"<<t<<endl;
-//if(strcmp(_name,"reservoir_5")==0) cout<<"5\t"<<t<<endl;
-//if(strcmp(_name,"reservoir_15")==0) cout<<"15\t"<<t<<endl;
-//if(strcmp(_name,"reservoir_25")==0) cout<<"25\t"<<t<<endl;
-//if(strcmp(_name,"reservoir_35")==0) cout<<"35\t"<<t<<endl;
-  }
+inline bool Neuron::GetStatus(){
+  if(_del == true) return true;
+  else return false;
 }
 
-void Neuron::LSMSetChannel(Channel * channel, channelmode_t channelmode){
-  _lsm_channel = channel;
-  _t_next_spike = _lsm_channel->FirstSpikeT();
-  if(_t_next_spike == -1) _network->LSMChannelDecrement(channelmode);
-}
-
-void Neuron::LSMRemoveChannel(){
-  _lsm_channel = NULL;
-}
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -705,7 +633,7 @@ _lsm_coordinates(0)
     neuron->SetIndexInGroup(i);
     _neurons[i] = neuron;
   }
-  _subIndices = NULL;
+
   delete [] neuronName;
   neuronName = 0;
 }
@@ -771,15 +699,18 @@ _firstCalled(false)
     
     weight_value = atoi(token[3]);
 //    cout<<"pre_i:\t"<<pre_i<<"\tpost_j:\t"<<post_j<<"\tweight:\t"<<weight_value<<endl;
-    
+#ifdef DIGITAL
     _network->LSMAddSynapse(_neurons[pre_i],_neurons[post_j],weight_value,true,8,true);
+#else
+    _network->LSMAddSynapse(_neurons[pre_i], _neurons[post_j], (double)weight_value, true, 8.0, true);
+#endif
     ++count;
   }
   fclose(fp_synapse_path);
 
   cout<<"# of Reservoir Synapses = "<<count<<endl;
   delete [] token;
-  _subIndices = NULL;
+
 }    
 
 
@@ -873,32 +804,33 @@ _firstCalled(false)
       distsq += dist*dist;
       if(rand()%100000 < 100000*c*exp(-distsq/4)){
         counter++;
+#ifdef DIGITAL
+	// this is for digitial liquid state machine:
 #ifdef DIGITAL_SYN_ORGINAL
         int stage = 0.6*factor/(one<<(NUM_BIT_RESERVOIR-1))+1;
         int val = round(a/stage)*1.00001;
         _network->LSMAddSynapse(_neurons[i],_neurons[j],val*stage,true,8,false);
-//#else
-//        _network->LSMAddSynapse(_neurons[i],_neurons[j],a,true,0);
-#endif
-
-#ifdef LIQUID_SYN_MODIFICATION
+#elif LIQUID_SYN_MODIFICATION
 	int val = a;
-	_network->LSMAddSynapse(_neurons[i],_neurons[j],a,true,8,true); 
+	_network->LSMAddSynapse(_neurons[i],_neurons[j],val,true,8,true); 
+#else
+	assert(0);
 #endif
-
+#else
+	// this is for the continuous weight case:
+	_network->LSMAddSynapse(_neurons[i], _neurons[j],a, true, 8.0, true);
+#endif
       }
     }
 
-cout<<"# of reservoir synapses = "<<counter<<endl;
+  cout<<"# of reservoir synapses = "<<counter<<endl;
 
-  _subIndices = NULL;
   delete [] neuronName;
   neuronName = 0;
 }
 
 NeuronGroup::~NeuronGroup(){
   if(_name != NULL) delete [] _name;
-  if(_subIndices) delete [] _subIndices;
 }
 
 Neuron * NeuronGroup::First(){
@@ -933,38 +865,6 @@ char * NeuronGroup::Name(){
   return _name;
 }
 
-void NeuronGroup::AddProbe(Probe * probe){
-  for(int i = 0; i < _neurons.size(); i++) _neurons[i]->AddProbe(probe);
-}
-
-void NeuronGroup::SetTeacherSignal(int signal){
-  for(int i = 0; i < _neurons.size(); i++) _neurons[i]->SetTeacherSignal(signal);
-}
-
-void NeuronGroup::SetTeacherSignalGroup(int index, int total, int signal){
-  for(int i = index; i < _neurons.size(); i += total) _neurons[i]->SetTeacherSignal(signal);
-}
-
-void NeuronGroup::SetTeacherSignalOneInGroup(int index, int total, int signal){
-  if(_subIndices == NULL){
-    _subIndices = new int[total];
-    for(int i = 0; i < total; i++) _subIndices[i] = -1;
-  }
-
-  assert(signal == 1);
-  for(int i = index; i < _neurons.size(); i += total) _neurons[i]->SetTeacherSignal(signal);
-  _subIndices[index]++;
-  if((index+total*_subIndices[index]) >= _neurons.size()) _subIndices[index] = 0;
-  _neurons[(index+total*_subIndices[index])]->SetTeacherSignal(signal);
-}
-
-void NeuronGroup::ClearSubIndices(){
-  if(_subIndices){
-    delete [] _subIndices;
-    _subIndices = NULL;
-  }
-}
-
 void NeuronGroup::PrintTeacherSignal(){
   for(int i = 0; i < _neurons.size(); i++) _neurons[i]->PrintTeacherSignal();
 }
@@ -975,26 +875,6 @@ void NeuronGroup::PrintMembranePotential(double t){
   cout<<endl;
 }
 
-void NeuronGroup::PrintFiringStat(Probe * probe){
-  int i, j;
-  for(i = 0; i < probe->_nameInputs.size(); i++){
-    cout<<"\""<<probe->_nameInputs[i]<<"\":";
-    for(j = 0; j < _neurons.size(); j++) if(_neurons[j]->GetLabel() == i) cout<<"\t"<<_neurons[j]->Fired();
-    cout<<endl;
-  }
-}
-
-void NeuronGroup::ReadInputSyns(){
-  for(int i = 0; i < _neurons.size(); i++) _neurons[i]->ReadInputSyns();
-}
-
-void NeuronGroup::SetLabel(int size){
-  for(int i = 0; i < _neurons.size(); i++) _neurons[i]->SetLabel(i%size);
-}
-
-void NeuronGroup::ClearNeuronFiringStat(){
-  for(std::vector<Neuron*>::iterator iter =  _neurons.begin(); iter != _neurons.end(); iter++) (*iter)->ClearFiringStat();
-}
 
 //* channel mode can be INPUTCHANNEL or RESERVOIRCHANNEL, which is a way to tell the types of the neuron:
 void NeuronGroup::LSMLoadSpeech(Speech * speech, int * n_channel, neuronmode_t neuronmode, channelmode_t channelmode){

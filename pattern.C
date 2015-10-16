@@ -1,13 +1,14 @@
-#include"def.h"
-#include"pattern.h"
-#include"neuron.h"
-#include"network.h"
-#include<list>
-#include<assert.h>
-#include<iostream>
-#include<assert.h>
-#include<stdio.h>
-#include<string.h>
+#include "def.h"
+#include "pattern.h"
+#include "synapse.h"
+#include "neuron.h"
+#include "network.h"
+#include <list>
+#include <assert.h>
+#include <iostream>
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
 
 using namespace std;
 
@@ -27,19 +28,6 @@ const char * Pattern::Name(){
   return _name;
 }
 
-void Pattern::Activate(){
-//  for(list<Neuron*>::iterator iter = _activates.begin(); iter != _activates.end(); iter++)
-//    (*iter)->SetInput();
-  assert(_activates.size() > 0);
-  for(int i = 0; i < _activates.size(); i++) _activates[i]->SetInput(_externalInputs[i]);
-  _activates[0]->GetNetwork()->SetCurrentPattern(this);
-}
-
-void Pattern::Deactivate(){
-  assert(_activates.size() > 0);
-  for(int i = 0; i < _activates.size(); i++) _activates[i]->SetInput(0);
-//  _activates[0]->GetNetwork()->SetCurrentPattern(NULL);
-}
 
 void Pattern::FixPattern(){
   assert(_activates.size() == _externalInputs.size());

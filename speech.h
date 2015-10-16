@@ -25,6 +25,7 @@ public:
   int Index() {return _index;}
 
   void Info();
+  void PrintSpikes(int);
 };
 
 #endif

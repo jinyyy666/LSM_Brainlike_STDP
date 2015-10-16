@@ -1,8 +1,9 @@
 #ifndef CHANNEL_H
 #define CHANNEL_H
 
-#include<vector>
-#include"def.h"
+#include <vector>
+#include "def.h"
+#include <cstdio>
 
 class Channel{
 private:
@@ -24,6 +25,7 @@ public:
   int SizeSpikeT(){return _spikeT.size();}
   void SetMode(channelmode_t channelmode){_mode = channelmode;}
   channelmode_t Mode(){return _mode;}
+  void Print(FILE *);
 };
 
 #endif

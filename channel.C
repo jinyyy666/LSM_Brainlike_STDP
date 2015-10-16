@@ -94,3 +94,11 @@ void Channel::BSA(){
   delete [] signal;
 }
 
+void Channel::Print(FILE * fp){
+  if(_spikeT.empty() == true) fprintf(fp,"%d\n",-99);
+  for(_iter_spikeT = _spikeT.begin(); _iter_spikeT != _spikeT.end(); _iter_spikeT++) 
+    if(fp != NULL){
+        int t = *_iter_spikeT;
+	fprintf(fp,"%d\n",t);
+    }
+}
