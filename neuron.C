@@ -212,7 +212,7 @@ inline void Neuron::ExpDecay(double & var, const int time_c){
 }
 
 /** collect the synaptic response and accumulate them **/
-inline void Neuron::AccumulateSynapticResponse(int pos, double value){
+inline void Neuron::AccumulateSynapticResponse(const int pos, double value){
 #ifdef DIGITAL
   assert(0);
 #endif
@@ -237,7 +237,7 @@ inline void Neuron::AccumulateSynapticResponse(int pos, double value){
 }
 
 /** Digital version of collecting the synaptic response **/
-inline void Neuron::DAccumulateSynapticResponse(int pos, int value){
+inline void Neuron::DAccumulateSynapticResponse(const int pos, int value){
 #ifndef DIGITAL
   assert(0);
 #endif
@@ -308,7 +308,7 @@ inline void Neuron::SetPostNeuronSpikeT(int time){
   }
 }
       
-inline void Neuron::HandleFiringActivity(bool isInput, int time){
+inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
 
   for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++){
     (*iter)->LSMPreSpike(1);  
@@ -319,7 +319,8 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time){
       if((*iter)->IsReadoutSyn() == false){
         // if the synapse is not yet active, push it into the to-be-processed list
 	// the second parameter is a flag indicating stdp training in the reservoir
-	(*iter)->LSMActivate(_network, true);
+	// the third parameter is a flag indicating train or no
+	(*iter)->LSMActivate(_network, true, train);
 
 	// remember to active this reservoir for STDP training
 	if((*iter)->GetActiveSTDPStatus() == false)
@@ -329,35 +330,35 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time){
     else if(isInput){
       // for input synapses in TRANSIENT/TRAINRESERVOIR STATE:
       if(_name[0] == 'i')
-        (*iter)->LSMActivate(_network);
+        (*iter)->LSMActivate(_network, false, train);
       else{
         // for reservoir-output synapse in READOUT STATE:
         if((*iter)->IsReadoutSyn())
-	  (*iter)->LSMActivate(_network);
+	  (*iter)->LSMActivate(_network, false, train);
       }
     }
     else{
       // for reservoir-reservoir and reservoir-output in TRANSIENT STATE
       // for possible future synapses coming out from readout in READOUT STATE:
-      if((*iter)->GetActiveStatus() == false)
-	(*iter)->LSMActivate(_network);
+      if((*iter)->GetActiveStatus() == false && (*iter)->IsReadoutSyn() == false)
+	(*iter)->LSMActivate(_network, false, train);
     }
 	
   }
 
 }
-void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp){
+void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
 
   if(_mode == DEACTIVATED) return;
   if(_mode == READCHANNEL){
     if(_t_next_spike == -1) return;
     if(t < _t_next_spike) return;
 
-    cout<<_name<<" firing @ "<<t<<"\tinfluencing "<<_outputSyns.size()<<" neurons: "<<(*_outputSyns.begin())->PostNeuron()->Name()<<" ..."<<endl;
+    //cout<<_name<<" firing @ "<<t<<"\tinfluencing "<<_outputSyns.size()<<" neurons: "<<(*_outputSyns.begin())->PostNeuron()->Name()<<" ..."<<endl;
     
     /** Hand the firing behavior here for both input neurons and reservoir neurons */
     /** The 1st parameter taken:  isInput **/
-    HandleFiringActivity(true, t);
+    HandleFiringActivity(true, t, train);
 
     _t_next_spike = _lsm_channel->NextSpikeT();
     if(_t_next_spike == -1) {
@@ -437,25 +438,29 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp){
     /*** this is for both reservoir, readout and input synaptic response : ***/
     if(value != 0){
 #ifdef DIGITAL
-      AccumulateSynapticResponse(pos, value);
-#else
       DAccumulateSynapticResponse(pos, value);
+#else
+      AccumulateSynapticResponse(pos, value);
 #endif
     }
   }
   
 #ifdef DIGITAL
-  int temp = NOrderSynapticResponse();
+  int temp = DNOrderSynapticResponse();
   _D_lsm_v_mem += temp;
 #else
-  double temp = DNOrderSynapticResponse();
+  double temp = NOrderSynapticResponse();
   _lsm_v_mem += temp;
 #endif
 
 
 #ifdef _DEBUG_NEURON
   if(strcmp(_name,"reservoir_0")==0) //cout<<_Unit<<"\t"<<_D_lsm_v_thresh<<endl;
+#ifdef DIGITAL
      cout<<_D_lsm_v_mem<<"\t"<<temp<<"\t"<<_D_lsm_state_EP<<"\t"<<_D_lsm_state_EN<<"\t"<<_D_lsm_state_IP<<"\t"<<_D_lsm_state_IN<<endl;
+#else
+    cout<<_lsm_v_mem<<"\t"<<temp<<"\t"<<_lsm_state_EP<<"\t"<<_lsm_state_EN<<"\t"<<_lsm_state_IP<<"\t"<<_lsm_state_IN<<endl;
+#endif
 #endif
 
   if(_lsm_ref > 0){
@@ -481,7 +486,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp){
     // 1. handle the _outputSyns after the neuron fires and activate the _outputSyns
     // 2. keep track of the t_spike_pre for the corresponding syns
     // 3. the 1st parameter taken-in means whether or not the current neuron is input
-    HandleFiringActivity(false, t);
+    HandleFiringActivity(false, t, train);
 
 #ifdef DIGITAL
     _D_lsm_v_mem = LSM_V_RESET*_Unit;

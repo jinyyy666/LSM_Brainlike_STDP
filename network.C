@@ -138,9 +138,15 @@ void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int val
     assert(npost == -1);
     for(neuron = post->First(); neuron != NULL; neuron = post->Next()){
 #ifdef DIGITAL
-      assert(random == 0);
-      int D_weight = -8 + rand()%15;
-      LSMAddSynapse(pre,neuron,D_weight,fixed,D_weight_limit,liquid);
+      if(random == 2){
+	int D_weight = -8 + rand()%15;
+	LSMAddSynapse(pre,neuron,D_weight,fixed,D_weight_limit,liquid);
+      }
+      else if(random == 0){
+	int D_weight = 0;
+	LSMAddSynapse(pre,neuron,D_weight,fixed,D_weight_limit,liquid);
+      }else assert(0);
+	
 #else
       if(random == 2){
 	/*** This is for the case of continuous readout weights: ***/
@@ -318,7 +324,7 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration, FILE * Foutp, FIL
 
   // Please remember that the neuron firing activity will change the list: 
   // _lsmActiveSyns, _lsmActiveReservoirLearnSyns, and _lsmActiveLearnSyns:
-  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMNextTimeStep(t,Foutp,Fp);
+  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMNextTimeStep(t, Foutp, Fp, train);
  
   // train the reservoir using STDP:
   if(_network_mode == TRAINRESERVOIR){
@@ -717,7 +723,11 @@ void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
   for(size_t i = 0; i < synapses.size(); ++i)
     f_out<<i<<"\t"<<synapses[i]->PreNeuron()->Name()
 	 <<"\t"<<synapses[i]->PostNeuron()->Name()
+#ifdef DIGITAL
+	 <<"\t"<<synapses[i]->DWeight()
+#else
 	 <<"\t"<<synapses[i]->Weight()
+#endif
 	 <<endl;
 
 }
@@ -751,7 +761,11 @@ void Network::LoadSynWeightsFromFile(const char * syn_type, char * filename){
   int index;
   string pre;
   string post;
+#ifdef DIGITAL
   int weight;
+#else
+  double weight;
+#endif
   while(f_in>>index>>pre>>post>>weight){
     if(index < 0 || index >= synapses.size()){
 	cout<<"In Network::LoadSynWeightsFromFile(), the index of the synapse you read : "<<index<<" is out of bound of the container stores the synapses!!"<<endl;

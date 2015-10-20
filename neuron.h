@@ -90,14 +90,14 @@ public:
   /** Wrappers for clean code: **/
   void ExpDecay(int& var, const int time_c);
   void ExpDecay(double& var, const int time_c);
-  void AccumulateSynapticResponse(int pos, double value);
-  void DAccumulateSynapticResponse(int pos, int value);
+  void AccumulateSynapticResponse(const int pos, double value);
+  void DAccumulateSynapticResponse(const int pos, int value);
   double NOrderSynapticResponse();
   int DNOrderSynapticResponse();
   void SetPostNeuronSpikeT(int t);
-  void HandleFiringActivity(bool isInput, int time);
+  void HandleFiringActivity(bool isInput, int time, bool train);
 
-  void LSMNextTimeStep(int,FILE *,FILE *);
+  void LSMNextTimeStep(int t , FILE * Foutp, FILE * Fp, bool train);
   void LSMSetChannel(Channel*,channelmode_t);
   void LSMRemoveChannel();
   void LSMSetNeuronMode(neuronmode_t neuronmode){_mode = neuronmode;}

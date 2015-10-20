@@ -75,7 +75,7 @@ void Simulator::LSMRun(long tid){
   sprintf(filename, "reservoir_weights_%ld_org.txt", tid);
   _network->WriteSynWeightsToFile("reservoir",filename);
 #endif
-  assert(0);
+
 #ifndef STDP_TRAINING_RESERVOIR
   if(tid == 0){
     sprintf(filename, "r_weights_info.txt");
@@ -93,7 +93,7 @@ void Simulator::LSMRun(long tid){
 
   gettimeofday(&val1, &zone);
   // repeatedly training the reservoir for a certain amount of iterations:
-  for(int i = 0; i < 1; ++i){
+  for(int i = 0; i < 100; ++i){
     _network->LSMClearSignals();
     // no training of the readout synapses happens during this stage:
     info = _network->LoadFirstSpeech(false, networkmode);
@@ -126,6 +126,7 @@ void Simulator::LSMRun(long tid){
   }
   gettimeofday(&val2, &zone);
   cout<<"Total time spent in training the reservoir: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
+  /*
   cout<<"Print speech response into the file. Load the Transient mode! "<<endl;
   
   networkmode = TRANSIENTSTATE;
@@ -151,17 +152,17 @@ void Simulator::LSMRun(long tid){
   
 
   assert(0);
-
+  */
   // Write the weight back to file after training the reservoir with STDP:
   if(tid == 0){
     sprintf(filename, "r_weights_info.txt");
     _network->WriteSynWeightsToFile("reservoir", filename);
   }
-
+  
   // Load the weight from file:
   sprintf(filename, "r_weights_info.txt");
-  _network->LoadSynWeightsFromFile("reservoir", filename);
-
+  //_network->LoadSynWeightsFromFile("reservoir", filename);
+ 
 #endif  
   // produce transient state
   networkmode = TRANSIENTSTATE;
@@ -225,13 +226,14 @@ void Simulator::LSMRun(long tid){
 #else
     info = _network->LoadFirstSpeech(true, networkmode);
 #endif
+   
     while(info != -1){
       Fp = NULL;
       Foutp = NULL;
       count++;
       int time = 0;
       while(!_network->LSMEndOfSpeech(networkmode)){
-        _network->LSMNextTimeStep(++time,true,iii,NULL,NULL);
+        _network->LSMNextTimeStep(++time,true,iii,NULL,NULL);;
       }
       _network->LSMClearSignals();
 #ifdef CV
@@ -240,7 +242,7 @@ void Simulator::LSMRun(long tid){
       info = _network->LoadNextSpeech(true, networkmode);
 #endif
     }
-//    _network->SearchForNeuronGroup("output")->LSMPrintInputSyns();
+    //_network->SearchForNeuronGroup("output")->LSMPrintInputSyns();
 //  }
 
     count = 0;

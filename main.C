@@ -62,7 +62,8 @@ int main(int argc, char * argv[]){
   
   for(i = 0; i < NUM_THREADS; i++){
     Parser parser(&array_network[i]);
-    parser.Parse("netlist/netlist_brain_new.txt");
+    //parser.Parse("netlist/netlist_brain_new.txt");
+    parser.Parse("netlist/netlist_new.txt");
 #ifdef CV
     array_network[i].CrossValidation(NFOLD);
 #endif

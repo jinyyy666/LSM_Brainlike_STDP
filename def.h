@@ -15,7 +15,7 @@
 #define DAMPING_BIT 2
 
 // learning rate for STDP:
-#define LAMBDA 0.0002
+#define LAMBDA 0.002
 // shifting bits implementing learning rate for STDP:
 #define LAMBDA_BIT 12 // 12 for multi; 10 for additive
 
@@ -37,16 +37,18 @@
 
 // control parameter for additive STDP rule:
 #define ADDITIVE_STDP
-#define A_POS 64
-#define A_NEG 32 // the negative "-" already contains in the code
+#define D_A_POS 64 // those two A's are defined for digital
+#define D_A_NEG 32 // the negative "-" already contains in the code
+
+#define A_POS 0.02 // define for the continuous case
+#define A_NEG 0.01
 
 // control parameter for pair-based pairing rule:
 #define PAIR_BASED 0
 #define NEAREST_NEIGHBOR 1
 
 // control parameter for stochastic stdp, silimar to the abstract learning rule:
-#define STOCHASTIC_STDP
-
+//#define STOCHASTIC_STDP
 
 #define LSM_T_M 32
 #define LSM_T_SYNE 8
@@ -58,11 +60,11 @@
 #define LSM_V_THRESH 20
 #define LSM_CAL_MID 5
 #define LSM_CAL_MARGIN 0
-#define LSM_DELTA_POT 0.008
-#define LSM_DELTA_DEP 0.008
+#define LSM_DELTA_POT 0.0002
+#define LSM_DELTA_DEP 0.0002
 //#define CLS 26
 #define CLS 26
-#define NUM_THREADS 1
+#define NUM_THREADS 5
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -73,8 +75,8 @@
 
 #define LOST_RATE 0.0
 //#define DIGITAL
-#define DIGITAL_SYN_ORGINAL 0
-#define LIQUID_SYN_MODIFICATION 1
+//#define DIGITAL_SYN_ORGINAL 0
+//#define LIQUID_SYN_MODIFICATION 0
 
 #define SYN_ORDER_2 1 
 #define SYN_ORDER_1 0 

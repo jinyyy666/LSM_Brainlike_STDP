@@ -34,7 +34,7 @@ private:
   double _lsm_state2;
   double _lsm_state;
 
-  double _lsm_spike;
+  int _lsm_spike;
   int _D_lsm_spike;
 
   int _lsm_delay;
@@ -81,17 +81,17 @@ public:
   bool IsInputSyn();
   void SetPreSpikeT(int t){_t_spike_pre = t;}
   void SetPostSpikeT(int t){_t_spike_post = t;}
-
   //* Get the synaptic weights:
-  int Weight(){return _D_lsm_weight;}
+  double Weight(){ return _lsm_weight;}
+  int DWeight(){return _D_lsm_weight;}
 
   //* Set the synaptic weights:
   void Weight(int weight){_D_lsm_weight = weight;}
+  void Weight(double weight){_lsm_weight = weight;}
 
   Neuron * PreNeuron();
   Neuron * PostNeuron();
-  void Print();
-  void Print(FILE*);
+
   void LSMPrint(FILE*);
   void LSMPrintSyns(FILE*);
   bool Excitatory();
@@ -105,17 +105,25 @@ public:
   void LSMClear();
   void LSMClearLearningSynWeights();
   void LSMLearn(int);
-  void LSMActivate(Network * network, bool stdp_flag = false);
+  void LSMActivate(Network * network, bool stdp_flag, bool train);
   void LSMActivateReservoirSyns(Network*);
   void LSMDeactivate();
   bool LSMGetLiquid();
 
 /* ONLY FOR STDP */
+
+  void ExpDecay(double& var, const int time_c){var -= var/time_c;}
   void LSMUpdate(int);
   void LSMLiquidLearn(int);
   void CheckReservoirWeightOutBound();
   void CheckReadoutWeightOutBound();
 
+    
+  void ExpDecay(int& var, const int time_c){
+    var -= (var/time_c == 0) ? 1 : var/time_c; 
+    if(var < 0) 
+    var = 0;
+  }
 
   /** Definition for inline functions: **/
   inline 
@@ -124,7 +132,7 @@ public:
     assert(0);
 #endif
     *pos = _excitatory ? 1 : -1;
-    *value = _lsm_spike == 0 ? 0 : _lsm_spike*_lsm_weight;
+    *value = _lsm_spike == 0 ? 0 : _lsm_weight;
     _lsm_spike = 0;
   }
 
@@ -135,10 +143,50 @@ public:
     assert(0);
 #endif
     *pos = _excitatory ? 1 : -1;  
-    *value = _D_lsm_spike*_D_lsm_weight;
+    *value = _D_lsm_spike == 0 ? 0: _D_lsm_weight;
     _D_lsm_spike = 0;
   }
 
+
+  /** Definition for template functions: **/
+
+  // Calculate the LTP:
+  // Pot/Polarization will dirve weights to w_limit, 
+  // so delta_w_pos > 0 for w > 0 & F_pos > 0
+  //    delta_w_pos < 0 for w < 0 & F_pos < 0
+  template<class T>
+  void CalcLTP(T & delta_w_pos, T F_pos){
+#ifdef DIGITAL
+#ifdef PAIR_BASED
+    delta_w_pos = (F_pos*_D_x_j);//>>(LAMBDA_BIT);
+#elif NEAREST_NEIGHBOR
+    delta_w_pos = (F_pos*_D_x_j);//>>(LAMBDA_BIT + NN_BIT_P);
+#else
+    delta_w_pos = (F_pos*_D_x_j*_D_y_i2_last);//>>(LAMBDA_BIT + DAMPING_BIT);
+#endif
+#else
+#ifdef PAIR_BASED
+    delta_w_pos = (F_pos*_x_j)*LAMBDA;//>>(LAMBDA_BIT);
+#elif NEAREST_NEIGHBOR
+    delta_w_pos = (F_pos*_x_j)*LAMBDA;//>>(LAMBDA_BIT + NN_BIT_P);
+#else
+    delta_w_pos = (F_pos*_x_j*_y_i2_last)*LAMBDA;//>>(LAMBDA_BIT + DAMPING_BIT);
+#endif  
+#endif
+  }
+
+  // Calculate the LTD:
+  // Dep/Depolarization will drive weights to zero, 
+  // so delta_w_neg < 0 for w > 0 & F_neg > 0
+  //    delta_w_neg > 0 for w < 0 & F_neg < 0
+  template<class T>
+  void CalcLTD(T& delta_w_neg, T F_neg){
+#ifdef DIGITAL
+    delta_w_neg = -1*(F_neg*_D_y_i1);
+#else
+    delta_w_neg = -1*LAMBDA*ALPHA*(F_neg*_y_i1);
+#endif
+  }
 
 };
 
