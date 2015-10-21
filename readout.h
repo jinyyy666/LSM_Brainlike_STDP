@@ -24,7 +24,7 @@ public:
 	Readout(char *);
 	Readout(int );
 	void Multireadout();
-	void SetRefer(bool);
+	void SetRefer(int flag);
 	void LoadData(char *); //Load the data from the file of speech results into multidata 
 	std::vector<int> FindVal(const std::vector<int> &, int);  //Find a specific value in the vector
 };

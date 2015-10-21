@@ -37,7 +37,11 @@ void * ParallelSim(void * NTPargptr){
 //  cout<<"aaaa"<<endl;
   Simulator simulator(network);
 
-  (network)->AnalogToSpike();
+#ifdef IMAGE
+  (network)->RateToSpike();     // application for image
+#else
+  (network)->AnalogToSpike();   // application for speech
+#endif
   simulator.LSMRun(tid);
   cout<<"Thread "<<tid<<" done!"<<endl;
   pthread_exit(NULL);
@@ -62,8 +66,12 @@ int main(int argc, char * argv[]){
   
   for(i = 0; i < NUM_THREADS; i++){
     Parser parser(&array_network[i]);
-    //parser.Parse("netlist/netlist_brain_new.txt");
+#ifdef IMAGE
+    parser.Parse("netlist/netlist_MNIST.txt");
+#else
     parser.Parse("netlist/netlist_new.txt");
+    //parser.Parse("netlist/netlist_brain_new.txt");
+#endif
 #ifdef CV
     array_network[i].CrossValidation(NFOLD);
 #endif
@@ -103,8 +111,11 @@ int main(int argc, char * argv[]){
   cout<<"Wall clock time: "<<((val2.tv_sec-val1.tv_sec)+double(val2.tv_usec-val1.tv_usec)*1e-6)<<" seconds"<<endl;
   
   cout<<"Readout the results from the /outputs .... "<<endl; 
+#ifdef IMAGE
+  Readout readout_module(500); // 500 is for 500 MNIST data
+#else
   Readout readout_module(260);
-
+#endif
   readout_module.Multireadout();
   
   pthread_exit(NULL);

@@ -84,6 +84,7 @@ public:
   int LoadNextSpeech(bool,networkmode_t);
   int NumSpeech(){return _speeches.size();}
   void AnalogToSpike();
+  void RateToSpike();
   void LSMClearSignals();
   void LSMClearWeights();
   bool LSMEndOfSpeech(networkmode_t);

@@ -1,10 +1,12 @@
-#include<stdlib.h>
-#include<math.h>
-#include"channel.h"
-#include<iostream>
-#include<assert.h>
+#include <stdlib.h>
+#include <math.h>
+#include "channel.h"
+#include <iostream>
+#include <assert.h>
+#include <random>
 
 using namespace std;
+std::default_random_engine generator;
 
 // input channel
 Channel::Channel(int step_analog, int step_spikeT):
@@ -92,6 +94,19 @@ void Channel::BSA(){
 
   delete [] kernel;
   delete [] signal;
+}
+
+void Channel::PoissonSpike(){
+  assert(_analog.size() == 1);
+  std::uniform_real_distribution<double> dist(0.0, MAX_GRAYSCALE);
+
+  double number;
+ 
+  for(int i = 0; i < DURATION_TRAIN; ++i){
+   number = dist(generator);
+   if(number < _analog[0])
+     _spikeT.push_back(i+1);
+  }
 }
 
 void Channel::Print(FILE * fp){

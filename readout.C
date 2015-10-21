@@ -59,9 +59,10 @@ Readout::Readout(int nums_speech){
 	cout<<"Total number of speeches:"<<num_of_speeches<<endl;
 }
 
-	
-void Readout::SetRefer(bool digit){ // To set the reference array according the application
-	if(digit == true){
+//* flag: 0 --> 26 letters  flag: 1 --> 10 digits
+//* flag: 2 --> 10 MNIST    flag: 3 --> 15 traffic signs
+void Readout::SetRefer(int flag){ // To set the reference array according the application
+	if(flag == 0){
 		for (int i = 0; i < 26; ++i)
 		{
 			if(i < 2) 
@@ -87,12 +88,25 @@ void Readout::SetRefer(bool digit){ // To set the reference array according the 
 		// }
 	}
 		// refer = {0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 2, 20, 21, 22, 23, 24, 25, 3, 4, 5, 6, 7, 8, 9};
-	else{
+	else if(flag == 1 || flag == 2){
 		for (int i = 0; i < 10; ++i)
 		{
 			refer.push_back(i);
 		}
 		//	refer = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+	}
+	else if(flag == 3){
+	        for (int i = 0; i < 15; ++i)
+		{
+			refer.push_back(i);
+		}
+	}
+	else{
+	        cout<<"Unallowed parameter passed into Readout::SetRefer(int flag)!"
+	        <<" this parameter is "<<flag
+	        <<" but it should be 0, 1, 2, 3!!"
+		<<endl;
+	      
 	}
  
 }
@@ -132,7 +146,24 @@ vector<int> Readout::FindVal(const vector<int> & v, int val){  //Find a specific
 	return v_out;	
 }
 void Readout::Multireadout(){ // The main part of this code.
-	SetRefer(true);  // "true" here is corresponding to letter recognition "false" here is cooresponding to digit recognition
+#ifdef SPEECH
+#ifdef LETTER
+	SetRefer(0);  // "0" here is corresponding to letter recognition "1" here is cooresponding to digit recognition
+#elsif DIGIT
+	SetRefer(1);
+#else
+	assert(0);
+#endif
+#elsif IMAGE
+#ifdef MNIST
+	SetRefer(2);
+#elsif TRAFFIC
+	SetRefer(3);
+#else
+	assert(0);
+#endif
+#endif
+	
 
 	int sp = 21;
 	char filename[128];

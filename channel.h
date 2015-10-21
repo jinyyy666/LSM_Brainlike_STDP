@@ -21,6 +21,7 @@ public:
   int FirstSpikeT();
   int NextSpikeT();
   void BSA();
+  void PoissonSpike();
   int SizeAnalog(){return _analog.size();}
   int SizeSpikeT(){return _spikeT.size();}
   void SetMode(channelmode_t channelmode){_mode = channelmode;}

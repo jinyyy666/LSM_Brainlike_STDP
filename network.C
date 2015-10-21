@@ -465,6 +465,16 @@ void Network::AnalogToSpike(){
   }
 }
 
+
+void Network::RateToSpike(){
+  int counter = 0;
+  for(vector<Speech*>::iterator iter = _speeches.begin(); iter != _speeches.end(); iter++){
+//    cout<<"Preprocessing speech "<<counter++<<"..."<<endl;
+    counter++;
+    (*iter)->RateToSpike();
+  }
+}
+
 void Network::LSMClearSignals(){
   for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMClear();
   for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClear();

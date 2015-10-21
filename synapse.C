@@ -8,8 +8,8 @@
 #include <iostream>
 #include <assert.h>
 
-#define _DEBUG_SYN_UPDATE
-#define _DEBUG_SYN_LEARN
+//#define _DEBUG_SYN_UPDATE
+//#define _DEBUG_SYN_LEARN
 
 using namespace std;
 
@@ -65,7 +65,7 @@ _D_y_i2_last(0)
   if(lsm_weight > 0) _lsm_tau2 = LSM_T_SYNE;
   else _lsm_tau2 = LSM_T_SYNI;
 
-  cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<_lsm_weight<<endl;
+  cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
 
 }
 
