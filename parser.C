@@ -102,6 +102,20 @@ void Parser::Parse(const char * filename){
       assert(token[2] != NULL);
 
       ParseSpeech(atoi(token[1]),token[2]);
+    }else if(strcmp(token[0],"poisson")==0){
+      token[1] = strtok(NULL," \t\n");
+      assert(token[1] != NULL);
+      token[2] = strtok(NULL," \t\n");
+      assert(token[2] != NULL);
+
+      ParsePoissonSpeech(atoi(token[1]),token[2]);
+    }else if(strcmp(token[0],"MNIST")==0){
+      token[1] = strtok(NULL," \t\n");
+      assert(token[1] != NULL);
+      token[2] = strtok(NULL," \t\n");
+      assert(token[2] != NULL);
+
+      ParseMNISTSpeech(atoi(token[1]),token[2]);
     }else if(strcmp(token[0],"end")==0){
       break;
     }else{
@@ -168,3 +182,85 @@ void Parser::ParseSpeech(int cls, char* path){
   fclose(fp);
 }
 
+
+//* this function is used when computing the r_s (rank under the 
+//* separation case). DONOT use it now, bc you need to have more features to support //* it
+void Parser::ParsePoissonSpeech(int cls, char* path){
+  Speech * speech = new Speech(cls);
+  Channel * channel;
+
+  char linestring[8192];
+  char * token;
+  char ** tokens = new char*[64];
+  //cout<<path<<endl;
+  FILE * fp = fopen(path,"r");
+  assert(fp != NULL);
+
+  _network->AddSpeech(speech);
+
+  // Read the first line of the poisson spike sample,
+  // which contains the information of the input layer.
+  if(fgets(linestring,8191,fp) != NULL){
+    assert(strlen(linestring) > 1);
+    tokens[0] = strtok(linestring," \t\n"); //# of input neurons/channels
+    assert(tokens[0] != NULL);
+    tokens[1] = strtok(NULL," \t\n"); // # of input connections to reservoir
+    assert(tokens[1] != NULL);
+#ifdef DEBUG
+    cout<<tokens[0]<<'\t'<<tokens[1]<<endl;
+#endif
+    // Add the input layer information into the speech and 
+    // generate the input layer before loading the speech !!! 
+    speech->AddInputNumInfo(atoi(tokens[0]));
+  
+    // Add the connections information about between input layer and reservoir
+    // into the speech and generate the connections before load the speech
+    speech->AddInputConnectionInfo(atoi(tokens[1]));
+  }
+  else{
+    cout<<"File :"<<path<<" is completely empty!"<<endl;
+    exit(-1);
+  }
+
+  while(fgets(linestring,8191,fp)!=NULL){
+    if(strlen(linestring) <= 1) continue;
+    channel = speech->AddChannel(10,1);
+    token = strtok(linestring," \t\n");
+    while(token != NULL){
+      //channel->AddAnalog(atof(token));
+      channel->AddSpike(atoi(token));
+      token = strtok(NULL," \t\n");
+    }
+  }
+
+  delete[] tokens;
+  fclose(fp);
+}
+
+//* this function is used to parse the images like MNIST.
+//* for MNIST, there are 100 input neurons and each of them look at
+//* a 5*5 region and encode the edge information
+void Parser::ParseMNISTSpeech(int cls, char* path){
+  Speech * speech = new Speech(cls);
+  Channel * channel;
+
+  char linestring[8192];
+  char * token;
+  //cout<<path<<endl;
+  FILE * fp = fopen(path,"r");
+  assert(fp != NULL);
+
+  _network->AddSpeech(speech);
+  while(fgets(linestring,8191,fp)!=NULL){
+    if(strlen(linestring) <= 1) continue;
+    token = strtok(linestring," \t\n");
+    while(token != NULL){
+      //cout<<atof(token)<<endl;
+      channel = speech->AddChannel(10,1); // Here we read the spike rate for this channel.
+      channel->AddAnalog(atof(token));
+      token = strtok(NULL," \t\n");
+    }
+  }
+
+  fclose(fp);
+}

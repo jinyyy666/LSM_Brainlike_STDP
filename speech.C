@@ -48,6 +48,14 @@ void Speech::AnalogToSpike(){
   }
 }
 
+void Speech::RateToSpike(){
+  for(int i = 0; i < _channels.size(); i++){
+    assert(_channels[i]->SizeAnalog() == _channels[0]->SizeAnalog());
+    _channels[i]->PoissonSpike();
+  }
+}
+
+
 int Speech::NumChannels(channelmode_t channelmode){
   if(channelmode == INPUTCHANNEL) return _channels.size();
   else return _rChannels.size();

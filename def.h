@@ -1,6 +1,17 @@
 #ifndef DEF_H
 #define DEF_H
 
+#define IMAGE
+#define MNIST
+//#define TRAFFIC
+//#define SPEECH
+//#define LETTER
+//#define DIGIT
+
+
+#define MAX_GRAYSCALE 512
+#define DURATION_TRAIN 2000
+
 // calcium parameters
 #define TAU_C		64
 
@@ -30,8 +41,8 @@
 #define ALPHA_BIT -3 // -3 for multi; 2 for additive
 
 // time constant for trace y1, y2: tau_1 < tau_2
-#define TAU_Y1_TRACE 4//16// 8 //162
-#define TAU_Y2_TRACE 8//32//32
+#define TAU_Y1_TRACE 8//16// 8 //162
+#define TAU_Y2_TRACE 16//32//32
 // time constant for trace x:
 #define TAU_X_TRACE  2//8//64  ; 8 for multiplicative
 
@@ -41,7 +52,7 @@
 #define D_A_NEG 32 // the negative "-" already contains in the code
 
 #define A_POS 0.02 // define for the continuous case
-#define A_NEG 0.01
+#define A_NEG 0.005
 
 // control parameter for pair-based pairing rule:
 #define PAIR_BASED 0

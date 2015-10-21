@@ -14,6 +14,8 @@ public:
  
   void ParseLSMSynapse(char *, char *, int, int, int, int, char *);
   void ParseSpeech(int, char*);
+  void ParsePoissonSpeech(int cls, char * path);
+  void ParseMNISTSpeech(int cls, char * path);
 };
 
 #endif
