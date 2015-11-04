@@ -1,3 +1,4 @@
+#include "def.h"
 #include <iostream>
 #include <cassert>
 #include <fstream>
@@ -146,25 +147,26 @@ vector<int> Readout::FindVal(const vector<int> & v, int val){  //Find a specific
 	return v_out;	
 }
 void Readout::Multireadout(){ // The main part of this code.
-#ifdef SPEECH
-#ifdef LETTER
+#if _SPEECH == 1
+#if _LETTER == 1
 	SetRefer(0);  // "0" here is corresponding to letter recognition "1" here is cooresponding to digit recognition
-#elsif DIGIT
+#elif _DIGIT == 1
 	SetRefer(1);
 #else
 	assert(0);
 #endif
-#elsif IMAGE
-#ifdef MNIST
+#elif _IMAGE == 1
+#if _MNIST == 1
 	SetRefer(2);
-#elsif TRAFFIC
+#elif _TRAFFIC == 1
 	SetRefer(3);
 #else
 	assert(0);
 #endif
+#else
+	assert(0);
 #endif
 	
-
 	int sp = 21;
 	char filename[128];
 	sprintf(filename,"outputs/spikepattern%d.dat",sp);

@@ -109,6 +109,7 @@ public:
   void DetermineNetworkNeuronMode(const networkmode_t &, neuronmode_t &, neuronmode_t &);
   void WriteSynWeightsToFile(const char * syn_type, char * filename);
   void LoadSynWeightsFromFile(const char * syn_type, char * filename);
+  void WriteSynActivityToFile(char * pre_name, char * post_name, char * filename);
 
  template<class T>
  void LSMAddSynapse(Neuron * pre, Neuron * post, T weight, bool fixed, T weight_limit,bool liquid){

@@ -1,15 +1,16 @@
-#include"neuron.h"
-#include"synapse.h"
-#include"parser.h"
-#include"network.h"
-#include"simulator.h"
-#include"readout.h"
-#include<sys/time.h>
-#include<iostream>
-#include<math.h>
-#include<pthread.h>
-#include<stdlib.h>
-#include<stdio.h>
+#include "neuron.h"
+#include "synapse.h"
+#include "parser.h"
+#include "network.h"
+#include "simulator.h"
+#include "readout.h"
+#include <sys/time.h>
+#include <iostream>
+#include <math.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <assert.h>
 
 using namespace std;
 int file[4142];
@@ -37,7 +38,7 @@ void * ParallelSim(void * NTPargptr){
 //  cout<<"aaaa"<<endl;
   Simulator simulator(network);
 
-#ifdef IMAGE
+#if   _IMAGE == 1
   (network)->RateToSpike();     // application for image
 #else
   (network)->AnalogToSpike();   // application for speech
@@ -66,7 +67,7 @@ int main(int argc, char * argv[]){
   
   for(i = 0; i < NUM_THREADS; i++){
     Parser parser(&array_network[i]);
-#ifdef IMAGE
+#if _IMAGE == 1
     parser.Parse("netlist/netlist_MNIST.txt");
 #else
     parser.Parse("netlist/netlist_new.txt");
@@ -111,11 +112,26 @@ int main(int argc, char * argv[]){
   cout<<"Wall clock time: "<<((val2.tv_sec-val1.tv_sec)+double(val2.tv_usec-val1.tv_usec)*1e-6)<<" seconds"<<endl;
   
   cout<<"Readout the results from the /outputs .... "<<endl; 
-#ifdef IMAGE
-  Readout readout_module(500); // 500 is for 500 MNIST data
+#if _SPEECH == 1
+#if _LETTER == 1
+  Readout readout_module(260); 
+#elif _DIGIT == 1
+  Readout readout_module(500); // 500 is for 500 digit words
 #else
-  Readout readout_module(260);
+  assert(0);
 #endif
+#elif _IMAGE == 1
+#if _MNIST == 1
+  Readout readout_module(500); // 500 for MNIST
+#elif _TRAFFIC == 1
+  Readout readout_module(300); // 300 for traffic sign
+#else
+  assert(0);
+#endif
+#else
+  assert(0);
+#endif
+
   readout_module.Multireadout();
   
   pthread_exit(NULL);

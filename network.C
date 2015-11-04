@@ -127,8 +127,8 @@ void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int val
   int D_weight_limit;
   if(fixed == true){
     /***** this is for the case of input synapses: *****/
-    weight_limit = 0;
-    D_weight_limit = 0;
+    weight_limit = value;
+    D_weight_limit = value;
   }else{
     weight_limit = value;
     D_weight_limit = value;
@@ -328,10 +328,13 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration, FILE * Foutp, FIL
  
   // train the reservoir using STDP:
   if(_network_mode == TRAINRESERVOIR){
+#ifndef _HARDWARE_CODE 
+    // if I am not considering using simply hardware implementation
     for(vector<Synapse*>::iterator iter = _rsynapses.begin(); iter != _rsynapses.end(); ++iter){
       // Update the local variable implememnting STDP with triplet pairing scheme:
       (*iter)->LSMUpdate(t);        
     }
+#endif
       
     for(list<Synapse*>::iterator iter = _lsmActiveReservoirLearnSyns.begin(); iter != _lsmActiveReservoirLearnSyns.end(); iter++){   
       // train the reservoir synapse with STDP rule:
@@ -738,6 +741,8 @@ void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
 #else
 	 <<"\t"<<synapses[i]->Weight()
 #endif
+	 <<"\t"<<synapses[i]->PreNeuron()->IsExcitatory()
+	 <<"\t"<<synapses[i]->PostNeuron()->IsExcitatory()
 	 <<endl;
 
 }
@@ -771,12 +776,14 @@ void Network::LoadSynWeightsFromFile(const char * syn_type, char * filename){
   int index;
   string pre;
   string post;
+  int pre_ext; // two variables to catch the excitatory information of syn
+  int post_ext;
 #ifdef DIGITAL
   int weight;
 #else
   double weight;
 #endif
-  while(f_in>>index>>pre>>post>>weight){
+  while(f_in>>index>>pre>>post>>weight>>pre_ext>>post_ext){
     if(index < 0 || index >= synapses.size()){
 	cout<<"In Network::LoadSynWeightsFromFile(), the index of the synapse you read : "<<index<<" is out of bound of the container stores the synapses!!"<<endl;
 	exit(EXIT_FAILURE);
@@ -787,4 +794,30 @@ void Network::LoadSynWeightsFromFile(const char * syn_type, char * filename){
     synapses[index]->Weight(weight);
   }
   
+}
+
+
+//* This function writes the synaptic activity to the given file:
+//* Right now I am only consider looking at reservoir synapses
+void Network::WriteSynActivityToFile(char * pre_name, char * post_name, char * filename){
+  assert(pre_name && post_name);
+
+  // 1. Open the file:
+  ofstream f_out(filename);
+  if(!f_out.is_open()){
+    cout<<"In function: Network::WriteSynActivityToFile()"
+        <<" cannot open the file: "<<filename<<" to write!"<<endl;
+    exit(EXIT_FAILURE);
+  }
+
+  // 2. Find out the target synapse (only consider reservoir synapse) :
+  for(vector<Synapse*>::iterator it = _rsynapses.begin(); it != _rsynapses.end(); ++it){
+    if(strcmp(pre_name, (*it)->PreNeuron()->Name()) == 0 &&
+       strcmp(post_name, (*it)->PostNeuron()->Name()) == 0)
+      (*it)->PrintActivity(f_out);
+  }
+
+  // 3. Close the file:
+  f_out.close();
+
 }

@@ -1,9 +1,9 @@
-#include <stdlib.h>
+#include <cstdlib>
 #include <math.h>
-#include "channel.h"
 #include <iostream>
 #include <assert.h>
 #include <random>
+#include "channel.h"
 
 using namespace std;
 std::default_random_engine generator;

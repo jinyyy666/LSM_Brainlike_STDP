@@ -2,9 +2,6 @@
 #define READOUT_H
 
 #include <vector>
-#include <string>
-#include <stdlib.h>
-#include "def.h"
 
 
 class Readout{

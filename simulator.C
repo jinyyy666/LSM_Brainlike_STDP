@@ -3,7 +3,6 @@
 #include "neuron.h"
 #include "simulator.h"
 #include "network.h"
-#include "pattern.h"
 #include <sys/time.h>
 #include <assert.h>
 #include <iostream>
@@ -93,7 +92,7 @@ void Simulator::LSMRun(long tid){
 
   gettimeofday(&val1, &zone);
   // repeatedly training the reservoir for a certain amount of iterations:
-  for(int i = 0; i < 100; ++i){
+  for(int i = 0; i < 1; ++i){
     _network->LSMClearSignals();
     // no training of the readout synapses happens during this stage:
     info = _network->LoadFirstSpeech(false, networkmode);
@@ -111,6 +110,9 @@ void Simulator::LSMRun(long tid){
       }
 #if NUM_THREADS == 1
       fclose(Fp);
+#ifdef _PRINT_SYN_ACT
+      PrintSynAct(info);
+#endif
 #endif
       // print the speech information into file:
       _network->SpeechPrint(info);
@@ -120,7 +122,7 @@ void Simulator::LSMRun(long tid){
 #if NUM_THREADS == 1  
   // Write the weight back to file after training the reservoir with STDP:
    sprintf(filename, "reservoir_weights_%d.txt", i);
-  _network->WriteSynWeightsToFile("reservoir",filename);
+   _network->WriteSynWeightsToFile("reservoir",filename);
 #endif       
 
   }
@@ -162,7 +164,7 @@ void Simulator::LSMRun(long tid){
   // Load the weight from file:
   sprintf(filename, "r_weights_info.txt");
   //_network->LoadSynWeightsFromFile("reservoir", filename);
- 
+  assert(0);
 #endif  
   // produce transient state
   networkmode = TRANSIENTSTATE;
@@ -288,3 +290,13 @@ void Simulator::LSMRun(long tid){
 }
 
 
+//* Print the synaptic activity to a file:
+void Simulator::PrintSynAct(int info){
+  char name1[64], name2[64];
+  char filename[128];
+  sprintf(name1, "reservoir_1");
+  sprintf(name2, "reservoir_15");
+  sprintf(filename, "activity/speech_%d.txt", info);
+  
+  _network->WriteSynActivityToFile(name1, name2, filename);
+}

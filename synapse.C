@@ -2,11 +2,12 @@
 #include "synapse.h"
 #include "neuron.h"
 #include "network.h"
-#include <math.h>
-#include <string.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstring>
+#include <cstdlib>
+#include <cstdio>
 #include <iostream>
-#include <assert.h>
+
 
 //#define _DEBUG_SYN_UPDATE
 //#define _DEBUG_SYN_LEARN
@@ -14,13 +15,6 @@
 using namespace std;
 
 extern int COUNTER_LEARN;
-
-/** unit system defined for digital lsm **/
-extern const int one;
-extern const int unit;
-// the spike strength in STDP model:
-const int UNIT_DELTA = 1<<(NUM_DEC_DIGIT);
-
 
 Synapse::Synapse(Neuron * pre, Neuron * post, double lsm_weight, bool fixed, double lsm_weight_limit, bool excitatory, bool liquid):
 _pre(pre),
@@ -61,12 +55,15 @@ _D_y_i2_last(0)
 #ifdef DIGITAL
   assert(0);
 #endif
+  assert(pre && post);
 
   if(lsm_weight > 0) _lsm_tau2 = LSM_T_SYNE;
   else _lsm_tau2 = LSM_T_SYNI;
+  
+  cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
 
-  cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
-
+  // initialize the look-up table:
+  _init_lookup_table();
 }
 
 
@@ -109,6 +106,7 @@ _D_y_i2_last(0)
 #ifndef DIGITAL
   assert(0);
 #endif
+  assert(pre && post);
 
   if(D_lsm_weight > 0) _lsm_tau2 = LSM_T_SYNE;
   else _lsm_tau2 = LSM_T_SYNI;
@@ -130,16 +128,39 @@ _D_y_i2_last(0)
     _D_lsm_weight_limit = (_D_lsm_weight<<(NUM_BIT_SYN - NBT_STD_SYN));
   }
   else{
-  assert(_liquid == true);
-     _D_lsm_weight = (_D_lsm_weight<<(NUM_BIT_SYN-NBT_STD_SYN));
-     // just to limit the total change range of the reservoir synapses to avoid the weights being too high:
-     _D_lsm_weight_limit = (_D_lsm_weight_limit<<(NUM_BIT_SYN-NBT_STD_SYN));
+     assert(_liquid == true);
+#if NUM_BIT_SYN_R > NBT_STD_SYN_R
+     _D_lsm_weight = (_D_lsm_weight<<(NUM_BIT_SYN_R-NBT_STD_SYN_R));
+     _D_lsm_weight_limit = (_D_lsm_weight_limit<<(NUM_BIT_SYN_R-NBT_STD_SYN_R));
+#else
+     _D_lsm_weight = (_D_lsm_weight>>(NBT_STD_SYN_R - NUM_BIT_SYN_R));
+     _D_lsm_weight_limit = (_D_lsm_weight_limit>>(NBT_STD_SYN_R - NUM_BIT_SYN_R));
+#endif
   }
   
-  cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<_D_lsm_weight<<endl;
+  cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_D_lsm_weight<<endl;
+
+  // initialize the look-up table:
+  _init_lookup_table();
 }
 
 
+void Synapse::_init_lookup_table(){
+  for(int i = 0; i < 3*TAU_X_TRACE_E; ++i){
+#ifdef DIGITAL
+      _TABLE_LTP[i] = (int)UNIT_DELTA*D_A_POS_E*exp(i/TAU_X_TRACE_E);
+#else
+      _TABLE_LTP[i] = A_POS_E*exp(i/TAU_X_TRACE_E);
+#endif
+  }
+  for(int i = 0; i < 3*TAU_Y1_TRACE_E; ++i){
+#ifdef DIGITAL
+      _TABLE_LTD[i] = (int)-1*UNIT_DELTA*D_A_NEG_E*exp(i/TAU_Y1_TRACE_E);
+#else
+      _TABLE_LTD[i] = -1*A_NEG_E*exp(i/TAU_Y1_TRACE_E);
+#endif	
+  }
+}
 
 /*
 void Synapse::SetPreSpikeT(double t){
@@ -180,15 +201,15 @@ void Synapse::LSMLearn(int iteration){
   assert((_fixed==false)&&(_lsm_active==true));
   _lsm_active = false;
 #ifdef DIGITAL
-  int iter;
+  int iter = iteration + 1;
 
-  if(iteration <= 10) iter = 1;
-  else if(iteration <= 20) iter = 2;
-  else if(iteration <= 30) iter = 4;
-  else if(iteration <= 40) iter = 5;
-  else if(iteration <= 50) iter = 8;
-  else if(iteration <= 60) iter = 10;
-  else iter = iteration; 
+  if(iteration <= 50) iter = 1;
+  else if(iteration <= 100) iter = 2;
+  else if(iteration <= 150) iter = 4;
+  else if(iteration <= 200) iter = 8;
+  else if(iteration <= 250) iter = 16;
+  else if(iteration <= 300) iter = 32;
+  else iter = iteration/4; 
 
   const int temp1 = one<<18;
   const int temp2 = one<<(18+NUM_BIT_SYN-NBT_STD_SYN);
@@ -210,11 +231,11 @@ void Synapse::LSMLearn(int iteration){
   _lsm_c = _post->GetCalciumPre();
   if(_lsm_c > LSM_CAL_MID){
   if((_lsm_c < LSM_CAL_MID+3)){ // &&(_post->LSMGetVMemPre() > LSM_V_THRESH*0.2)){
-      _lsm_weight += LSM_DELTA_POT;
+      _lsm_weight += LSM_DELTA_POT/( 1 + iteration/ITER_SEARCH_CONV);
     }
   }else{
   if((_lsm_c > LSM_CAL_MID-3)){ //&&(_post->LSMGetVMemPre() < LSM_V_THRESH*0.2)){
-      _lsm_weight -= LSM_DELTA_DEP;
+      _lsm_weight -= LSM_DELTA_DEP/( 1+ iteration/ITER_SEARCH_CONV);
     }
   }
 
@@ -318,65 +339,108 @@ void Synapse::LSMUpdate(int t){
   _y_i2_last = _y_i2;
 #endif
 
+// update the trace x:
+  if(_post->IsExcitatory()){
 #ifdef DIGITAL
-  // update the trace x:
-  ExpDecay(_D_x_j, TAU_X_TRACE);
+      ExpDecay(_D_x_j, TAU_X_TRACE_E);
 #else
-  ExpDecay(_x_j, TAU_X_TRACE);
+      ExpDecay(_x_j, TAU_X_TRACE_E);
 #endif
+  }
+  else{
+#ifdef DIGITAL
+      ExpDecay(_D_x_j, TAU_X_TRACE_I);
+#else
+      ExpDecay(_x_j, TAU_X_TRACE_I);
+#endif
+  }
 
   if(t == _t_spike_pre){
 #ifdef DIGITAL
 #ifdef NEAREST_NEIGHBOR
-    _D_x_j = UNIT_DELTA;
+      _D_x_j = UNIT_DELTA;
 #else
-    _D_x_j += UNIT_DELTA;
+      _D_x_j += UNIT_DELTA;
 #endif
 #else
 #ifdef NEAREST_NEIGHBOR
-    _x_j = one;
+      _x_j = one;
 #else
-    _x_j += one;
+      _x_j += one;
 #endif
 #endif
   }
 
-  // update the trace y_i1 and y_i2:
-#ifdef DIGITAL	
-  ExpDecay(_D_y_i1, TAU_Y1_TRACE);
-  ExpDecay(_D_y_i2, TAU_Y2_TRACE);
+  // update the trace y_i1 and y_i2:	
+  if(_post->IsExcitatory()){
+#ifdef DIGITAL
+      ExpDecay(_D_y_i1, TAU_Y1_TRACE_E);
+      ExpDecay(_D_y_i2, TAU_Y2_TRACE_E);
 #else
-  ExpDecay(_y_i1, TAU_Y1_TRACE);
-  ExpDecay(_y_i2, TAU_Y2_TRACE);
+      ExpDecay(_y_i1, TAU_Y1_TRACE_E);
+      ExpDecay(_y_i2, TAU_Y2_TRACE_E);
 #endif
+  }
+  else{
+#ifdef DIGITAL
+      ExpDecay(_D_y_i1, TAU_Y1_TRACE_I);
+      ExpDecay(_D_y_i2, TAU_Y2_TRACE_I);
+  
+#else
+      ExpDecay(_y_i1, TAU_Y1_TRACE_I);
+      ExpDecay(_y_i2, TAU_Y2_TRACE_I);
+#endif
+  }
 
   if(t == _t_spike_post){
 #ifdef DIGITAL
 #ifdef NEAREST_NEIGHBOR
-    _D_y_i1 = UNIT_DELTA;
-    _D_y_i2 = UNIT_DELTA;
+      _D_y_i1 = UNIT_DELTA;
+      _D_y_i2 = UNIT_DELTA;
 #else
-    _D_y_i1 += UNIT_DELTA;
-    _D_y_i2 += UNIT_DELTA;
+      _D_y_i1 += UNIT_DELTA;
+      _D_y_i2 += UNIT_DELTA;
 #endif
 #else
 #ifdef NEAREST_NEIGHBOR
-    _y_i1 = one;
-    _y_i2 = one;
+      _y_i1 = one;
+      _y_i2 = one;
 #else
-    _y_i1 += one;
-    _y_i2 += one;
+      _y_i1 += one;
+      _y_i2 += one;
 #endif
 #endif
   }
    
 #ifdef _DEBUG_SYN_UPDATE 
-  if(!strcmp(_pre->Name(), "reservoir_19") && !strcmp(_post->Name(), "reservoir_0"))
+  if(!strcmp(_pre->Name(), "reservoir_1") && !strcmp(_post->Name(), "reservoir_15"))
 #ifdef DIGITAL
-    cout<<"t: "<<t<<"\tx_j: "<<_D_x_j<<"\ty_i1: "<<_D_y_i1<<"\ty_i2: "<<_D_y_i2<<endl;
+      cout<<"t: "<<t<<"\tx_j: "<<_D_x_j<<"\ty_i1: "<<_D_y_i1<<"\ty_i2: "<<_D_y_i2<<endl;
 #else
-    cout<<"t: "<<t<<"\tx_j: "<<_x_j<<"\ty_i1: "<<_y_i1<<"\ty_i2: "<<_y_i2<<endl;
+      cout<<"t: "<<t<<"\tx_j: "<<_x_j<<"\ty_i1: "<<_y_i1<<"\ty_i2: "<<_y_i2<<endl;
 #endif
+#endif
+
+  /* Keep track of the synaptic activities here */
+#ifdef _PRINT_SYN_ACT
+  _simulation_time.push_back(t); 
+#ifdef DIGITAL
+  _x_collection.push_back(_D_x_j);
+  _y_collection.push_back(_D_y_i1);
+#else
+  _x_collection.push_back(_x_j);
+  _y_collection.push_back(_y_i1);
+#endif
+
+#ifdef DIGITAL
+  // if the synpase has not been activated by STDP rule, record its w here:
+  if(!_lsm_stdp_active)
+      _weights_collection.push_back(_D_lsm_weight);
+#else
+  if(!_lsm_stdp_active)
+      _weights_collection.push_back(_lsm_weight);
+#endif
+  
 #endif
 
 }
@@ -399,6 +463,14 @@ void Synapse::LSMLiquidLearn(int t){
   //t--;
   if( t < 0 || (t != _t_spike_pre && t != _t_spike_post)) // || (_t_spike_pre == _t_spike_post))
     return; 
+
+  // if the close to hareware implementation is considered,
+  // apply the look-up table appoarch
+#ifdef _HARDWARE_CODE
+  LSMLiquidHarewareLearn(t);
+  return;
+#endif
+
   /*
   if(_t_spike_pre == _t_spike_post)
     cout<<"Time: "<<t<<"\t"<<_pre->Name()<<"\t"<<_post->Name()<<endl;
@@ -409,8 +481,13 @@ void Synapse::LSMLiquidLearn(int t){
 
 #ifdef DIGITAL
 #ifdef ADDITIVE_STDP
-  int F_pos = _D_lsm_weight >= 0 ? D_A_POS : -1*D_A_POS;
-  int F_neg = _D_lsm_weight >= 0 ? D_A_NEG : -1*D_A_NEG;
+  int F_pos = _D_lsm_weight >= 0 ? 
+      (_post->IsExcitatory() ? D_A_POS_E : D_A_POS_I) :
+      (_post->IsExcitatory() ? -1*D_A_POS_E : -1*D_A_POS_I);
+
+  int F_neg = _D_lsm_weight >= 0 ?
+      (_post->IsExcitatory() ? D_A_NEG_E : D_A_NEG_I) :
+      (_post->IsExcitatory() ? -1*D_A_NEG_E : -1*D_A_NEG_I);
 #else
   int F_pos = _D_lsm_weight >= 0 ? (_D_lsm_weight_limit - _D_lsm_weight) 
                                 : (-_D_lsm_weight_limit -  _D_lsm_weight); // pos->polarized!
@@ -418,8 +495,13 @@ void Synapse::LSMLiquidLearn(int t){
 #endif
 #else
 #ifdef ADDITIVE_STDP
-  double F_pos = _lsm_weight >= 0 ? A_POS : -1*A_POS;
-  double F_neg = _lsm_weight >= 0 ? A_NEG : -1*A_NEG;
+  double F_pos = _lsm_weight >= 0 ? 
+      (_post->IsExcitatory() ? A_POS_E : A_POS_I) :
+      (_post->IsExcitatory() ? -1*A_POS_E : -1*A_POS_I);
+
+  double F_neg = _lsm_weight >= 0 ? 
+      (_post->IsExcitatory() ? A_NEG_E : A_NEG_I) :
+      (_post->IsExcitatory() ? -1*A_NEG_E : -1*A_NEG_I);
 #else
   double F_pos = _lsm_weight >= 0 ? (_lsm_weight_limit - _lsm_weight) 
                                 : (-_lsm_weight_limit -  _lsm_weight);
@@ -439,9 +521,9 @@ void Synapse::LSMLiquidLearn(int t){
     CalcLTP(delta_w_pos, F_pos);
 
 #ifdef _DEBUG_SYN_LEARN
-    if(!strcmp(_pre->Name(), "reservoir_19") && !strcmp(_post->Name(), "reservoir_0"))
+    if(!strcmp(_pre->Name(), "reservoir_1") && !strcmp(_post->Name(), "reservoir_15"))
 #ifdef DIGITAL
-      cout<<"post firing time: "<<t<<"\tpre spike @"<<_t_spike_pre<<"\tF_pos: "<<D_F_pos<<"\tx_j: "<<_D_x_j<<"\ty_i2_last: "<<_D_y_i2_last<<"\tdelta_w_pos: "<<delta_w_pos<<endl;
+      cout<<"post firing time: "<<t<<"\tpre spike @"<<_t_spike_pre<<"\tF_pos: "<<F_pos<<"\tx_j: "<<_D_x_j<<"\ty_i2_last: "<<_D_y_i2_last<<"\tdelta_w_pos: "<<delta_w_pos<<endl;
 #else
       cout<<"post firing time: "<<t<<"\tpre spike @"<<_t_spike_pre<<"\tF_pos: "<<F_pos<<"\tx_j: "<<_x_j<<"\ty_i2_last: "<<_y_i2_last<<"\tdelta_w_pos: "<<delta_w_pos<<endl;
 #endif
@@ -454,9 +536,9 @@ void Synapse::LSMLiquidLearn(int t){
     CalcLTD(delta_w_neg, F_neg);
 
 #ifdef _DEBUG_SYN_LEARN
-    if(!strcmp(_pre->Name(), "reservoir_19") && !strcmp(_post->Name(), "reservoir_0"))
+    if(!strcmp(_pre->Name(), "reservoir_1") && !strcmp(_post->Name(), "reservoir_15"))
 #ifdef DIGITAL
-      cout<<"pre firing time: "<<t<<"\tpost spike @"<<_t_spike_post<<"\tF_neg: "<<D_F_neg<<"\ty_i1: "<<_D_y_i1<<"\tdelta_w_neg: "<<delta_w_neg<<endl;
+      cout<<"pre firing time: "<<t<<"\tpost spike @"<<_t_spike_post<<"\tF_neg: "<<F_neg<<"\ty_i1: "<<_D_y_i1<<"\tdelta_w_neg: "<<delta_w_neg<<endl;
 #else
       cout<<"pre firing time: "<<t<<"\tpost spike @"<<_t_spike_post<<"\tF_neg: "<<F_neg<<"\ty_i1: "<<_y_i1<<"\tdelta_w_neg: "<<delta_w_neg<<endl;
 #endif
@@ -466,41 +548,9 @@ void Synapse::LSMLiquidLearn(int t){
   // 3. Update the weight:
 #ifdef STOCHASTIC_STDP 
   //Here I adopt the abstract learning rule:
-#ifdef DIGITAL
   _D_lsm_c = _post->DLSMGetCalciumPre();
-  const int temp1 = one<<21;
-  const int temp2 = one<<(18+NUM_BIT_SYN-NBT_STD_SYN);
-  int temp_delta = delta_w_pos + delta_w_neg;
-  if(_D_lsm_c > LSM_CAL_MID*unit){
-    if((_D_lsm_c < (LSM_CAL_MID+3)*unit) &&  temp_delta > 0){
-#ifdef ADDITIVE_STDP
-      _D_lsm_weight += (rand()%temp1<(temp_delta))?1:0;
-#else
-      _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT))?1:0;
-#endif
-    }
-  }else{
-    if((_D_lsm_c > (LSM_CAL_MID- 3)*unit) && temp_delta < 0){
-#ifdef ADDITIVE_STDP
-      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta))?1:0;
-#else
-      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP))?1:0;
-#endif
-    }
-  }
-#else
   _lsm_c = _post->GetCalciumPre();
-  double temp_delta = delta_w_pos + delta_w_neg;
-  if(_lsm_c > LSM_CAL_MID){
-    if(_lsm_c < (LSM_CAL_MID+3) && temp_delta > 0){
-      _lsm_weight += temp_delta;
-    }
-  }
-  else{
-      if(_lsm_c > (LSM_CAL_MID - 3) && temp_delta < 0)
-        _lsm_weight += temp_delta;
-  }
-#endif
+  StochasticSTDP(delta_w_pos, delta_w_neg);
 #else    // for non-stochastic update
 #ifdef  DIGITAL
   _D_lsm_weight += delta_w_pos + delta_w_neg;
@@ -522,9 +572,76 @@ void Synapse::LSMLiquidLearn(int t){
   // 4. Check whether or not the weight is out of bound:
   CheckReservoirWeightOutBound();
 
+
+  // 5. Record the weight information if needed:
+#ifdef _PRINT_SYN_ACT
+#ifdef DIGITAL
+  _weights_collection.push_back(_D_lsm_weight);
+#else
+  _weights_collection.push_back(_lsm_weight);
+#endif
+#endif
+
+}
+
+//* implement the look-up table approach for simply hardware implementation
+void Synapse::LSMLiquidHarewareLearn(int t){
+#ifdef DIGITAL
+  int delta_w_pos = 0, delta_w_neg = 0;
+#else
+  double delta_w_pos = 0, delta_w_neg = 0;
+#endif
+  if(t == _t_spike_post){  // LTP:
+      assert(_t_spike_pre <= _t_spike_post);
+      size_t ind = _t_spike_post - _t_spike_pre;
+      if(ind < 3*TAU_X_TRACE_E) // look-up table:
+#ifdef DIGITAL
+#ifdef STOCHASTIC_STDP // I will consider the stochastic sdtp here for both all-pairing 
+	               // and nearest neighbor-pairing
+         delta_w_pos = (_TABLE_LTP[ind]);
+#else
+         delta_w_pos = (_TABLE_LTP[ind])>>(LAMBDA_BIT);
+#endif
+#else
+         delta_w_pos = _TABLE_LTP[ind];
+#endif
+  }
+
+  if(t == _t_spike_pre){ // LTD:
+      assert(_t_spike_post <= _t_spike_pre);
+      size_t ind = _t_spike_pre - _t_spike_post;
+      if(ind < 3*TAU_Y1_TRACE_E)
+#ifdef DIGITAL
+#ifdef STOCHASTIC_STDP
+	  delta_w_neg = (_TABLE_LTD[ind]);
+#else
+          delta_w_neg = (_TABLE_LTD[ind])>>(LAMBDA_BIT + ALPHA_BIT);
+#endif
+#else
+	  delta_w_neg = (_TABLE_LTD[ind]);
+#endif
+  }
+
+  // Update the weight:
+#ifdef STOCHASTIC_STDP 
+  // Here I adopt the abstract learning rule:
+  // need to get the calcium level of post neuron in advance
+  _D_lsm_c = _post->DLSMGetCalciumPre();
+  _lsm_c = _post->GetCalciumPre();
+  StochasticSTDP(delta_w_pos, delta_w_neg);
+#else    
+#ifdef  DIGITAL
+  _D_lsm_weight += delta_w_pos + delta_w_neg;
+#else
+  _lsm_weight += delta_w_pos + delta_w_neg;
+#endif
+#endif
+  return;
+
 }
 
 //* this function is to check whether or not the synaptic weights in the reservoir is out of bound:
+inline
 void Synapse::CheckReservoirWeightOutBound(){
 #ifdef DIGITAL
   // for excitatory synapses:
@@ -544,10 +661,12 @@ void Synapse::CheckReservoirWeightOutBound(){
   else{
     if(_lsm_weight < -_lsm_weight_limit) _lsm_weight = -_lsm_weight_limit;
     if(_lsm_weight > 0) _lsm_weight = 0;
-#endif
   }
+#endif
 }
 
+
+inline
 void Synapse::CheckReadoutWeightOutBound(){
 #ifdef DIGITAL
   if(_D_lsm_weight >= _D_lsm_weight_limit) _D_lsm_weight = _D_lsm_weight_limit;
@@ -574,13 +693,11 @@ void Synapse::LSMClear(){
   _lsm_c = 0;
   _D_lsm_c = 0;
 
-
   _t_spike_pre = -1e8;
   _t_spike_post = -1e8;
   _t_last_pre = 0;
   _t_last_post = 0;
   
-
   _x_j = 0;
   _y_i1 = 0;
   _y_i2 = 0;
@@ -590,6 +707,17 @@ void Synapse::LSMClear(){
   _D_y_i1 = 0,
   _D_y_i2 = 0,
   _D_y_i2_last = 0;
+
+#ifdef _PRINT_SYN_ACT
+  // clear the local memory used for print synaptic activities
+  _t_pre_collection.clear();
+  _t_post_collection.clear();
+  _simulation_time.clear();
+  _x_collection.clear();
+  _y_collection.clear();
+  _weights_collection.clear();
+#endif
+
 }
 
 void Synapse::LSMClearLearningSynWeights(){
@@ -629,11 +757,32 @@ void Synapse::LSMActivateReservoirSyns(Network * network){
   _lsm_stdp_active = true;
 }
 
+//* Print the synapitc activity into the file.
+//* Follow the order: pre&post firing time -> local variable -> weight
+void Synapse::PrintActivity(ofstream & f_out){
+  assert(_weights_collection.size() == _simulation_time.size());
 
-void Synapse::LSMDeactivate(){
-  _lsm_active = false;
-}
+  // 0. Print the simulation time into file
+  //    Use "-1" to do the separation between different information:
+  f_out<<"-1\n";
+  PrintToFile(_simulation_time, f_out);
+  f_out<<"-1\n";
 
-bool Synapse::LSMGetLiquid(){
-  return _liquid;
+  // 1. Print the pre & post-synaptic neuron activity:
+  PrintToFile(_t_pre_collection, f_out);
+  f_out<<"-1\n";
+  PrintToFile(_t_post_collection, f_out);
+  f_out<<"-1\n";
+
+
+  // 2. Print the local variable:
+  PrintToFile(_x_collection, f_out);
+  f_out<<"-1\n";
+  PrintToFile(_y_collection, f_out);
+  f_out<<"-1\n";
+
+  // 3. Print the weight:
+  PrintToFile(_weights_collection, f_out);
+  f_out<<"-1\n"<<endl;
+  
 }

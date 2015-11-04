@@ -16,6 +16,7 @@ public:
   void SetStepSize(double);
 
   void LSMRun(long tid);
+  void PrintSynAct(int info);
 };
 
 #endif

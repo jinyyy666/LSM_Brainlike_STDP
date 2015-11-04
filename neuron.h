@@ -91,7 +91,7 @@ public:
   void ExpDecay(int& var, const int time_c);
   void ExpDecay(double& var, const int time_c);
   void AccumulateSynapticResponse(const int pos, double value);
-  void DAccumulateSynapticResponse(const int pos, int value);
+  void DAccumulateSynapticResponse(const int pos, int value, const int c_nbt_std_syn, const int c_num_bit_syn);
   double NOrderSynapticResponse();
   int DNOrderSynapticResponse();
   void SetPostNeuronSpikeT(int t);

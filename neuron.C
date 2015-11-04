@@ -236,27 +236,30 @@ inline void Neuron::AccumulateSynapticResponse(const int pos, double value){
 
 }
 
-/** Digital version of collecting the synaptic response **/
-inline void Neuron::DAccumulateSynapticResponse(const int pos, int value){
+   /** Digital version of collecting the synaptic response **/
+/** Here I am considering if the synapse is the reservoir syn **/
+/** For the digital system, I want w*2^(dec) =  w/(w_max^(n-1)-1)*2^(y) **/
+/** That is how I transfer the weight in the discrete case **/
+inline void Neuron::DAccumulateSynapticResponse(const int pos, int value, const int c_nbt_std_syn, const int c_num_bit_syn){
 #ifndef DIGITAL
   assert(0);
 #endif
 
 #ifdef SYN_ORDER_2
   if(pos > 0){
-    _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-    _D_lsm_state_EN += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+      _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
+      _D_lsm_state_EN += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
   }
   else{
-    _D_lsm_state_IP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-    _D_lsm_state_IN += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+      _D_lsm_state_IP += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
+      _D_lsm_state_IN += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
   }
 #elif SYN_ORDER_1
-  if(pos > 0) _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-  else _D_lsm_state_EP -= (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+  if(pos > 0) _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
+  else _D_lsm_state_EP -= (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
 #else
-  if(pos > 0) _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
-  else _D_lsm_state_EP -= (value<<(NUM_DEC_DIGIT+NBT_STD_SYN-NUM_BIT_SYN));
+  if(pos > 0) _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
+  else _D_lsm_state_EP -= (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
 #endif
 
 }
@@ -438,9 +441,12 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
     /*** this is for both reservoir, readout and input synaptic response : ***/
     if(value != 0){
 #ifdef DIGITAL
-      DAccumulateSynapticResponse(pos, value);
+	if((*iter)->IsLiquid())
+	    DAccumulateSynapticResponse(pos, value, NBT_STD_SYN_R, NUM_BIT_SYN_R);
+	else
+	    DAccumulateSynapticResponse(pos, value, NBT_STD_SYN, NUM_BIT_SYN);
 #else
-      AccumulateSynapticResponse(pos, value);
+	AccumulateSynapticResponse(pos, value);
 #endif
     }
   }
@@ -812,9 +818,9 @@ _firstCalled(false)
 #ifdef DIGITAL
 	// this is for digitial liquid state machine:
 #ifdef DIGITAL_SYN_ORGINAL
-        int stage = 0.6*factor/(one<<(NUM_BIT_RESERVOIR-1))+1;
+        int stage = 0.6*factor/(one<<(NUM_BIT_SYN_R -1))+1;
         int val = round(a/stage)*1.00001;
-        _network->LSMAddSynapse(_neurons[i],_neurons[j],val*stage,true,8,false);
+        _network->LSMAddSynapse(_neurons[i],_neurons[j],val*stage,true,8,true);
 #elif LIQUID_SYN_MODIFICATION
 	int val = a;
 	_network->LSMAddSynapse(_neurons[i],_neurons[j],val,true,8,true); 
