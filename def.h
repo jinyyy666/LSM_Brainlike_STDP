@@ -12,6 +12,11 @@
 // for stdp rule update. this is what the hardware is going to do.
 #define _HARDWARE_CODE 
 
+// this control variable is defined to test my thought of separate
+// the reservoir into several parts and stimulate each part with 
+// speeches that are similar to each other under STDP training:
+//#define _SEPARATE_RESERVOIR
+
 #define MAX_GRAYSCALE 512
 #define DURATION_TRAIN 2000
 
@@ -20,7 +25,7 @@
 
 /* FOR LIQUID STATE MACHINE */
 // the control parameter to enable training the reservoir:
-#define STDP_TRAINING_RESERVOIR
+//#define STDP_TRAINING_RESERVOIR
 
 // damping factor for long-time potientation (under triplet case):
 // this value should be small (around 0.01) for multiplicative update!
@@ -75,11 +80,11 @@
 //#define NEAREST_NEIGHBOR 1
 
 // control parameter for stochastic stdp, silimar to the abstract learning rule:
-#define STOCHASTIC_STDP
+//#define STOCHASTIC_STDP
 
 
 // contro parameter to study synaptic activity
-#define _PRINT_SYN_ACT
+//#define _PRINT_SYN_ACT
 
 #define LSM_T_M 32
 #define LSM_T_SYNE 8
@@ -96,7 +101,7 @@
 #define ITER_SEARCH_CONV 50
 //#define CLS 26
 #define CLS 26
-#define NUM_THREADS 1
+#define NUM_THREADS 5
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -104,14 +109,26 @@
 #define NUM_DEC_DIGIT 10
 #define NBT_STD_SYN 4
 #define NUM_BIT_SYN 10
+
+// change all to zero to achieve 6-bit vmem
+// need to change NUM_DEC_DIGIT_R and NUM_BIT_SYN_R together 
+// NUM_DEC_DIGIT_R and NUM_BIT_SYN_R defines the # of bits of r syn
+// Please always make sure the NUM_BIT_SYN_R is no less than NBT_STD_SYN_R
+#define NUM_DEC_DIGIT_R 6
 #define NBT_STD_SYN_R 4
 #define NUM_BIT_SYN_R 6
 
+#define NUM_BIT_READOUT_MEM 16
+#define NUM_BIT_RESERVOIR_MEM 6
+
+#define NUM_DEC_DIGIT_RESERVOIR_MEM 0  // Number of bits represent 'one' for V_mem in the Liquid
+#define NUM_DEC_DIGIT_READOUT_MEM 10   // Number of bits represent 'one' for V_mem in the readout
+				   
 
 #define LOST_RATE 0.0
 #define DIGITAL
-#define DIGITAL_SYN_ORGINAL 1
-//#define LIQUID_SYN_MODIFICATION 0
+//#define DIGITAL_SYN_ORGINAL 1
+#define LIQUID_SYN_MODIFICATION 1
 
 #define SYN_ORDER_2 1 
 #define SYN_ORDER_1 0 

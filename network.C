@@ -741,8 +741,10 @@ void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
 #else
 	 <<"\t"<<synapses[i]->Weight()
 #endif
+	/*
 	 <<"\t"<<synapses[i]->PreNeuron()->IsExcitatory()
 	 <<"\t"<<synapses[i]->PostNeuron()->IsExcitatory()
+	*/
 	 <<endl;
 
 }
@@ -776,14 +778,16 @@ void Network::LoadSynWeightsFromFile(const char * syn_type, char * filename){
   int index;
   string pre;
   string post;
+  /*
   int pre_ext; // two variables to catch the excitatory information of syn
   int post_ext;
+  */
 #ifdef DIGITAL
   int weight;
 #else
   double weight;
 #endif
-  while(f_in>>index>>pre>>post>>weight>>pre_ext>>post_ext){
+  while(f_in>>index>>pre>>post>>weight){//>>pre_ext>>post_ext){
     if(index < 0 || index >= synapses.size()){
 	cout<<"In Network::LoadSynWeightsFromFile(), the index of the synapse you read : "<<index<<" is out of bound of the container stores the synapses!!"<<endl;
 	exit(EXIT_FAILURE);

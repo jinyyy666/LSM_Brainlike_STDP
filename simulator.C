@@ -115,7 +115,7 @@ void Simulator::LSMRun(long tid){
 #endif
 #endif
       // print the speech information into file:
-      _network->SpeechPrint(info);
+      //_network->SpeechPrint(info);
       _network->LSMClearSignals();
       info = _network->LoadNextSpeech(false, networkmode);
     }

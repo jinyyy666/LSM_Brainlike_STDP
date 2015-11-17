@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
+#include <utility>
+#include <string>
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
@@ -14,6 +16,8 @@
 
 //#define _DEBUG_NEURON
 
+// NOTE: The time constants have been changed to 2*original settings 
+//       optimized performance for letter recognition.
 using namespace std;
 
 extern int Current;
@@ -37,10 +41,10 @@ _lsm_state_EP(0),
 _lsm_state_EN(0),
 _lsm_state_IP(0),
 _lsm_state_IN(0),
-_lsm_tau_EP(4.0),
-_lsm_tau_EN(LSM_T_SYNE),
-_lsm_tau_IP(4.0),
-_lsm_tau_IN(LSM_T_SYNI),
+_lsm_tau_EP(4.0*2),
+_lsm_tau_EN(LSM_T_SYNE*2),
+_lsm_tau_IP(4.0*2),
+_lsm_tau_IN(LSM_T_SYNI*2),
 _lsm_tau_FO(LSM_T_FO),
 _lsm_v_thresh(LSM_V_THRESH),
 _lsm_ref(0),
@@ -53,17 +57,22 @@ _D_lsm_state_EP(0),
 _D_lsm_state_EN(0),
 _D_lsm_state_IP(0),
 _D_lsm_state_IN(0),
-_D_lsm_tau_EP(4),
-_D_lsm_tau_EN(LSM_T_SYNE),
-_D_lsm_tau_IP(4),
-_D_lsm_tau_IN(LSM_T_SYNI),
+_D_lsm_tau_EP(4*2),
+_D_lsm_tau_EN(LSM_T_SYNE*2),
+_D_lsm_tau_IP(4*2),
+_D_lsm_tau_IN(LSM_T_SYNI*2),
 _D_lsm_tau_FO(LSM_T_FO),
-_D_lsm_v_thresh(LSM_V_THRESH*unit),
+_D_lsm_v_reservoir_max((one<<(NUM_BIT_RESERVOIR_MEM-1)) - 1),
+_D_lsm_v_reservoir_min(-(one<<(NUM_BIT_RESERVOIR_MEM-1))),
+_D_lsm_v_readout_max(-1),
+_D_lsm_v_readout_min(-1),
 _t_next_spike(-1),
 _network(network),
-_Unit(unit),
+_Unit(one<<NUM_DEC_DIGIT_RESERVOIR_MEM),
 _teacherSignal(0)
 {
+  _D_lsm_v_thresh = _Unit*LSM_V_THRESH;
+
   _name = new char[strlen(name)+2];
   strcpy(_name,name);
 
@@ -83,10 +92,10 @@ _lsm_state_EP(0),
 _lsm_state_EN(0),
 _lsm_state_IP(0),
 _lsm_state_IN(0),
-_lsm_tau_EP(4.0),
-_lsm_tau_EN(LSM_T_SYNE),
-_lsm_tau_IP(4.0),
-_lsm_tau_IN(LSM_T_SYNI),
+_lsm_tau_EP(4.0*2),
+_lsm_tau_EN(LSM_T_SYNE*2),
+_lsm_tau_IP(4.0*2),
+_lsm_tau_IN(LSM_T_SYNI*2),
 _lsm_tau_FO(LSM_T_FO),
 _lsm_v_thresh(LSM_V_THRESH),
 _lsm_ref(0),
@@ -99,17 +108,22 @@ _D_lsm_state_EP(0),
 _D_lsm_state_EN(0),
 _D_lsm_state_IP(0),
 _D_lsm_state_IN(0),
-_D_lsm_tau_EP(4),
-_D_lsm_tau_EN(LSM_T_SYNE),
-_D_lsm_tau_IP(4),
-_D_lsm_tau_IN(LSM_T_SYNI),
+_D_lsm_tau_EP(4*2),
+_D_lsm_tau_EN(LSM_T_SYNE*2),
+_D_lsm_tau_IP(4*2),
+_D_lsm_tau_IN(LSM_T_SYNI*2),
 _D_lsm_tau_FO(LSM_T_FO),
-_D_lsm_v_thresh(LSM_V_THRESH*unit),
+_D_lsm_v_reservoir_max(-1),
+_D_lsm_v_reservoir_min(-1),
+_D_lsm_v_readout_max((one<<(NUM_BIT_READOUT_MEM-1))-1),
+_D_lsm_v_readout_min(-(one<<(NUM_BIT_READOUT_MEM-1))),
 _t_next_spike(-1),
 _network(network),
-_Unit(unit),
+_Unit(one<<NUM_DEC_DIGIT_READOUT_MEM),
 _teacherSignal(-1)
 {
+  _D_lsm_v_thresh = _Unit*LSM_V_THRESH;
+
   _name = new char[strlen(name)+2];
   strcpy(_name,name);
 
@@ -197,8 +211,8 @@ void Neuron::LSMClear(){
 
 
 inline void Neuron::ExpDecay(int& var, const int time_c){
-  var -= (var/time_c == 0) ? 1 : var/time_c;
-  if(var < 0) var = 0;
+    if(var == 0) return;
+    var -= (var/time_c == 0) ? (var > 0 ? 1 : -1) : var/time_c;
 #ifndef DIGITAL
   assert(0);
 #endif
@@ -240,26 +254,38 @@ inline void Neuron::AccumulateSynapticResponse(const int pos, double value){
 /** Here I am considering if the synapse is the reservoir syn **/
 /** For the digital system, I want w*2^(dec) =  w/(w_max^(n-1)-1)*2^(y) **/
 /** That is how I transfer the weight in the discrete case **/
-inline void Neuron::DAccumulateSynapticResponse(const int pos, int value, const int c_nbt_std_syn, const int c_num_bit_syn){
+inline void Neuron::DAccumulateSynapticResponse(const int pos, int value, const int c_num_dec_digit_mem, const int c_nbt_std_syn, const int c_num_bit_syn){
 #ifndef DIGITAL
   assert(0);
 #endif
 
+  // adopt my earlier code for tuning the resolution:
 #ifdef SYN_ORDER_2
   if(pos > 0){
-      _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
-      _D_lsm_state_EN += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
+      if(c_num_dec_digit_mem > c_num_bit_syn - c_nbt_std_syn){
+	  _D_lsm_state_EP += value<<(c_num_dec_digit_mem+c_nbt_std_syn-c_num_bit_syn);
+          _D_lsm_state_EN += value<<(c_num_dec_digit_mem+c_nbt_std_syn-c_num_bit_syn);
+      }
+      else{
+          _D_lsm_state_EP += value>>(c_num_bit_syn-c_nbt_std_syn-c_num_dec_digit_mem);
+          _D_lsm_state_EN += value>>(c_num_bit_syn-c_nbt_std_syn-c_num_dec_digit_mem);
+      } 
   }
   else{
-      _D_lsm_state_IP += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
-      _D_lsm_state_IN += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
+      if(c_num_dec_digit_mem > c_num_bit_syn - c_nbt_std_syn){
+	  _D_lsm_state_IP += value<<(c_num_dec_digit_mem+c_nbt_std_syn-c_num_bit_syn);
+          _D_lsm_state_IN += value<<(c_num_dec_digit_mem+c_nbt_std_syn-c_num_bit_syn);
+      }
+      else{
+          _D_lsm_state_IP += value>>(c_num_bit_syn-c_nbt_std_syn-c_num_dec_digit_mem);
+          _D_lsm_state_IN += value>>(c_num_bit_syn-c_nbt_std_syn-c_num_dec_digit_mem);
+      }
   }
-#elif SYN_ORDER_1
-  if(pos > 0) _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
-  else _D_lsm_state_EP -= (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
-#else
-  if(pos > 0) _D_lsm_state_EP += (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
-  else _D_lsm_state_EP -= (value<<(NUM_DEC_DIGIT+c_nbt_std_syn-c_num_bit_syn));
+#else 
+  if(pos > 0){
+  if(c_num_dec_digit_mem > c_num_bit_syn - c_nbt_std_syn)
+      _D_lsm_state_EP += pos > 0 ? (value<<(c_num_dec_digit_mem+c_nbt_std_syn-c_num_bit_syn)) : -1*(value>>(c_num_dec_digit_mem+c_nbt_std_syn-c_num_bit_syn));    
+  else _D_lsm_state_EP += pos > 0 ? (value<<(c_num_bit_syn-c_nbt_std_syn-c_num_dec_digit_mem)) : -1*(value>>(c_num_bit_syn-c_nbt_std_syn-c_num_dec_digit_mem));
 #endif
 
 }
@@ -296,6 +322,44 @@ inline int Neuron::DNOrderSynapticResponse(){
 
 }
 
+
+//* this function calculate the vmem given the synaptic response
+//  I adopt my earlier work to enable resolution tuning 
+inline void Neuron::UpdateVmem(int & temp){
+
+    /*
+    if(_name[0] == 'r'){
+	// # bits for unit one defined in synapse system : NUM_BIT_SYN_R - NBT_STD_SYN_R
+#if NUM_BIT_SYN_R - NBT_STD_SYN_R > NUM_DEC_DIGIT_RESERVOIR_MEM
+	temp = temp>>(NUM_BIT_SYN_R - NBT_STD_SYN_R - NUM_DEC_DIGIT_RESERVOIR_MEM);
+#else
+        temp = temp<<(NUM_DEC_DIGIT_RESERVOIR_MEM - (NUM_BIT_SYN_R - NBT_STD_SYN_R));
+#endif
+    }
+
+    if(_name[0] == 'o'){
+#if NUM_BIT_SYN - NBT_STD_SYN > NUM_DEC_DIGIT_READOUT_MEM
+	temp = temp>>(NUM_BIT_SYN - NBT_STD_SYN - NUM_DEC_DIGIT_READOUT_MEM);
+#else
+        temp = temp<<(NUM_DEC_DIGIT_READOUT_MEM - (NUM_BIT_SYN - NBT_STD_SYN)); 
+#endif
+    }
+    */
+    _D_lsm_v_mem += temp;
+
+    if(_name[0] == 'r'){
+        assert(_D_lsm_v_readout_min == -1 && _D_lsm_v_readout_max == -1);
+	if(_D_lsm_v_mem <= _D_lsm_v_reservoir_min) _D_lsm_v_mem = _D_lsm_v_reservoir_min;
+	if(_D_lsm_v_mem >= _D_lsm_v_reservoir_max) _D_lsm_v_mem = _D_lsm_v_reservoir_max;
+    }
+
+    if(_name[0] == 'o'){
+        assert(_D_lsm_v_reservoir_min == -1 && _D_lsm_v_reservoir_max == -1);
+	if(_D_lsm_v_mem <= _D_lsm_v_readout_min) _D_lsm_v_mem = _D_lsm_v_readout_min;
+	if(_D_lsm_v_mem >= _D_lsm_v_readout_max) _D_lsm_v_mem = _D_lsm_v_readout_max;
+    }
+
+}
 
 /** Set the t_post of _inputSyns when the neuron fires and activate the syns **/
 inline void Neuron::SetPostNeuronSpikeT(int time){
@@ -382,10 +446,10 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
 #endif
 
 #ifdef DIGITAL
-  if((_teacherSignal==1)&&(_D_lsm_calcium < (LSM_CAL_MID+1)*unit)){
-    _D_lsm_v_mem += 20*unit;
-  }else if((_teacherSignal==-1)&&(_D_lsm_calcium > (LSM_CAL_MID-1)*unit)){
-    _D_lsm_v_mem -= 15*unit;
+  if((_teacherSignal==1)&&(_D_lsm_calcium < (LSM_CAL_MID+1)*_Unit)){
+    _D_lsm_v_mem += _D_lsm_v_thresh;
+  }else if((_teacherSignal==-1)&&(_D_lsm_calcium > (LSM_CAL_MID-1)*_Unit)){
+    _D_lsm_v_mem -= 3*_D_lsm_v_thresh/4;
   }
 #else
   if((_teacherSignal==1)&&(_lsm_calcium < LSM_CAL_MID+1)){
@@ -432,19 +496,31 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
   assert(0);
 #endif
 #endif  
+
+#ifdef _DEBUG_NEURON
+    vector<pair<string, int> > pre_names;
+#endif
   for(iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++){
+
 #ifdef DIGITAL
     (*iter)->DLSMStaticCurrent(&pos, &value);
 #else
     (*iter)->LSMStaticCurrent(&pos, &value);
 #endif
+
+#ifdef _DEBUG_NEURON
+    if(value != 0)
+	pre_names.push_back(make_pair(string((*iter)->PreNeuron()->Name()), (*iter)->DWeight()));
+#endif
+
     /*** this is for both reservoir, readout and input synaptic response : ***/
     if(value != 0){
 #ifdef DIGITAL
-	if((*iter)->IsLiquid())
-	    DAccumulateSynapticResponse(pos, value, NBT_STD_SYN_R, NUM_BIT_SYN_R);
+	/*** retreat input and reservoir in the same way ***/
+	if((*iter)->IsLiquidSyn()||(*iter)->IsInputSyn())
+	    DAccumulateSynapticResponse(pos,value,NUM_DEC_DIGIT_RESERVOIR_MEM,NBT_STD_SYN_R,NUM_BIT_SYN_R);
 	else
-	    DAccumulateSynapticResponse(pos, value, NBT_STD_SYN, NUM_BIT_SYN);
+	    DAccumulateSynapticResponse(pos,value,NUM_DEC_DIGIT_READOUT_MEM,NBT_STD_SYN,NUM_BIT_SYN);
 #else
 	AccumulateSynapticResponse(pos, value);
 #endif
@@ -453,7 +529,8 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
   
 #ifdef DIGITAL
   int temp = DNOrderSynapticResponse();
-  _D_lsm_v_mem += temp;
+  UpdateVmem(temp); // adopt my earlier work to enable resolution tuning.
+  //_D_lsm_v_mem += temp;
 #else
   double temp = NOrderSynapticResponse();
   _lsm_v_mem += temp;
@@ -461,12 +538,18 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
 
 
 #ifdef _DEBUG_NEURON
-  if(strcmp(_name,"reservoir_0")==0) //cout<<_Unit<<"\t"<<_D_lsm_v_thresh<<endl;
+  if(strcmp(_name,"reservoir_0")==0){ //cout<<_Unit<<"\t"<<_D_lsm_v_thresh<<endl;
+      cout<<"@time: "<<t<<endl;
+      for(vector<pair<string, int> >::iterator it = pre_names.begin(); it != pre_names.end(); ++it){
+	  cout<<it->first<<" fires with weight "<<it->second<<endl;
+      } 
+      pre_names.clear();
 #ifdef DIGITAL
-     cout<<_D_lsm_v_mem<<"\t"<<temp<<"\t"<<_D_lsm_state_EP<<"\t"<<_D_lsm_state_EN<<"\t"<<_D_lsm_state_IP<<"\t"<<_D_lsm_state_IN<<endl;
+      cout<<_D_lsm_v_mem<<"\t"<<temp<<"\t"<<_D_lsm_state_EP<<"\t"<<_D_lsm_state_EN<<"\t"<<_D_lsm_state_IP<<"\t"<<_D_lsm_state_IN<<endl;
 #else
-    cout<<_lsm_v_mem<<"\t"<<temp<<"\t"<<_lsm_state_EP<<"\t"<<_lsm_state_EN<<"\t"<<_lsm_state_IP<<"\t"<<_lsm_state_IN<<endl;
+      cout<<_lsm_v_mem<<"\t"<<temp<<"\t"<<_lsm_state_EP<<"\t"<<_lsm_state_EN<<"\t"<<_lsm_state_IP<<"\t"<<_lsm_state_IN<<endl;
 #endif
+  }
 #endif
 
   if(_lsm_ref > 0){
@@ -735,7 +818,7 @@ _firstCalled(false)
   bool excitatory;
   int i, j, k, index;
   char * neuronName = new char[1024];
-  srand(9);
+  srand(5);
   _name = new char[strlen(name)+2];
   strcpy(_name,name);
 
