@@ -124,8 +124,8 @@ _D_y_i2_last(0)
 #endif
   }
   else if(pre_name[0] == 'i'){
-    _D_lsm_weight = (_D_lsm_weight<<(NUM_BIT_SYN - NBT_STD_SYN));
-    _D_lsm_weight_limit = (_D_lsm_weight<<(NUM_BIT_SYN - NBT_STD_SYN));
+    _D_lsm_weight = (_D_lsm_weight<<(NUM_BIT_SYN_R - NBT_STD_SYN_R));
+    _D_lsm_weight_limit = (_D_lsm_weight<<(NUM_BIT_SYN_R - NBT_STD_SYN_R));
   }
   else{
      assert(_liquid == true);
@@ -146,20 +146,48 @@ _D_y_i2_last(0)
 
 
 void Synapse::_init_lookup_table(){
+    // the version might give you better performance:
   for(int i = 0; i < 3*TAU_X_TRACE_E; ++i){
 #ifdef DIGITAL
-      _TABLE_LTP[i] = (int)UNIT_DELTA*D_A_POS_E*exp(i/TAU_X_TRACE_E);
+      if(i == 0)
+	  _TABLE_LTP[i] = UNIT_DELTA*D_A_POS_E;
+      else
+	  _TABLE_LTP[i] = _TABLE_LTP[i-1] - _TABLE_LTP[i-1]/TAU_X_TRACE_E;
 #else
-      _TABLE_LTP[i] = A_POS_E*exp(i/TAU_X_TRACE_E);
+      if(i == 0)
+	  _TABLE_LTP[i] = A_POS_E;
+      else
+	  _TABLE_LTP[i] = _TABLE_LTP[i-1] - _TABLE_LTP[i-1]/TAU_X_TRACE_E;
 #endif
   }
   for(int i = 0; i < 3*TAU_Y1_TRACE_E; ++i){
 #ifdef DIGITAL
-      _TABLE_LTD[i] = (int)-1*UNIT_DELTA*D_A_NEG_E*exp(i/TAU_Y1_TRACE_E);
+      if(i == 0)
+	  _TABLE_LTD[i] = -1*UNIT_DELTA*D_A_NEG_E;
+      else
+	  _TABLE_LTD[i] = _TABLE_LTD[i-1] - _TABLE_LTD[i-1]/TAU_Y1_TRACE_E;
 #else
-      _TABLE_LTD[i] = -1*A_NEG_E*exp(i/TAU_Y1_TRACE_E);
+      if(i == 0)
+	  _TABLE_LTD[i] = -1*A_NEG_E;
+      else
+	  _TABLE_LTD[i] = _TABLE_LTD[i-1] - _TABLE_LTD[i-1]/TAU_Y1_TRACE_E;
 #endif	
   }
+      /* // close to exp version:
+#ifdef DIGITAL
+      _TABLE_LTP[i] = (int)UNIT_DELTA*D_A_POS_E*exp(-1.0*i/TAU_X_TRACE_E);
+#else
+      _TABLE_LTP[i] = A_POS_E*exp(-1.0*i/TAU_X_TRACE_E);
+#endif
+  }
+  for(int i = 0; i < 3*TAU_Y1_TRACE_E; ++i){
+#ifdef DIGITAL
+      _TABLE_LTD[i] = (int)-1*UNIT_DELTA*D_A_NEG_E*exp(-1.0*i/TAU_Y1_TRACE_E);
+#else
+      _TABLE_LTD[i] = -1*A_NEG_E*exp(-1.0*i/TAU_Y1_TRACE_E);
+#endif	
+  }
+      */
 }
 
 /*
@@ -636,6 +664,8 @@ void Synapse::LSMLiquidHarewareLearn(int t){
   _lsm_weight += delta_w_pos + delta_w_neg;
 #endif
 #endif
+
+  CheckReservoirWeightOutBound();
   return;
 
 }

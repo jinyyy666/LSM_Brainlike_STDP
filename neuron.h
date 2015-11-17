@@ -53,12 +53,16 @@ private:
   int _D_lsm_state_EN;
   int _D_lsm_state_IP;
   int _D_lsm_state_IN;
-  const int _D_lsm_v_thresh;
+  int _D_lsm_v_thresh;
   const int _D_lsm_tau_EP;
   const int _D_lsm_tau_EN;
   const int _D_lsm_tau_IP;
   const int _D_lsm_tau_IN;
   const int _D_lsm_tau_FO;
+  const int _D_lsm_v_reservoir_max;
+  const int _D_lsm_v_reservoir_min;
+  const int _D_lsm_v_readout_max;
+  const int _D_lsm_v_readout_min;
   const int _Unit;
 
 public:
@@ -91,9 +95,10 @@ public:
   void ExpDecay(int& var, const int time_c);
   void ExpDecay(double& var, const int time_c);
   void AccumulateSynapticResponse(const int pos, double value);
-  void DAccumulateSynapticResponse(const int pos, int value, const int c_nbt_std_syn, const int c_num_bit_syn);
+  void DAccumulateSynapticResponse(const int pos, int value, const int c_num_dec_digit_mem,const int c_nbt_std_syn, const int c_num_bit_syn);
   double NOrderSynapticResponse();
   int DNOrderSynapticResponse();
+  void UpdateVmem(int & temp);
   void SetPostNeuronSpikeT(int t);
   void HandleFiringActivity(bool isInput, int time, bool train);
 

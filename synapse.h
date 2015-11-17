@@ -80,7 +80,6 @@ private:
   int _D_y_i2_last; 
 
   /* ONLY FOR PRINT PURPOSE */
-#ifdef _PRINT_SYN_ACT
   /* keep track of the weights and firing activity */
   std::vector<int> _t_pre_collection;
   std::vector<int> _t_post_collection;
@@ -93,7 +92,6 @@ private:
   std::vector<double> _x_collection;
   std::vector<double> _y_collection;
   std::vector<double> _weights_collection;
-#endif
 #endif
 
 // look-up table for LTD and LTP, 
@@ -151,7 +149,10 @@ public:
   void LSMActivate(Network * network, bool stdp_flag, bool train);
   void LSMActivateReservoirSyns(Network*);
   void LSMDeactivate(){ _lsm_active = false;}
-  bool IsLiquid(){ return _liquid; };
+
+  // determine whether or not this synapse is in the liquid?
+  bool IsLiquidSyn(){ return _liquid;};
+
   void CheckReservoirWeightOutBound();
   void CheckReadoutWeightOutBound();
 
@@ -165,9 +166,9 @@ public:
   void PrintActivity(std::ofstream& f_out);
     
   void ExpDecay(int& var, const int time_c){
-    var -= (var/time_c == 0) ? 1 : var/time_c; 
-    if(var < 0) 
-    var = 0;
+    if(var == 0) return;
+    var -= (var/time_c == 0) ? (var > 0 ? 1 : -1) : var/time_c; 
+    
   }
 
   void SetPreSpikeT(int t){
