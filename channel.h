@@ -4,6 +4,7 @@
 #include <vector>
 #include "def.h"
 #include <cstdio>
+#include <fstream>
 
 class Channel{
 private:
@@ -24,9 +25,11 @@ public:
   void PoissonSpike();
   int SizeAnalog(){return _analog.size();}
   int SizeSpikeT(){return _spikeT.size();}
+  int LastSpikeT(){return _spikeT.empty() ? 0 : _spikeT.back();}
   void SetMode(channelmode_t channelmode){_mode = channelmode;}
   channelmode_t Mode(){return _mode;}
   void Print(FILE *);
+  void Print(std::ofstream& f_out);
 };
 
 #endif

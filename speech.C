@@ -3,6 +3,10 @@
 #include <assert.h>
 #include <iostream>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <climits>
+#include <algorithm>
 
 using namespace std;
 
@@ -31,10 +35,22 @@ void Speech::SetNumReservoirChannel(int size){
 
 Channel * Speech::GetChannel(int index, channelmode_t channelmode){
   if(channelmode == INPUTCHANNEL){
-    assert((index >= 0)&&(index < _channels.size()));
+    if(index < 0 && index >= _channels.size()){
+      cout<<"Invalid channel index: "<<index
+	  <<" seen in aquiring input channels!\n"
+	  <<"Total number of input channels: "<<_channels.size()
+	  <<endl;
+      exit(EXIT_FAILURE);
+    }
     return _channels[index];
   }else{
-    assert((index >= 0)&&(index < _rChannels.size()));
+    if(index < 0 && index >= _rChannels.size()){
+      cout<<"Invalid channel index: "<<index
+	  <<" seen in aquiring reservoir channels!\n"
+	  <<"Total number of reservoir channels: "<<_rChannels.size()
+	  <<endl;
+      exit(EXIT_FAILURE);
+    }
     return _rChannels[index];
   }
 }
@@ -75,22 +91,71 @@ void Speech::PrintSpikes(int info){
   FILE * Fp_reservoir;
   char filename[64];
   sprintf(filename,"Input_Response/input_spikes_%d.dat",info);
-  Fp_input = fopen(filename,"w");
-  assert(Fp_input != NULL);
+  // Fp_input = fopen(filename,"w");
+  ofstream f_input(filename);
+  assert(f_input.is_open());
+  // assert(Fp_input != NULL);
   for(int i = 0; i < _channels.size(); i++){ 
+      /*
     fprintf(Fp_input,"%d\n",-1);
     _channels[i]->Print(Fp_input);
+      */
+    _channels[i]->Print(f_input);
   }
-  fprintf(Fp_input,"%d\n",-1);
-  fclose(Fp_input);
+  f_input.close();
+
+  // fprintf(Fp_input,"%d\n",-1);
+  // fclose(Fp_input);
 
   sprintf(filename,"Reservoir_Response/reservoir_spikes_%d.dat",info);
-  Fp_reservoir = fopen(filename,"w");
-  assert(Fp_reservoir != NULL);
+  // Fp_reservoir = fopen(filename,"w");
+  ofstream f_reservoir(filename);
+  assert(f_reservoir.is_open());
+  // assert(Fp_reservoir != NULL);
   for(int i = 0; i < _rChannels.size(); i++){
+      /*
     fprintf(Fp_reservoir,"%d\n",-1);
     _rChannels[i]->Print(Fp_reservoir);
+      */
+    _rChannels[i]->Print(f_reservoir);
   }
-  fprintf(Fp_reservoir,"%d\n",-1);
-  fclose(Fp_reservoir); 
+  f_reservoir.close();
+
+  // fprintf(Fp_reservoir,"%d\n",-1);
+  // fclose(Fp_reservoir); 
+}
+
+//* this function read each channel and output the firing frequency into a matrix
+//* defined by the output stream: f_out.
+//* there are two type of channels to be considered.
+//* @return: the associated class label.
+int Speech::PrintSpikeFreq(const char * type, ofstream & f_out){
+    assert(type);
+    bool f;
+    if(strcmp(type, "input") == 0) f = false;
+    else if(strcmp(type, "reservoir") == 0) f = true;
+    else assert(0);
+    
+    if(!f){
+	SpikeFreq(f_out, _channels);	
+    }
+    else{
+	SpikeFreq(f_out, _rChannels);
+    }
+    return _class;
+}
+
+//* Print the spike rate to the target file:
+void Speech::SpikeFreq(ofstream & f_out, const vector<Channel*> & channels){
+    // find out the stop time for each speech:
+    int stop_t = INT_MIN;
+    for(int i = 0; i < channels.size(); i++){
+	assert(channels[i]);
+	stop_t = max(stop_t, channels[i]->LastSpikeT());
+    }
+    for(int i = 0; i < channels.size(); i++){ 
+	//f_out<<(double)channels[i]->SizeSpikeT()/stop_t<<"\t";
+        f_out<<channels[i]->SizeSpikeT()<<"\t";
+    }
+    f_out<<endl;
 }

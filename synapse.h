@@ -14,8 +14,7 @@ extern const int one;
 extern const int unit;
 
 // the spike strength in STDP model:
-const int UNIT_DELTA = 1<<(NUM_DEC_DIGIT);
-
+const int UNIT_DELTA = 1<<(NUM_DEC_DIGIT_RESERVOIR_MEM);
 
 class Neuron;
 class Network;
@@ -95,14 +94,13 @@ private:
 #endif
 
 // look-up table for LTD and LTP, 
-// the time constants here are refered to E-E type synapse
 #ifdef DIGITAL
     // look up table for STDP curve:
-    int _TABLE_LTP[3*TAU_X_TRACE_E];
-    int _TABLE_LTD[3*TAU_Y1_TRACE_E];
+  std::vector<int> _TABLE_LTP;
+  std::vector<int> _TABLE_LTD;
 #else
-    double _TABLE_LTP[3*TAU_X_TRACE_E];
-    double _TABLE_LTD[3*TAU_Y1_TRACE_E];
+  std::vector<double> _TABLE_LTP;
+  std::vector<double> _TABLE_LTD;
 #endif
     void _init_lookup_table();
 public:
@@ -121,6 +119,8 @@ public:
   bool IsReadoutSyn();
   //* Determine whether or not the synapse is the input synapse:
   bool IsInputSyn();
+  //* Determine whether or not the synapse is valid (connected to no deactivated neurons)
+  bool IsValid();
 
   //* Get the synaptic weights:
   double Weight(){ return _lsm_weight;}
@@ -129,6 +129,9 @@ public:
   //* Set the synaptic weights:
   void Weight(int weight){_D_lsm_weight = weight;}
   void Weight(double weight){_lsm_weight = weight;}
+
+  // * Truncate the intermediate weights
+  bool TruncIntermWeight();
 
   Neuron * PreNeuron();
   Neuron * PostNeuron();
@@ -155,7 +158,7 @@ public:
 
   void CheckReservoirWeightOutBound();
   void CheckReadoutWeightOutBound();
-
+  void RemapReservoirWeight();
 
 /* ONLY FOR STDP */
 
@@ -163,12 +166,16 @@ public:
   void LSMUpdate(int t);
   void LSMLiquidLearn(int t);
   void LSMLiquidHarewareLearn(int t);
+  void LSMLiquidSimpleLearn(int t);
   void PrintActivity(std::ofstream& f_out);
     
   void ExpDecay(int& var, const int time_c){
     if(var == 0) return;
+#if NUM_DEC_DIGIT_RESERVOIR_MEM < 10
+    var -= var/time_c;
+#else
     var -= (var/time_c == 0) ? (var > 0 ? 1 : -1) : var/time_c; 
-    
+#endif 
   }
 
   void SetPreSpikeT(int t){
@@ -273,8 +280,8 @@ public:
   template<class T>
   void StochasticSTDP(const T delta_w_pos, const T delta_w_neg){
 #ifdef DIGITAL
-      const int temp1 = one<<18;
-      const int temp2 = one<<(NUM_BIT_SYN_R-NBT_STD_SYN_R);
+      const int temp1 = one<<(NUM_DEC_DIGIT_RESERVOIR_MEM + 14);
+      const int temp2 = one<<(NUM_BIT_SYN_R-NBT_STD_SYN_R + 8);
       T temp_delta = delta_w_pos + delta_w_neg;
       if(_D_lsm_c > LSM_CAL_MID*unit){
 	  if((_D_lsm_c < (LSM_CAL_MID+3)*unit) &&  temp_delta > 0)
@@ -284,7 +291,7 @@ public:
               _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT))?1:0;
 #endif 
       }else{
-	  if((_D_lsm_c > (LSM_CAL_MID- 3)*unit) && temp_delta < 0)
+	  if((_D_lsm_c > (LSM_CAL_MID-3)*unit) && temp_delta < 0)
 #ifdef ADDITIVE_STDP
 	      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*temp2*LAMBDA))?1:0;
 #else

@@ -3,9 +3,11 @@
 
 #include <list>
 #include <vector>
+#include <set>
 #include <stdlib.h>
 #include "def.h"
 #include <cstdio>
+#include <fstream>
 
 class Neuron;
 class Synapse;
@@ -19,11 +21,12 @@ private:
   std::list<Neuron*> _allNeurons;
   std::list<Neuron*> _allExcitatoryNeurons;
   std::list<Neuron*> _allInhibitoryNeurons;
+  std::list<Neuron*> _inputNeurons;
+  std::list<Neuron*> _outputNeurons;
+  std::list<NeuronGroup*> _allReservoirs;
   std::list<Synapse*> _synapses;
   std::vector<Synapse*> _rsynapses;       
-  std::vector<Synapse*> _rosynapses;
-  std::list<Synapse*> _activeInputSyns;
-  std::list<Synapse*> _activeOutputSyns;
+  std::vector<Synapse*> _rosynapses;;
   std::list<Synapse*> _lsmActiveLearnSyns;
   std::list<Synapse*> _lsmActiveSyns;
   std::list<Synapse*> _lsmActiveReservoirLearnSyns;
@@ -53,6 +56,9 @@ public:
   bool CheckExistence(char *);
   void AddNeuron(char*,bool);
   void AddNeuronGroup(char*,int,bool);
+  void LSMDeleteNeuronGroup(char * name);
+  void InitializeInputLayer(int num_inputs, int num_connections);
+  void LSMAddLabelToReservoirs(const char * name, std::set<int> labels);
   void LSMAddNeuronGroup(char*,int,int,int);
   void LSMAddNeuronGroup(char*,char*,char*); //reservoir, path_info_neuron, path_info_synapse
   
@@ -70,7 +76,14 @@ public:
   void LSMPrintAllSyns(int);
   void LSMPrintAllLiquidSyns(int);
   void LSMPrintAllNeurons(int);
-  void LSMNextTimeStep(int,bool,int,FILE *,FILE *);
+
+  // Supporting functions for enhanced analysis
+  void LSMAdaptivePowerGating();
+  void LSMSumGatedNeurons();
+  void LSMHubDetection();
+
+  void LSMReservoirTraining(networkmode_t networkmode);
+  void LSMNextTimeStep(int t, bool train, int iteration, FILE* Foutp, FILE* fp, NeuronGroup* reservoir = NULL);
 
   Neuron * SearchForNeuron(const char*);
   Neuron * SearchForNeuron(const char*, const char*);
@@ -80,8 +93,29 @@ public:
 
   // for LSM
   void AddSpeech(Speech*);
-  int LoadFirstSpeech(bool,networkmode_t);
-  int LoadNextSpeech(bool,networkmode_t);
+  void LoadSpeeches(Speech      * sp_iter, 
+		    NeuronGroup * input,
+		    NeuronGroup * reservoir,
+		    NeuronGroup * output,
+		    neuronmode_t neuronmode_input,
+		    neuronmode_t neuronmode_reservoir,
+		    bool train,
+		    bool ignore_reservoir
+		    );
+  void LoadSpeechToAllReservoirs(Speech *sp, neuronmode_t neuronmode_reservoir);
+  void LSMNetworkRemoveSpeech();
+  void LSMLoadLayers(NeuronGroup * reservoir_group);
+  void DetermineNetworkNeuronMode(const networkmode_t &, neuronmode_t &, neuronmode_t &);
+
+  int LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup* group = NULL);
+  int LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup* group, bool inputExist);
+  int LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup* group = NULL);
+  int LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup* group, bool inputExist);
+  int LoadFirstSpeechTrainCV(networkmode_t);
+  int LoadNextSpeechTrainCV(networkmode_t);
+  int LoadFirstSpeechTestCV(networkmode_t);
+  int LoadNextSpeechTestCV(networkmode_t);
+
   int NumSpeech(){return _speeches.size();}
   void AnalogToSpike();
   void RateToSpike();
@@ -98,21 +132,27 @@ public:
 
   void CrossValidation(int);
   void Fold(int fold_ind){_fold_ind = fold_ind;}
-  int LoadFirstSpeechTrainCV(networkmode_t);
-  int LoadNextSpeechTrainCV(networkmode_t);
-  int LoadFirstSpeechTestCV(networkmode_t);
-  int LoadNextSpeechTestCV(networkmode_t);
-  
+
   void SpeechInfo();
   // print the spikes into the file
   void SpeechPrint(int info);
-  void DetermineNetworkNeuronMode(const networkmode_t &, neuronmode_t &, neuronmode_t &);
+  // print the spiking frequency into the file:
+  void SpeechSpikeFreq(const char * type, std::ofstream & f_out, std::ofstream & f_label);
+
+  
+  // supporting functions:
+  // this first parameter is used to indicate which neurongroup does the syn belongs to.
+  void DetermineSynType(const char * syn_type, synapsetype_t & ret_syn_type, const char * func_name);
   void WriteSynWeightsToFile(const char * syn_type, char * filename);
   void LoadSynWeightsFromFile(const char * syn_type, char * filename);
   void WriteSynActivityToFile(char * pre_name, char * post_name, char * filename);
+  void DestroyReservoirConn(NeuronGroup * reservoir);
+  void TruncateIntermSyns(const char * syn_type);
+  void VisualizeReservoirSyns(int indicator);
 
- template<class T>
- void LSMAddSynapse(Neuron * pre, Neuron * post, T weight, bool fixed, T weight_limit,bool liquid){
+
+  template<class T>
+  void LSMAddSynapse(Neuron * pre, Neuron * post, T weight, bool fixed, T weight_limit,bool liquid, NeuronGroup * group = NULL){
     Synapse * synapse = new Synapse(pre, post, weight, fixed, weight_limit, pre->IsExcitatory(),liquid);
     _synapses.push_back(synapse);
     // push back the reservoir and readout synapses into the vector:
@@ -121,6 +161,7 @@ public:
     if(synapse->IsReadoutSyn())
       _rosynapses.push_back(synapse);
 
+    if(group)  group->AddSynapse(synapse);
     pre->AddPostSyn(synapse);
     post->AddPreSyn(synapse);	
   } 

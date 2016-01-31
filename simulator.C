@@ -69,6 +69,20 @@ void Simulator::LSMRun(long tid){
   y = _network->LSMSizeAllNeurons();
   temp = ((double)y)/((double)x);
   cout<<"x = "<<x<<"y = "<<y<<"\t"<<"Lost rate: "<<temp<<"\t"<<"Desired loss rate: "<<LOST_RATE<<endl; */
+  
+  // clear the connections in the reservoir and then reconstruct the connections:
+  //_network->DestroyReservoirConn(NULL);
+  //_network->ReconstructReservoirConn("r_weights_info.txt");
+  //sprintf(filename, "reservoir_weights_%ld_org.txt", tid);
+  //_network->WriteSynWeightsToFile("reservoir",filename);
+  //assert(0);
+  // visualize the reservoir synapses before stdp training:
+  // _network->VisualizeReservoirSyns(0);
+
+
+  // detect total number of hubs in the reservoir BEFORE stdp training:
+  //cout<<"Before STDP training:"<<endl;
+  //_network->LSMHubDetection();
 
 #if NUM_THREADS == 1
   sprintf(filename, "reservoir_weights_%ld_org.txt", tid);
@@ -92,69 +106,35 @@ void Simulator::LSMRun(long tid){
 
   gettimeofday(&val1, &zone);
   // repeatedly training the reservoir for a certain amount of iterations:
-  for(int i = 0; i < 1; ++i){
-    _network->LSMClearSignals();
-    // no training of the readout synapses happens during this stage:
-    info = _network->LoadFirstSpeech(false, networkmode);
-    while(info != -1){
-#if NUM_THREADS == 1
-      sprintf(filename,"results/spikepattern%d.dat", info);
-      Fp = fopen(filename, "w");
-      assert(Fp != NULL);
-#endif
-      Foutp = NULL;
-      int time = 0;
-      cout<<"Speech : "<<info<<endl;
-      while(!_network->LSMEndOfSpeech(networkmode)){
-        _network->LSMNextTimeStep(++time, false, 1, NULL, Fp);
-      }
-#if NUM_THREADS == 1
-      fclose(Fp);
-#ifdef _PRINT_SYN_ACT
-      PrintSynAct(info);
-#endif
-#endif
-      // print the speech information into file:
-      //_network->SpeechPrint(info);
-      _network->LSMClearSignals();
-      info = _network->LoadNextSpeech(false, networkmode);
-    }
+  for(int i = 0; i < 0; ++i){
+      _network->LSMReservoirTraining(networkmode);
+
 #if NUM_THREADS == 1  
-  // Write the weight back to file after training the reservoir with STDP:
-   sprintf(filename, "reservoir_weights_%d.txt", i);
-   _network->WriteSynWeightsToFile("reservoir",filename);
+      // Write the weight back to file after training the reservoir with STDP:
+      sprintf(filename, "reservoir_weights_%d.txt", i);
+      _network->WriteSynWeightsToFile("reservoir",filename);
 #endif       
 
   }
+  // visualize the reservoir synapses after stdo training:
+  //_network->VisualizeReservoirSyns(1);
+
+
+  // detect total number of hubs in the reservoir AFTER stdp training:
+  //cout<<"After STDP training:"<<endl;
+  //_network->LSMHubDetection();
+
+#ifdef ADAPTIVE_POWER_GATING
+  // apply the power gating scheme to turn off some neurons with low connectivity
+  _network->LSMAdaptivePowerGating(); 
+  // retrain the network for few echos:
+  for(int i = 0; i < 5; ++i)
+      _network->LSMReservoirTraining(networkmode);
+#endif
+  _network->LSMSumGatedNeurons();
   gettimeofday(&val2, &zone);
   cout<<"Total time spent in training the reservoir: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
-  /*
-  cout<<"Print speech response into the file. Load the Transient mode! "<<endl;
-  
-  networkmode = TRANSIENTSTATE;
-  _network->LSMSetNetworkMode(networkmode);
 
-  count = 0;
-  _network->LSMClearSignals();
-  info = _network->LoadFirstSpeech(false, networkmode);
-  while(info != -1){
-    Fp = NULL;
-    Foutp = NULL;
-    count++;
-    int time = 0;
-    while(!_network->LSMEndOfSpeech(networkmode)){
-      _network->LSMNextTimeStep(++time,false,1,NULL,NULL);
-    }
-//cout<<"Speech "<<count<<endl;
-//_network->SpeechInfo();
-    _network->SpeechPrint(info);
-    _network->LSMClearSignals();
-    info = _network->LoadNextSpeech(false, networkmode);
-  }
-  
-
-  assert(0);
-  */
   // Write the weight back to file after training the reservoir with STDP:
   if(tid == 0){
     sprintf(filename, "r_weights_info.txt");
@@ -162,10 +142,21 @@ void Simulator::LSMRun(long tid){
   }
   
   // Load the weight from file:
-  sprintf(filename, "r_weights_info.txt");
+  sprintf(filename, "r_weights_info_best.txt");
   //_network->LoadSynWeightsFromFile("reservoir", filename);
-  assert(0);
 #endif  
+
+  ////////////////////////////////////////////////////////////////////////
+  // REMEMBER TO REMOVE THESE CODES!!
+  // sprintf(filename, "r_weights_info_best.txt");
+  // _network->LoadSynWeightsFromFile("reservoir", filename);
+  // _network->TruncateIntermSyns("reservoir");
+  // sprintf(filename, "r_weights_info_best_tmp.txt");
+  // _network->WriteSynWeightsToFile("reservoir", filename);
+  //ofstream f1("spike_freq.txt"), f2("spike_speech_label.txt");
+  //assert(f1.is_open() && f2.is_open());
+  ////////////////////////////////////////////////////////////////////////
+
   // produce transient state
   networkmode = TRANSIENTSTATE;
   _network->LSMSetNetworkMode(networkmode);
@@ -181,12 +172,20 @@ void Simulator::LSMRun(long tid){
     while(!_network->LSMEndOfSpeech(networkmode)){
       _network->LSMNextTimeStep(++time,false,1,NULL,NULL);
     }
-//cout<<"Speech "<<count<<endl;
-//_network->SpeechInfo();
+    //cout<<"Speech "<<count<<endl;
     _network->SpeechPrint(info);
+    // print the firing frequency into the file:
+    //_network->SpeechSpikeFreq("input", f1, f2);
     _network->LSMClearSignals();
     info = _network->LoadNextSpeech(false, networkmode);
   }
+  ///////////////////////////////////////////////////////////////////////////////
+  // REMEMBER TO REMOVE THESE CODES!
+  //_network->LSMSumGatedNeurons();
+  // f2<<endl;
+  // f1.close(); f2.close();
+  assert(0);
+  //////////////////////////////////////////////////////////////////////////////
 
   // train the readout layer
   networkmode = READOUT;

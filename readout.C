@@ -126,11 +126,18 @@ void Readout::LoadData(char * filename){ //Load the data from the file of speech
 	multidata1.clear();
 	multidata2.clear();
 	int neuron_index, time_f;
+	int count = 1;
 	while(f_in>>neuron_index>>time_f){
+	    if(!(neuron_index >= -1 && neuron_index <= 25)){
+		cout<<neuron_index<<"\t"<<time_f<<"\t"<<count<<endl;
+		cout<<"The neuron index is possily out of bound!\n Exit!"<<endl;
+		exit(EXIT_FAILURE);
+	    }
 
-		assert(neuron_index >= -1 && neuron_index <= 25);
-		multidata1.push_back(neuron_index);
-		multidata2.push_back(time_f);
+	    assert(neuron_index >= -1 && neuron_index <= 25);
+	    multidata1.push_back(neuron_index);
+	    multidata2.push_back(time_f);
+	    count++;
 	}
 	f_in.close();
 } 
@@ -174,6 +181,11 @@ void Readout::Multireadout(){ // The main part of this code.
 
 	vector<int> v_temp = FindVal(multidata1,-1);
 	num_iteration = v_temp.size()-1; // Determine the number of iterations
+	if(num_iteration > 500){
+	    cout<<"Warning, the total number of detected iterations is"<<num_iteration<<endl;
+	    cout<<"If you have more than 500 readout training iteration is okay.\n"
+		<<"If not, please make sure that file: "<<filename<<" is not corrupted."<<endl;
+	}
 
 	vector<int> rates(num_iteration,0);  //Vector storing recognition rates
 	vector<int> errors(num_iteration,0); 
@@ -185,16 +197,17 @@ void Readout::Multireadout(){ // The main part of this code.
 		char file[128];
 		sprintf(file,"outputs/spikepattern%d.dat",i);
 		LoadData(file);
+
 		indices = FindVal(multidata1,-1);
 		int realclass = refer[i % refer.size()];
 		
 		static vector<int> data1; //Vector storing the raw results (column 1)
 		static vector<int> data2; //Vector storing the raw results (column 2)
-
-		static vector<int> counts1; // Implement two decision points here
-		static vector<int> counts2; // vector to count the firing activity
-
-		static vector<int> counts;
+		// Implement two decision points here:
+		static vector<int> counts1(refer.size(), 0); 
+		static vector<int> counts2(refer.size(), 0); 
+		// vector to count the firing activity
+		static vector<int> counts(refer.size(), 0);
 
 		
 		// Inner loop: Examine the results for each iteration
@@ -202,8 +215,16 @@ void Readout::Multireadout(){ // The main part of this code.
 		{
 			int down_limit = indices[iter]+1;
 			int up_limit = indices[iter+1];
+			if(down_limit - 1 >= multidata1.size() || up_limit >= multidata1.size()){
+			    cout<<"Access of the vector multidata1 is out of its original range!!!"<<endl;
+			    cout<<"The outputs/*.dat is possibly corrputed.\n"
+				<<"up_limit: "<<up_limit<<"\tdown_limit: "<<down_limit
+				<<"\tmultidata1.size():"<<multidata1.size()<<endl;
+			    cout<<"Exit!"<<endl;
+			    exit(EXIT_FAILURE);
+			    
+			}
 			assert(multidata1[down_limit - 1] == -1 && multidata1[up_limit] == -1);
-
 
 
 			// Extract the result for each iteration
@@ -218,33 +239,32 @@ void Readout::Multireadout(){ // The main part of this code.
 				continue;
 			}
 
-			for (int j = 0; j < refer.size(); ++j){
-				counts1.push_back(0);
-				counts2.push_back(0);
-				counts.push_back(0);
-			}
-
 			// Read the results 
 			
 			int data_max = *max_element(data2.begin(),data2.end());
 			// cout<<data_max<<endl;
+			int max_d = *max_element(refer.begin(),refer.end());
 			for (int k = 0; k < data1.size(); ++k){
-				if(data2[k] <= data_max/2){
-					assert(data1[k] <= *max_element(refer.begin(),refer.end()) && data1[k] >= 0);
-					++counts1[data1[k]];
-				}
-				else if(data2[k] > data_max/2){
-					assert(data1[k] <= *max_element(refer.begin(),refer.end()) && data1[k] >= 0);
-					++counts2[data1[k]];
-				}
-				else 
-					assert(0);
+			    if(!(data1[k] <= max_d && data1[k] >= 0)){
+				cout<<"The data: "<<data1[k]<<" is not in the defined range of the class labels! \n"
+				    <<"You are reading file: "<<file<<" which is corrupted\nExit!"<<endl;
+				exit(EXIT_FAILURE);
+			    }
+
+			    if(data2[k] <= data_max/2){
+				++counts1[data1[k]];
+			    }
+			    else if(data2[k] > data_max/2){
+				++counts2[data1[k]];
+			    }
+			    else 
+				assert(0);
 			}
 
 
 			for (int k = 0; k < refer.size(); ++k)
 			{
-				counts[k] = counts1[k] + counts2[k];  // Ratio 1:1
+				counts[k] = 2*counts1[k] + counts2[k];  // Ratio 1:1
 			}
 
 			int classified = distance(counts.begin(),max_element(counts.begin(),counts.end()));
@@ -265,9 +285,9 @@ void Readout::Multireadout(){ // The main part of this code.
 				ties[iter]++;
 			}
 
-			counts.clear();  // Clear the vectors
-			counts1.clear();
-			counts2.clear();
+			counts = vector<int>(refer.size(), 0);  // Clear the vectors
+			counts1 = vector<int>(refer.size(), 0);
+			counts2 = vector<int>(refer.size(), 0);
 			data1.clear();
 			data2.clear();
 		}

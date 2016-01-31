@@ -1,8 +1,9 @@
 #ifndef SPEECH
 #define SPEECH
 
-#include<vector>
-#include"def.h"
+#include <vector>
+#include <fstream>
+#include "def.h"
 
 class Channel;
 
@@ -33,7 +34,9 @@ public:
   int NumConnections(){return _input_connections;}
 
   void Info();
-  void PrintSpikes(int);
+  void PrintSpikes(int info);
+  int PrintSpikeFreq(const char * type, std::ofstream & f_out);
+  void SpikeFreq(std::ofstream & f_out, const std::vector<Channel*> & channels);
 };
 
 #endif

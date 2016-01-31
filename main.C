@@ -68,11 +68,25 @@ int main(int argc, char * argv[]){
   for(i = 0; i < NUM_THREADS; i++){
     Parser parser(&array_network[i]);
 #if _IMAGE == 1
-    parser.Parse("netlist/netlist_MNIST.txt");
+#if _MNIST == 1
+    parser.Parse("netlist/netlist_MNIST.txt"); // For mnist
+#elif _TRAFFIC == 1
+    parser.Parse("netlist/netlist_TrafficSign.txt"); // For traffic sign
 #else
-    parser.Parse("netlist/netlist_new.txt");
-    //parser.Parse("netlist/netlist_brain_new.txt");
+    assert(0);
 #endif
+#elif _SPEECH == 1
+#if _LETTER == 1
+    parser.Parse("netlist/netlist_new.txt"); // For English spoken letters
+#elif _DIGIT == 1
+    parser.Parse("netlist/netlist.txt"); // For spoken digits
+#else
+    assert(0);
+#endif
+#else
+    assert(0);
+#endif
+
 #ifdef CV
     array_network[i].CrossValidation(NFOLD);
 #endif
