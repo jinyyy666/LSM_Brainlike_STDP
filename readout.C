@@ -244,7 +244,7 @@ void Readout::Multireadout(){ // The main part of this code.
 
 			for (int k = 0; k < refer.size(); ++k)
 			{
-				counts[k] = counts1[k] + counts2[k];  // Ratio 1:1
+				counts[k] = 2*counts1[k] + counts2[k];  // Ratio 1:1
 			}
 
 			int classified = distance(counts.begin(),max_element(counts.begin(),counts.end()));

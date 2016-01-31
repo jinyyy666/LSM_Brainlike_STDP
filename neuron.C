@@ -26,7 +26,7 @@ extern double TSstrength;
 
 /** unit defined for digital system but not used in continuous model **/
 extern const int one = 1;
-extern const int unit = (one<<NUM_DEC_DIGIT);
+extern const int unit = (one<<NUM_DEC_DIGIT_CALCIUM);
 
 
 // ONLY FOR RESERVOIR
@@ -69,7 +69,8 @@ _D_lsm_v_readout_min(-1),
 _t_next_spike(-1),
 _network(network),
 _Unit(one<<NUM_DEC_DIGIT_RESERVOIR_MEM),
-_teacherSignal(0)
+_teacherSignal(0),
+_ind(-1)
 {
   _D_lsm_v_thresh = _Unit*LSM_V_THRESH;
 
@@ -120,7 +121,8 @@ _D_lsm_v_readout_min(-(one<<(NUM_BIT_READOUT_MEM-1))),
 _t_next_spike(-1),
 _network(network),
 _Unit(one<<NUM_DEC_DIGIT_READOUT_MEM),
-_teacherSignal(-1)
+_teacherSignal(-1),
+_ind(-1)
 {
   _D_lsm_v_thresh = _Unit*LSM_V_THRESH;
 
@@ -184,6 +186,103 @@ inline void Neuron::PrintMembranePotential(){
 #endif
 }
 
+//********************************************************************************
+//
+// This function is to perform power gating for each individual neuron
+// If the total weight sum of in-degree reservoir-reservoir connection is <= INDEC_LIMIT
+// and the total weight sum of out-degree reservoir-reservoir connection is <= OUTDEC_LIMIT
+// then deactivate this neuron.
+// @return boolean value indicate whether or not this neuron is deactivated
+//
+//*******************************************************************************
+bool Neuron::PowerGating(){
+    int sum_in = 0, sum_out = 0;
+    // look at input synapses:
+    for(list<Synapse*>::iterator it = _inputSyns.begin(); it != _inputSyns.end(); ++it){
+	if((*it)->IsLiquidSyn()){
+#ifdef DIGITAL
+	    sum_in += abs((*it)->DWeight());
+#else
+	    sum_in += fabs((*it)->Weight());
+#endif
+	}
+    }
+    
+    // look at output synapses:
+    for(list<Synapse*>::iterator it = _outputSyns.begin(); it != _outputSyns.end(); ++it){
+	if((*it)->IsLiquidSyn()){
+#ifdef DIGITAL
+	    sum_out += abs((*it)->DWeight());
+#else
+	    sum_out += fabs((*it)->Weight());
+#endif
+	}
+    }
+    
+    assert(sum_in >= 0 && sum_out >= 0);
+    
+    if(sum_in <= INDEG_LIMIT && sum_out <= OUTDEG_LIMIT){
+	_mode = DEACTIVATED;
+	cout<<"The neuron gated: "<<_name<<endl;
+	return true;
+    }
+    else
+	return false;
+}
+
+//********************************************************************************
+//
+// This function is to determine whether or not this neuron is the core of the hub
+// @return: a boolean value to indicate whether or not the node is the head of hub
+// #example: 1->2 1->3 1->4 2->1 3->1 4->1 ------ this is a hub and 1 is the root
+//           and 2, 3, 4 are the children
+//
+//*******************************************************************************
+bool Neuron::IsHubRoot(){
+    if(_mode == DEACTIVATED)  return false;
+    // check all its outgoing synapses:
+    int cnt = 0;
+    for(list<Synapse*>::iterator it = _outputSyns.begin(); it != _outputSyns.end(); ++it){
+	if((*it)->IsLiquidSyn() && (*it)->PostNeuron()->IsHubChild(_name)){
+#ifdef DIGITAL
+	    if((*it)->DWeight() != 0)
+#else
+	    if((*it)->Weight() != 0.0)
+#endif
+		cnt++;
+	}
+    }
+    if(cnt >= 3)
+	return true;
+    else
+	return false;
+}
+
+//********************************************************************************
+//
+// This function is to determine whether or not this neuron is the child of the hub
+// @return: a boolean value to indicate whether or not the node is the child of hub
+// #example: 1->2 1->3 1->4 2->1 3->1 4->1 ------ this is a hub and 1 is the root
+//           and 2, 3, 4 are the children
+//
+//*******************************************************************************
+bool Neuron::IsHubChild(const char * name){
+    if(_mode == DEACTIVATED)  return false;
+    assert(name && name[0] == 'r' && name[9] == '_');
+    // check all its outgoing synapses:
+    for(list<Synapse*>::iterator it = _outputSyns.begin(); it != _outputSyns.end(); ++it){
+	// note that we need to ignore the self-connection when counting the hubs:
+	if((*it)->IsLiquidSyn() && strcmp(name, (*it)->PostNeuron()->Name()) == 0 && strcmp(name, _name) != 0)
+#ifdef DIGITAL
+	    if((*it)->DWeight() != 0)
+#else
+	    if((*it)->Weight() != 0.0)
+#endif
+		return true;
+    }
+    return false;
+}
+
 void Neuron::LSMClear(){
   _lsm_ref = 0;
 
@@ -209,10 +308,27 @@ void Neuron::LSMClear(){
   _D_lsm_state_IN = 0;
 }
 
-
+//* function wrapper for ExpDecay:
+//****** IMPORTANT: Under the low resolution settings, you should not do 
+//******            decrease/increase if the abs(var) is less than time const!!
+//******            Because if you do so, the changing rate of EP/IP and EN/IN
+//******            will be the same and there will be no second order response.
 inline void Neuron::ExpDecay(int& var, const int time_c){
     if(var == 0) return;
-    var -= (var/time_c == 0) ? (var > 0 ? 1 : -1) : var/time_c;
+    if(_name[0] == 'r' && _name[9] == '_'){
+#if NUM_DEC_DIGIT_RESERVOIR_MEM < 10
+	var -= var/time_c;
+#else
+	var -= (var/time_c == 0) ? (var > 0 ? 1 : -1) : var/time_c;
+#endif
+    }
+    else{
+#if NUM_DEC_DIGIT_READOUT_MEM < 10
+	var -= var/time_c;
+#else
+	var -= (var/time_c == 0) ? (var > 0 ? 1 : -1) : var/time_c;
+#endif
+    }
 #ifndef DIGITAL
   assert(0);
 #endif
@@ -223,6 +339,12 @@ inline void Neuron::ExpDecay(double & var, const int time_c){
 #ifdef DIGITAL
   assert(0);
 #endif
+}
+
+//* this is the function wrapper for bound the variable given certain resolution setting
+inline void Neuron::BoundVariable(int& var, const int v_min, const int v_max){
+    if(var <= v_min) var = v_min;
+    if(var >= v_max) var = v_max;
 }
 
 /** collect the synaptic response and accumulate them **/
@@ -259,6 +381,23 @@ inline void Neuron::DAccumulateSynapticResponse(const int pos, int value, const 
   assert(0);
 #endif
 
+#ifdef SYN_ORDER_2
+  if(pos > 0){
+      _D_lsm_state_EP += value;
+      _D_lsm_state_EN += value; 
+  }
+  else{
+      _D_lsm_state_IP += value;
+      _D_lsm_state_IN += value;
+  }
+#else 
+  if(pos > 0){
+  if(c_num_dec_digit_mem > c_num_bit_syn - c_nbt_std_syn)
+      _D_lsm_state_EP += pos > 0 ? value : -1*value;    
+  else _D_lsm_state_EP += pos > 0 ? value : -1*value;
+#endif
+
+  /*
   // adopt my earlier code for tuning the resolution:
 #ifdef SYN_ORDER_2
   if(pos > 0){
@@ -287,7 +426,7 @@ inline void Neuron::DAccumulateSynapticResponse(const int pos, int value, const 
       _D_lsm_state_EP += pos > 0 ? (value<<(c_num_dec_digit_mem+c_nbt_std_syn-c_num_bit_syn)) : -1*(value>>(c_num_dec_digit_mem+c_nbt_std_syn-c_num_bit_syn));    
   else _D_lsm_state_EP += pos > 0 ? (value<<(c_num_bit_syn-c_nbt_std_syn-c_num_dec_digit_mem)) : -1*(value>>(c_num_bit_syn-c_nbt_std_syn-c_num_dec_digit_mem));
 #endif
-
+  */
 }
 
 /** Calculate the whole response together **/
@@ -325,40 +464,25 @@ inline int Neuron::DNOrderSynapticResponse(){
 
 //* this function calculate the vmem given the synaptic response
 //  I adopt my earlier work to enable resolution tuning 
-inline void Neuron::UpdateVmem(int & temp){
+inline void Neuron::UpdateVmem(int& temp,const int c_num_dec_digit_mem, const int c_nbt_std_syn, const int c_num_bit_syn){
+  if(c_num_dec_digit_mem > c_num_bit_syn - c_nbt_std_syn){
+      temp = temp<<(c_num_dec_digit_mem+c_nbt_std_syn-c_num_bit_syn);
+  }
+  else{
+      temp = temp>>(c_num_bit_syn-c_nbt_std_syn-c_num_dec_digit_mem);
+  } 
 
-    /*
-    if(_name[0] == 'r'){
-	// # bits for unit one defined in synapse system : NUM_BIT_SYN_R - NBT_STD_SYN_R
-#if NUM_BIT_SYN_R - NBT_STD_SYN_R > NUM_DEC_DIGIT_RESERVOIR_MEM
-	temp = temp>>(NUM_BIT_SYN_R - NBT_STD_SYN_R - NUM_DEC_DIGIT_RESERVOIR_MEM);
-#else
-        temp = temp<<(NUM_DEC_DIGIT_RESERVOIR_MEM - (NUM_BIT_SYN_R - NBT_STD_SYN_R));
-#endif
-    }
+  _D_lsm_v_mem += temp;
 
-    if(_name[0] == 'o'){
-#if NUM_BIT_SYN - NBT_STD_SYN > NUM_DEC_DIGIT_READOUT_MEM
-	temp = temp>>(NUM_BIT_SYN - NBT_STD_SYN - NUM_DEC_DIGIT_READOUT_MEM);
-#else
-        temp = temp<<(NUM_DEC_DIGIT_READOUT_MEM - (NUM_BIT_SYN - NBT_STD_SYN)); 
-#endif
-    }
-    */
-    _D_lsm_v_mem += temp;
+  if(_name[0] == 'r'){
+      assert(_D_lsm_v_readout_min == -1 && _D_lsm_v_readout_max == -1);
+      BoundVariable(_D_lsm_v_mem, _D_lsm_v_reservoir_min, _D_lsm_v_reservoir_max);  
+  }
 
-    if(_name[0] == 'r'){
-        assert(_D_lsm_v_readout_min == -1 && _D_lsm_v_readout_max == -1);
-	if(_D_lsm_v_mem <= _D_lsm_v_reservoir_min) _D_lsm_v_mem = _D_lsm_v_reservoir_min;
-	if(_D_lsm_v_mem >= _D_lsm_v_reservoir_max) _D_lsm_v_mem = _D_lsm_v_reservoir_max;
-    }
-
-    if(_name[0] == 'o'){
-        assert(_D_lsm_v_reservoir_min == -1 && _D_lsm_v_reservoir_max == -1);
-	if(_D_lsm_v_mem <= _D_lsm_v_readout_min) _D_lsm_v_mem = _D_lsm_v_readout_min;
-	if(_D_lsm_v_mem >= _D_lsm_v_readout_max) _D_lsm_v_mem = _D_lsm_v_readout_max;
-    }
-
+  if(_name[0] == 'o'){
+      assert(_D_lsm_v_reservoir_min == -1 && _D_lsm_v_reservoir_max == -1);
+      BoundVariable(_D_lsm_v_mem, _D_lsm_v_readout_min, _D_lsm_v_readout_max);
+  }
 }
 
 /** Set the t_post of _inputSyns when the neuron fires and activate the syns **/
@@ -368,9 +492,10 @@ inline void Neuron::SetPostNeuronSpikeT(int time){
     
     // if the synapse is not yet active for STDP training
     // push it into the reservoir learning synapse list. 
-    // note that I do not train the input layer synapses using STDP at this stage
+    // 1.note that I do not train the input layer synapses using STDP at this stage
     // do not train readut synapses too
-    if((*iter)->GetActiveSTDPStatus() == false && (*iter)->IsInputSyn() == false && (*iter)->IsReadoutSyn() == false)
+    // 2.note that if the presynaptic neuron is deactivated, i will ignore the synapse!
+    if((*iter)->GetActiveSTDPStatus() == false && (*iter)->IsInputSyn() == false && (*iter)->IsReadoutSyn() == false && (*iter)->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false)
       (*iter)->LSMActivateReservoirSyns(_network);
   }
 }
@@ -378,6 +503,9 @@ inline void Neuron::SetPostNeuronSpikeT(int time){
 inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
 
   for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++){
+    // need to get rid of the deactivated neuron !
+    if((*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == true)  continue;
+
     (*iter)->LSMPreSpike(1);  
     (*iter)->SetPreSpikeT(time);
     
@@ -390,7 +518,8 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
 	(*iter)->LSMActivate(_network, true, train);
 
 	// remember to active this reservoir for STDP training
-	if((*iter)->GetActiveSTDPStatus() == false)
+	// note that if the postsynaptic is deactivated, I will ignore the synapse!
+	if((*iter)->GetActiveSTDPStatus() == false && (*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false)
 	  (*iter)->LSMActivateReservoirSyns(_network);	  
       }
     }
@@ -446,9 +575,9 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
 #endif
 
 #ifdef DIGITAL
-  if((_teacherSignal==1)&&(_D_lsm_calcium < (LSM_CAL_MID+1)*_Unit)){
+  if((_teacherSignal==1)&&(_D_lsm_calcium < (LSM_CAL_MID+1)*unit)){
     _D_lsm_v_mem += _D_lsm_v_thresh;
-  }else if((_teacherSignal==-1)&&(_D_lsm_calcium > (LSM_CAL_MID-1)*_Unit)){
+  }else if((_teacherSignal==-1)&&(_D_lsm_calcium > (LSM_CAL_MID-1)*unit)){
     _D_lsm_v_mem -= 3*_D_lsm_v_thresh/4;
   }
 #else
@@ -516,7 +645,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
     /*** this is for both reservoir, readout and input synaptic response : ***/
     if(value != 0){
 #ifdef DIGITAL
-	/*** retreat input and reservoir in the same way ***/
+	/*** treat input and reservoir in the same way ***/
 	if((*iter)->IsLiquidSyn()||(*iter)->IsInputSyn())
 	    DAccumulateSynapticResponse(pos,value,NUM_DEC_DIGIT_RESERVOIR_MEM,NBT_STD_SYN_R,NUM_BIT_SYN_R);
 	else
@@ -529,7 +658,13 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
   
 #ifdef DIGITAL
   int temp = DNOrderSynapticResponse();
-  UpdateVmem(temp); // adopt my earlier work to enable resolution tuning.
+  // adopt my earlier work to enable resolution tuning.
+  if(_name[0] == 'r' && _name[9] == '_'){
+      UpdateVmem(temp,NUM_DEC_DIGIT_RESERVOIR_MEM,NBT_STD_SYN_R,NUM_BIT_SYN_R);
+  }
+  else{
+      UpdateVmem(temp,NUM_DEC_DIGIT_READOUT_MEM,NBT_STD_SYN,NUM_BIT_SYN); 
+  }
   //_D_lsm_v_mem += temp;
 #else
   double temp = NOrderSynapticResponse();
@@ -561,7 +696,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
 
 #ifdef DIGITAL
   if(_D_lsm_v_mem > _D_lsm_v_thresh){  
-    _D_lsm_calcium += _Unit;
+    _D_lsm_calcium += unit;
 #else
   if(_lsm_v_mem > _lsm_v_thresh){
     _lsm_calcium += one;
@@ -672,6 +807,41 @@ void Neuron::LSMPrintLiquidSyns(FILE * fp){
   return;
 }
 
+
+list<Synapse*>* Neuron::LSMDisconnectNeuron(){
+  Neuron * pre;
+  Neuron * post;
+  if(_outputSyns.size() == 0){
+    cout<<"Warming! The neuron: "<<_name<<" has no output synapses! "<<endl;
+    return &_outputSyns;
+  }
+  for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++){
+    post = (*iter)->PostNeuron();
+    post->LSMDeleteInputSynapse(_name);  // Delete the pointer of targeted synapse from the inputSyns of the post-synaptic neuron!
+    //delete (*iter); // Free the memory
+  }
+  return &_outputSyns; // Return the output synapse of the deleted neuron. Handle memory realease in network.
+}
+
+// erase the ptr of the input syns given the name of the presynaptic neuron
+void Neuron::LSMDeleteInputSynapse(char * pre_name){
+  Neuron * pre;
+  for(list<Synapse*>::iterator iter = _inputSyns.begin(); iter != _inputSyns.end(); ){
+    pre = (*iter)->PreNeuron();
+    assert(pre != NULL);
+    //cout<<pre->Name()<<endl;
+    if(strcmp(pre->Name(),pre_name) == 0){
+#ifdef DEBUG
+      cout<<"The synapse from "<<pre_name<<" to "<<_name<<" has benn removed!"<<endl;
+#endif
+      iter = _inputSyns.erase(iter);
+      break;
+    }
+    else
+      iter++;	       
+  }
+}
+
 void Neuron::DeleteAllSyns(){
   _inputSyns.clear();
   _outputSyns.clear();
@@ -713,9 +883,11 @@ inline bool Neuron::GetStatus(){
 ///////////////////////////////////////////////////////////////////////////
 
 NeuronGroup::NeuronGroup(char * name, int num, Network * network):
-_lsm_coordinates(0)
+    _firstCalled(false),
+    _s_firstCalled(false),
+    _lsm_coordinates(0),
+    _network(network)
 {
-  _firstCalled = false;
   _name = new char[strlen(name)+2];
   strcpy(_name,name);
   _neurons.resize(num);
@@ -733,8 +905,9 @@ _lsm_coordinates(0)
 }
 
 NeuronGroup::NeuronGroup(char * name, char * path_neuron, char * path_synapse, Network * network):
-_network(network),
-_firstCalled(false)
+    _firstCalled(false),
+    _s_firstCalled(false),
+    _network(network)
 {
   bool excitatory;
   char ** token = new char*[64];
@@ -794,9 +967,9 @@ _firstCalled(false)
     weight_value = atoi(token[3]);
 //    cout<<"pre_i:\t"<<pre_i<<"\tpost_j:\t"<<post_j<<"\tweight:\t"<<weight_value<<endl;
 #ifdef DIGITAL
-    _network->LSMAddSynapse(_neurons[pre_i],_neurons[post_j],weight_value,true,8,true);
+    _network->LSMAddSynapse(_neurons[pre_i],_neurons[post_j],weight_value,true,8,true, this);
 #else
-    _network->LSMAddSynapse(_neurons[pre_i], _neurons[post_j], (double)weight_value, true, 8.0, true);
+    _network->LSMAddSynapse(_neurons[pre_i], _neurons[post_j], (double)weight_value, true, 8.0, true, this);
 #endif
     ++count;
   }
@@ -811,8 +984,9 @@ _firstCalled(false)
     
 
 NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * network):
-_network(network),
-_firstCalled(false)
+    _firstCalled(false),
+    _s_firstCalled(false),
+    _network(network)
 {
   int num = dim1*dim2*dim3;
   bool excitatory;
@@ -903,16 +1077,16 @@ _firstCalled(false)
 #ifdef DIGITAL_SYN_ORGINAL
         int stage = 0.6*factor/(one<<(NUM_BIT_SYN_R -1))+1;
         int val = round(a/stage)*1.00001;
-        _network->LSMAddSynapse(_neurons[i],_neurons[j],val*stage,true,8,true);
+        _network->LSMAddSynapse(_neurons[i],_neurons[j],val*stage,true,8,true, this);
 #elif LIQUID_SYN_MODIFICATION
 	int val = a;
-	_network->LSMAddSynapse(_neurons[i],_neurons[j],val,true,8,true); 
+	_network->LSMAddSynapse(_neurons[i],_neurons[j],val,true,8,true, this); 
 #else
 	assert(0);
 #endif
 #else
 	// this is for the continuous weight case:
-	_network->LSMAddSynapse(_neurons[i], _neurons[j],a, true, 8.0, true);
+	_network->LSMAddSynapse(_neurons[i], _neurons[j],a, true, 8.0, true, this);
 #endif
       }
     }
@@ -925,6 +1099,12 @@ _firstCalled(false)
 
 NeuronGroup::~NeuronGroup(){
   if(_name != NULL) delete [] _name;
+}
+
+// add the synapse (reservoir synapses) into the neurongroup:
+void NeuronGroup::AddSynapse(Synapse * synapse){
+    assert(synapse && !synapse->IsReadoutSyn()&& !synapse->IsInputSyn());
+    _synapses.push_back(synapse);
 }
 
 Neuron * NeuronGroup::First(){
@@ -946,6 +1126,26 @@ Neuron * NeuronGroup::Next(){
   }
 }
 
+Synapse * NeuronGroup::FirstSynapse(){
+  assert(_s_firstCalled == false);
+  _s_firstCalled = true;
+  _s_iter = _synapses.begin();
+  if(_s_iter != _synapses.end()) return (*_s_iter);
+  else return NULL;
+}
+
+Synapse * NeuronGroup::NextSynapse(){
+  assert(_s_firstCalled == true);
+  if(_s_iter == _synapses.end()) return NULL;
+  _s_iter++;
+  if(_s_iter != _synapses.end()) return (*_s_iter);
+  else{
+    _s_firstCalled = false;
+    return NULL;
+  }
+}
+
+
 Neuron * NeuronGroup::Order(int index){
   assert((index >= 0)&&(index < _neurons.size()));
   return _neurons[index];
@@ -955,8 +1155,8 @@ void NeuronGroup::UnlockFirst(){
   _firstCalled = false;
 }
 
-char * NeuronGroup::Name(){
-  return _name;
+void NeuronGroup::UnlockFirstSynapse(){
+  _s_firstCalled = false;     
 }
 
 void NeuronGroup::PrintTeacherSignal(){
@@ -969,7 +1169,7 @@ void NeuronGroup::PrintMembranePotential(double t){
   cout<<endl;
 }
 
-
+//* this function is to load speech into the neuron group:
 //* channel mode can be INPUTCHANNEL or RESERVOIRCHANNEL, which is a way to tell the types of the neuron:
 void NeuronGroup::LSMLoadSpeech(Speech * speech, int * n_channel, neuronmode_t neuronmode, channelmode_t channelmode){
   if(_neurons.size() != speech->NumChannels(channelmode)){
@@ -977,10 +1177,38 @@ void NeuronGroup::LSMLoadSpeech(Speech * speech, int * n_channel, neuronmode_t n
     speech->SetNumReservoirChannel(_neurons.size());
   }
   *n_channel = speech->NumChannels(channelmode);
-  for(int i = 0; i < _neurons.size(); i++){
-    _neurons[i]->LSMSetChannel(speech->GetChannel(i,channelmode),channelmode);
-    _neurons[i]->LSMSetNeuronMode(neuronmode);
-  }
+  // assign the channel ptr to each neuron & set the neuron mode:
+  LSMSetNeurons(speech, neuronmode, channelmode, 0);
+}
+
+//* this function is to assign the channel ptr to each neuron in the neurongroup
+//* and also set the neuron mode
+//* the offset here is to help to add speeches to all reservoirs (for the separate resv)
+//* the offset simply indicates the offset of the channel index!!
+ void NeuronGroup::LSMSetNeurons(Speech * speech, neuronmode_t neuronmode, channelmode_t channelmode, int offset){
+     for(int i = 0; i < _neurons.size(); i++){
+	 // pass the non-null ptr to set the channel
+	 if(speech)
+	     _neurons[i]->LSMSetChannel(speech->GetChannel(i+offset,channelmode),channelmode);
+	 // set the neuron mode if the neuron is not previously deactivated:
+	 if(_neurons[i]->LSMCheckNeuronMode(DEACTIVATED) == false)
+	     _neurons[i]->LSMSetNeuronMode(neuronmode);
+	 
+     }
+}
+
+ //* index each neuron of the neurongroup within the neurongroup
+ //* here I consider the case of separated reservoirs:
+ void NeuronGroup::LSMIndexNeurons(int offset){
+     // index the valid neuorns:
+     int ind = 0;
+     for(int i = 0; i < _neurons.size(); i++){
+	 if(_neurons[i]->LSMCheckNeuronMode(DEACTIVATED) == false &&
+	    _neurons[i]->Index() == -1){
+	     _neurons[i]->Index(ind+offset);
+	     ind++;
+	 }
+     }
 }
 
 void NeuronGroup::LSMRemoveSpeech(){

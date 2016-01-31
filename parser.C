@@ -5,11 +5,14 @@
 #include "network.h"
 #include "speech.h"
 #include "channel.h"
-#include <stdlib.h>
+#include <cstdlib>
 #include <iostream>
-#include <stdio.h>
+#include <vector>
+#include <set>
+#include <cstdio>
+#include <cctype>
+#include <cstring>
 #include <assert.h>
-#include <string.h>
 
 using namespace std;
 
@@ -75,6 +78,27 @@ void Parser::Parse(const char * filename){
 
       assert(_network->CheckExistence(token[1]) == false);
       _network->LSMAddNeuronGroup(token[1],token[2],token[3]);
+    }else if(strcmp(token[0],"labels") == 0){
+      // add the labels into reservoir for separating reservoir
+	token[1] = strtok(NULL," \t\n");
+	assert(token[1] != NULL);
+	token[2] = strtok(NULL," \t\n");
+	assert(token[2] != NULL);
+	int num_labels = atoi(token[2]); // total number of labels is specified by 3rd 
+	assert(num_labels != 0);
+	
+	set<int> s;
+	// parsing the labels:
+	int i=0;
+	for(; i < num_labels; ++i){
+	    token[i+3] = strtok(NULL," \t\n");
+	    assert(token[i+3] != NULL);
+	    assert(isdigit(token[i+3][0]) && atoi(token[i+3]) >= 0 && atoi(token[i+3]) < CLS);
+	    s.insert(atoi(token[i+3]));
+	}
+	assert(_network->CheckExistence(token[1]) == true);
+	_network->LSMAddLabelToReservoirs(token[1], s);
+   
     }else if(strcmp(token[0],"lsmsynapse")==0){
       token[1] = strtok(NULL," \t\n");
       assert(token[1] != NULL);

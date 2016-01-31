@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <iostream>
 #include <cstdio>
+#include <cstdlib>
 
 using namespace std;
 
@@ -31,10 +32,22 @@ void Speech::SetNumReservoirChannel(int size){
 
 Channel * Speech::GetChannel(int index, channelmode_t channelmode){
   if(channelmode == INPUTCHANNEL){
-    assert((index >= 0)&&(index < _channels.size()));
+    if(index < 0 && index >= _channels.size()){
+      cout<<"Invalid channel index: "<<index
+	  <<" seen in aquiring input channels!\n"
+	  <<"Total number of input channels: "<<_channels.size()
+	  <<endl;
+      exit(EXIT_FAILURE);
+    }
     return _channels[index];
   }else{
-    assert((index >= 0)&&(index < _rChannels.size()));
+    if(index < 0 && index >= _rChannels.size()){
+      cout<<"Invalid channel index: "<<index
+	  <<" seen in aquiring reservoir channels!\n"
+	  <<"Total number of reservoir channels: "<<_rChannels.size()
+	  <<endl;
+      exit(EXIT_FAILURE);
+    }
     return _rChannels[index];
   }
 }

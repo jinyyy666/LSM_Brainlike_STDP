@@ -2,13 +2,13 @@ TARGET = NeuromorphicSim
 
 CXX	= g++ 
 
-CXXFLAGS = -pthread  -O3 
+CXXFLAGS = -pthread  -O3  -std=c++11 -g
 
-HDRS=	channel.h speech.h neuron.h synapse.h network.h parser.h simulator.h pattern.h readout.h def.h
+HDRS=	channel.h speech.h neuron.h synapse.h network.h parser.h simulator.h readout.h def.h
 
-SRCS=	channel.C speech.C neuron.C synapse.C network.C parser.C simulator.C pattern.C readout.h main.C
+SRCS=	channel.C speech.C neuron.C synapse.C network.C parser.C simulator.C readout.h main.C
 
-OBJS=	channel.o speech.o neuron.o synapse.o network.o parser.o simulator.o pattern.o readout.o main.o
+OBJS=	channel.o speech.o neuron.o synapse.o network.o parser.o simulator.o readout.o main.o
 
 
 MATOBJS = \

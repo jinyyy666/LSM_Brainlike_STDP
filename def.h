@@ -25,7 +25,14 @@
 
 /* FOR LIQUID STATE MACHINE */
 // the control parameter to enable training the reservoir:
-//#define STDP_TRAINING_RESERVOIR
+#define STDP_TRAINING_RESERVOIR
+
+// the control variable to enable adaptive power gating:
+#define ADAPTIVE_POWER_GATING
+// the in/out degree criterior for gating one node:
+#define INDEG_LIMIT  1
+#define OUTDEG_LIMIT  1
+
 
 // damping factor for long-time potientation (under triplet case):
 // this value should be small (around 0.01) for multiplicative update!
@@ -33,8 +40,8 @@
 // shifting bits implementing the damping factor:
 #define DAMPING_BIT 2
 
-// learning rate for STDP:
-#define LAMBDA 0.002
+// learning rate for STDP (1/512):
+#define LAMBDA 0.00195  
 // shifting bits implementing learning rate for STDP:
 #define LAMBDA_BIT 12 // 12 for multi; 10 for additive
 
@@ -80,7 +87,7 @@
 //#define NEAREST_NEIGHBOR 1
 
 // control parameter for stochastic stdp, silimar to the abstract learning rule:
-//#define STOCHASTIC_STDP
+#define STOCHASTIC_STDP
 
 
 // contro parameter to study synaptic activity
@@ -101,10 +108,12 @@
 #define ITER_SEARCH_CONV 50
 //#define CLS 26
 #define CLS 26
-#define NUM_THREADS 5
+#define NUM_THREADS 1
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
+
+#define NUM_DEC_DIGIT_CALCIUM 6 
 
 #define NUM_DEC_DIGIT 10
 #define NBT_STD_SYN 4
@@ -113,16 +122,15 @@
 // change all to zero to achieve 6-bit vmem
 // need to change NUM_DEC_DIGIT_R and NUM_BIT_SYN_R together 
 // NUM_DEC_DIGIT_R and NUM_BIT_SYN_R defines the # of bits of r syn
-// Please always make sure the NUM_BIT_SYN_R is no less than NBT_STD_SYN_R
-#define NUM_DEC_DIGIT_R 6
+#define NUM_DEC_DIGIT_R 4
 #define NBT_STD_SYN_R 4
-#define NUM_BIT_SYN_R 6
+#define NUM_BIT_SYN_R 4
 
-#define NUM_BIT_READOUT_MEM 16
+#define NUM_BIT_READOUT_MEM 6
 #define NUM_BIT_RESERVOIR_MEM 6
 
 #define NUM_DEC_DIGIT_RESERVOIR_MEM 0  // Number of bits represent 'one' for V_mem in the Liquid
-#define NUM_DEC_DIGIT_READOUT_MEM 10   // Number of bits represent 'one' for V_mem in the readout
+#define NUM_DEC_DIGIT_READOUT_MEM 0   // Number of bits represent 'one' for V_mem in the readout
 				   
 
 #define LOST_RATE 0.0
@@ -136,6 +144,7 @@
 
 #define CV
 #define NFOLD 5
+
 
 enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL};
 enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,NORMAL};

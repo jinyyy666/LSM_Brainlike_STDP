@@ -1,10 +1,11 @@
 #ifndef NEURON_H
 #define NEURON_H
 
-#include<list>
-#include<vector>
-#include"def.h"
-#include<cstdio>
+#include <list>
+#include <vector>
+#include <set>
+#include "def.h"
+#include <cstdio>
 
 class Synapse;
 class Network;
@@ -24,6 +25,7 @@ private:
   int _indexInGroup;
   bool _del;
   Network * _network;
+  int _ind;
 
 /* FOR LIQUID STATE MACHINE */
   double _lsm_v_mem;
@@ -75,6 +77,12 @@ public:
 
   void LSMPrintInputSyns();
 
+  // set the neuron index under the separated reservoir cases:
+  void Index(int ind){_ind = ind;}
+  
+  // return the index of the neuron under the separated reservoir
+  int Index(){return _ind;}
+
   void SetIndexInGroup(int index){_indexInGroup = index;}
   int IndexInGroup(){return _indexInGroup;}
   void SetTeacherSignal(int signal);
@@ -89,16 +97,21 @@ public:
   int DLSMGetCalciumPre(){return _D_lsm_calcium_pre;}
   void SetExcitatory(){_excitatory = true;}
   bool IsExcitatory(){return _excitatory;}
+
+  bool PowerGating();
+  bool IsHubRoot();
+  bool IsHubChild(const char * name);
   void LSMClear();
 
   /** Wrappers for clean code: **/
   void ExpDecay(int& var, const int time_c);
   void ExpDecay(double& var, const int time_c);
+  void BoundVariable(int& var, const int v_min, const int v_max);
   void AccumulateSynapticResponse(const int pos, double value);
   void DAccumulateSynapticResponse(const int pos, int value, const int c_num_dec_digit_mem,const int c_nbt_std_syn, const int c_num_bit_syn);
   double NOrderSynapticResponse();
   int DNOrderSynapticResponse();
-  void UpdateVmem(int & temp);
+  void UpdateVmem(int& temp, const int c_num_dec_digit_mem, const int c_nbt_std_syn, const int c_num_bit_syn);
   void SetPostNeuronSpikeT(int t);
   void HandleFiringActivity(bool isInput, int time, bool train);
 
@@ -106,10 +119,13 @@ public:
   void LSMSetChannel(Channel*,channelmode_t);
   void LSMRemoveChannel();
   void LSMSetNeuronMode(neuronmode_t neuronmode){_mode = neuronmode;}
+  bool LSMCheckNeuronMode(neuronmode_t neuronmode){return _mode == neuronmode;}
   void ResizeSyn();
   void LSMPrintOutputSyns(FILE*);
   void LSMPrintLiquidSyns(FILE*);
   int SizeOutputSyns(){return _outputSyns.size();} //Calculate # of output synapses for verfication
+  std::list<Synapse*> * LSMDisconnectNeuron();
+  void LSMDeleteInputSynapse(char* pre_name);
   void DeleteAllSyns();
   void DeleteBrokenSyns();
   bool GetStatus();
@@ -118,9 +134,13 @@ public:
 class NeuronGroup{
 private:
   char * _name;
+  std::vector<Synapse*> _synapses;
+  std::vector<Synapse*>::iterator _s_iter;
   std::vector<Neuron*> _neurons;
   std::vector<Neuron*>::iterator _iter;
+  std::set<int> _s_labels;
   bool _firstCalled;
+  bool _s_firstCalled;
 
   int ** _lsm_coordinates;
   Network * _network;
@@ -129,18 +149,31 @@ public:
   NeuronGroup(char*,int,int,int,Network*); // only for liquid state machine
   NeuronGroup(char*,char*,char*,Network*); // for brain-like structure
   ~NeuronGroup();
-  char * Name();
+
+  char * Name(){return _name;};
+
+  void AddSynapse(Synapse * synapse);
   Neuron * First();
   Neuron * Next();
+  Synapse * FirstSynapse();
+  Synapse * NextSynapse();
+
   Neuron * Order(int);
   void UnlockFirst();
+  void UnlockFirstSynapse();
+
   int Size(){return _neurons.size();}
+  void SubSpeechLabel(std::set<int> labels){_s_labels = labels;}
+  std::set<int> SubSpeechLabel(){return _s_labels;}
+  bool InSet(int num){return _s_labels.empty()? true: _s_labels.count(num)!=0;}
 
   void PrintTeacherSignal();
   void PrintMembranePotential(double);
   Network * GetNetwork(){return _network;}
 
   void LSMLoadSpeech(Speech*,int*,neuronmode_t,channelmode_t);
+  void LSMSetNeurons(Speech* speech, neuronmode_t neuronmode, channelmode_t channelmode, int offset);
+  void LSMIndexNeurons(int offset);
   void LSMRemoveSpeech();
   void LSMSetTeacherSignal(int);
   void LSMRemoveTeacherSignal(int);

@@ -27,6 +27,8 @@ void Channel::AddAnalog(double signal){
 void Channel::AddSpike(int spikeT){
   int size = _spikeT.size();
   if(size > 0){
+    if(spikeT <= _spikeT[size-1])
+      cout<<spikeT<<"\t"<<_spikeT[size-1]<<endl;
     assert(spikeT > _spikeT[size-1]);
   }else{
     assert(spikeT > 0);
@@ -49,7 +51,7 @@ int Channel::NextSpikeT(){
 void Channel::BSA(){
   int length_kernel = 24;
   int length_signal = (_analog.size()*_step_analog)/_step_spikeT + 24;
-  double threshold = 0.8;
+  double threshold = 0.6;
   double error1, error2, temp;
   double * kernel = new double[length_kernel];
   double * signal = new double[length_signal];
