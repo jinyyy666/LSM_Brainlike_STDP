@@ -54,6 +54,7 @@ private:
   int _lsm_delay;
 
   double _lsm_c;
+  double _lsm_weight_last;
   double _lsm_weight;
   double _lsm_weight_limit;
 

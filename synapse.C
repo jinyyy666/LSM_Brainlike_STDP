@@ -37,6 +37,7 @@ _lsm_spike(0),
 _D_lsm_spike(0),
 _lsm_delay(0),
 _lsm_c(0),
+_lsm_weight_last(lsm_weight),
 _lsm_weight(lsm_weight),
 _lsm_weight_limit(fabs(lsm_weight_limit)),
 _D_lsm_c(0),
@@ -88,6 +89,7 @@ _lsm_spike(0),
 _D_lsm_spike(0),
 _lsm_delay(0),
 _lsm_c(0),
+_lsm_weight_last(0),
 _lsm_weight(0),
 _lsm_weight_limit(0),
 _D_lsm_c(0),
@@ -320,7 +322,6 @@ void Synapse::LSMLearn(int iteration){
 //if(_lsm_c > 0) cout<<_lsm_c<<"\t"<<_pre->Name()<<"\t"<<_post->Name()<<"\t"<<_lsm_weight<<endl;
 #endif
 }
-
 
 //* Truncate the intermediate weights by setting the synaptic weight to zero.
 //* This is a handcrafting way to reduce design complexity and save energy
@@ -577,6 +578,7 @@ void Synapse::LSMLiquidLearn(int t){
     return; 
 
 
+#ifdef DIGITAL
   // if the close to hareware implementation is considered,
 #ifdef _HARDWARE_CODE
 #ifdef _SIMPLE_STDP
@@ -589,7 +591,7 @@ void Synapse::LSMLiquidLearn(int t){
 #endif
   return;
 #endif
-
+#endif
 
   /*
   if(_t_spike_pre == _t_spike_post)
