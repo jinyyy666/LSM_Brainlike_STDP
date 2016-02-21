@@ -1142,6 +1142,49 @@ void Network::DetermineSynType(const char * syn_type, synapsetype_t & ret_syn_ty
   } 
 }
 
+/***********************************************************************************
+ * This function is to implement the weight normalization used by Oja rule.
+ * Beacause of the usage of Hebbian learning rule, the weight saturation is possible.
+ * The normalization is helpful for Heb-learn. For more details, please see the wiki.
+ * @param1: the synapse type.
+ * Note: after normalization, the weight of each synapse should be within 0~1.
+ * This function should be called only for continuous weight and the w is changed !!
+ **********************************************************************************/
+void Network::NormalizeContinuousWeights(const char * syn_type){
+#ifdef DIGIAL
+    cout<<"You are using the code for digital mode but you call the normalization for "
+	<<"continuous weights!? Abort the problem"<<endl;
+    assert(0);
+#endif
+
+    synapsetype_t  tar_syn_type = INVALID;
+    DetermineSynType(syn_type, tar_syn_type, "NormalizeContinuousWeights()");
+    assert(tar_syn_type != INVALID);
+    vector<Synapse*> tmp;
+
+    vector<Synapse*> & synapses = tar_syn_type == RESERVOIR_SYN ? _rsynapses : 
+	(tar_syn_type == READOUT_SYN ? _rosynapses : tmp);
+    assert(!synapses.empty()); 
+
+    // right now the function should be run for reservoir synapses!
+    double g_sum = 0.0;
+    for(size_t i = 0; i < synapses.size(); ++i){
+	assert(synapses[i]);
+	double w = synapses[i]->Weight();
+	g_sum += w*w;
+    }
+
+    // normalize the weight:
+    assert(g_sum > 0);
+    g_sum = sqrt(g_sum);
+    for(size_t i = 0; i < synapses.size(); ++i){
+	// compute the normalized weight:
+	double new_w = synapses[i]->Weight()/g_sum;
+	// set the new weight:
+	synapses[i]->Weight(new_w);
+    }
+}
+
 //* This function is to write the synaptic weights back into a file:
 //* "syn_type" can be reservoir or readout
 void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
