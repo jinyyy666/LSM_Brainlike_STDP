@@ -280,13 +280,8 @@ public:
   template<class T>
   void StochasticSTDP(const T delta_w_pos, const T delta_w_neg){
 #ifdef DIGITAL
-<<<<<<< HEAD
       const int temp1 = one<<(NUM_DEC_DIGIT_RESERVOIR_MEM + 14);
       const int temp2 = one<<(NUM_BIT_SYN_R-NBT_STD_SYN_R + 8);
-=======
-      const int temp1 = one<<(NUM_DEC_DIGIT_RESERVOIR_MEM + 8);
-      const int temp2 = one<<(NUM_BIT_SYN_R-NBT_STD_SYN_R);
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
       T temp_delta = delta_w_pos + delta_w_neg;
       if(_D_lsm_c > LSM_CAL_MID*unit){
 	  if((_D_lsm_c < (LSM_CAL_MID+3)*unit) &&  temp_delta > 0)

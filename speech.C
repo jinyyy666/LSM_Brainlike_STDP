@@ -4,12 +4,10 @@
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
-<<<<<<< HEAD
 #include <cstring>
 #include <climits>
 #include <algorithm>
-=======
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
+
 
 using namespace std;
 

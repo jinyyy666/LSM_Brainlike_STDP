@@ -114,11 +114,7 @@ void Simulator::LSMRun(long tid){
 
   gettimeofday(&val1, &zone);
   // repeatedly training the reservoir for a certain amount of iterations:
-<<<<<<< HEAD
   for(int i = 0; i < 0; ++i){
-=======
-  for(int i = 0; i < 1; ++i){
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
       _network->LSMReservoirTraining(networkmode);
 
 #if NUM_THREADS == 1  
@@ -128,10 +124,9 @@ void Simulator::LSMRun(long tid){
 #endif       
 
   }
-<<<<<<< HEAD
   // visualize the reservoir synapses after stdo training:
   //_network->VisualizeReservoirSyns(1);
-=======
+
 
   ////////////////////////////////////////////////////////////////////////
   // REMEMBER TO REMOVE THESE CODES!!
@@ -139,15 +134,10 @@ void Simulator::LSMRun(long tid){
   //_network->LoadSynWeightsFromFile("reservoir", filename);
   ////////////////////////////////////////////////////////////////////////
 
-  // visualize the reservoir synapses after stdo training:
-  _network->VisualizeReservoirSyns(1);
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
-
 
   // detect total number of hubs in the reservoir AFTER stdp training:
   //cout<<"After STDP training:"<<endl;
   //_network->LSMHubDetection();
-<<<<<<< HEAD
 
 #ifdef ADAPTIVE_POWER_GATING
   // apply the power gating scheme to turn off some neurons with low connectivity
@@ -160,7 +150,6 @@ void Simulator::LSMRun(long tid){
   gettimeofday(&val2, &zone);
   cout<<"Total time spent in training the reservoir: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
 
-=======
 
   assert(0);
 
@@ -175,7 +164,6 @@ void Simulator::LSMRun(long tid){
   gettimeofday(&val2, &zone);
   cout<<"Total time spent in training the reservoir: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
 
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
   // Write the weight back to file after training the reservoir with STDP:
   if(tid == 0){
     sprintf(filename, "r_weights_info.txt");
@@ -213,27 +201,21 @@ void Simulator::LSMRun(long tid){
     while(!_network->LSMEndOfSpeech(networkmode)){
       _network->LSMNextTimeStep(++time,false,1,NULL,NULL);
     }
-<<<<<<< HEAD
+
     //cout<<"Speech "<<count<<endl;
     _network->SpeechPrint(info);
     // print the firing frequency into the file:
     //_network->SpeechSpikeFreq("input", f1, f2);
-=======
-//cout<<"Speech "<<count<<endl;
-//_network->SpeechInfo();
-    //_network->SpeechPrint(info);
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
+
     _network->LSMClearSignals();
     info = _network->LoadNextSpeech(false, networkmode);
   }
   ///////////////////////////////////////////////////////////////////////////////
   // REMEMBER TO REMOVE THESE CODES!
   //_network->LSMSumGatedNeurons();
-<<<<<<< HEAD
   // f2<<endl;
   // f1.close(); f2.close();
-=======
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
+
   assert(0);
   //////////////////////////////////////////////////////////////////////////////
 

@@ -470,15 +470,9 @@ inline void Neuron::UpdateVmem(int& temp,const int c_num_dec_digit_mem, const in
   else{
       temp = temp>>(c_num_bit_syn-c_nbt_std_syn-c_num_dec_digit_mem);
   } 
-<<<<<<< HEAD
 
   _D_lsm_v_mem += temp;
 
-=======
-
-  _D_lsm_v_mem += temp;
-
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
   if(_name[0] == 'r'){
       assert(_D_lsm_v_readout_min == -1 && _D_lsm_v_readout_max == -1);
       BoundVariable(_D_lsm_v_mem, _D_lsm_v_reservoir_min, _D_lsm_v_reservoir_max);  
@@ -847,7 +841,6 @@ void Neuron::LSMDeleteInputSynapse(char * pre_name){
   }
 }
 
-<<<<<<< HEAD
 
 //* This function is to delete all the in/out synapses starts with char 's'
 // @param1: the type : "in" or "out"; @param2: the start character
@@ -891,8 +884,6 @@ void Neuron::LSMDeleteInputSynapse(char * pre_name){
      f_out<<endl;
  }
 
-=======
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 void Neuron::DeleteAllSyns(){
   _inputSyns.clear();
   _outputSyns.clear();

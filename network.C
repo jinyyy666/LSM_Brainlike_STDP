@@ -809,7 +809,6 @@ int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup 
     neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL;
     // determine the neuron mode by the network mode:
     DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir); 
-<<<<<<< HEAD
 
     bool ignore_reservoir = networkmode == TRAINRESERVOIR ? true : false;
 
@@ -844,8 +843,6 @@ int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup 
     neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL;
     // determine the neuron mode by the network mode:
     DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir); 
-=======
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 
     bool ignore_reservoir = networkmode == TRAINRESERVOIR ? true : false;
 
@@ -858,43 +855,7 @@ int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup 
     }
 }
 
-<<<<<<< HEAD
-=======
-// this function is similar to the original LoadFirstSpeech. But it is only used for separation measurement.
-int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup * group, bool inputExist){
-    // if the input layer has not been added to the network, then add it.
-    // this can only happen for measuring the separation property:
-    if(!inputExist){
-      _sp_iter = _speeches.begin();
-      
-      if(_sp_iter != _speeches.end()){
-	// Add the input layer here!!!
-	InitializeInputLayer((*_sp_iter)->NumInputs(), (*_sp_iter)->NumConnections()); 
-      }
-      else{
-	cout<<"No speech parsed into the network!"<<endl;
-	return -1;
-      }
-    }
 
-    LSMLoadLayers(group);
-
-    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL;
-    // determine the neuron mode by the network mode:
-    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir); 
-
-    bool ignore_reservoir = networkmode == TRAINRESERVOIR ? true : false;
-
-    _sp_iter = _speeches.begin();
-    if(_sp_iter != _speeches.end()){
-	LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer,neuronmode_input, neuronmode_reservoir, train, ignore_reservoir);
-	return (*_sp_iter)->Index();
-    }else{
-	return -1;
-    }
-}
-
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 int Network::LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup * group){
     assert(_lsm_input_layer != NULL);
     assert(_lsm_reservoir_layer != NULL || _allReservoirs.size() > 1);
@@ -1162,7 +1123,6 @@ void Network::CrossValidation(int fold){
 
 void Network::IndexSpeech(){
   for(int i = 0; i < _speeches.size(); i++) _speeches[i]->SetIndex(i);
-<<<<<<< HEAD
 }
 
 //* This is a supporting function. Given a synapse type (r/o synapses)
@@ -1180,8 +1140,6 @@ void Network::DetermineSynType(const char * syn_type, synapsetype_t & ret_syn_ty
     cout<<"In Network::"<<func_name<<", undefined synapse type: "<<syn_type<<endl;
     exit(EXIT_FAILURE);
   } 
-=======
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 }
 
 //* This function is to write the synaptic weights back into a file:
@@ -1288,7 +1246,6 @@ void Network::WriteSynActivityToFile(char * pre_name, char * post_name, char * f
 
 }
 
-<<<<<<< HEAD
 /*************************************************************************************
  * This function is to delete all the synapses in the reservoir and free the resources.
  * And leave the reservoir as only reservoir neurons.
@@ -1350,8 +1307,7 @@ void Network::TruncateIntermSyns(const char * syn_type){
     cout<<"Total number of excitatory synapses being removed: "<<cnt<<endl;
 }
 
-=======
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
+
 /**************************************************************************************
 *
 * This function is to visualize the reservoir synapses.
@@ -1403,12 +1359,7 @@ void Network::VisualizeReservoirSyns(int indictor){
 	    count_syn++;
     }
 	
-<<<<<<< HEAD
-    cout<<"total neurons: "<<count_neuron<<"\t total excitatory synapses: "<<count_syn<<endl;
-=======
     cout<<"total neurons: "<<count_neuron<<"\t total_synapses: "<<count_syn<<endl;
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
-
     
     // output the reservoir neuron information:
     f_out<<"<nodes count=\""<<count_neuron<<"\">\n";

@@ -6,10 +6,7 @@
 #include <set>
 #include "def.h"
 #include <cstdio>
-<<<<<<< HEAD
 #include <fstream>
-=======
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 
 class Synapse;
 class Network;
@@ -130,11 +127,9 @@ public:
   int SizeOutputSyns(){return _outputSyns.size();} //Calculate # of output synapses for verfication
   std::list<Synapse*> * LSMDisconnectNeuron();
   void LSMDeleteInputSynapse(char* pre_name);
-<<<<<<< HEAD
   void DeleteSyn(const char * t, const char s);
   void PrintSyn(std::ofstream& f_out, const char * t, const char s);
-=======
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
+
   void DeleteAllSyns();
   void DeleteBrokenSyns();
   bool GetStatus();
