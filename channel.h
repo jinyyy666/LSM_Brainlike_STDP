@@ -27,6 +27,7 @@ public:
   int SizeSpikeT(){return _spikeT.size();}
   int LastSpikeT(){return _spikeT.empty() ? 0 : _spikeT.back();}
   void SetMode(channelmode_t channelmode){_mode = channelmode;}
+  void GetAllSpikes(std::vector<int>& v){v = _spikeT;}
   channelmode_t Mode(){return _mode;}
   void Print(FILE *);
   void Print(std::ofstream& f_out);

@@ -11,6 +11,7 @@ class Speech{
 private:
   std::vector<Channel*> _channels;
   std::vector<Channel*> _rChannels;
+  std::vector<Channel*> _oChannels;
   int _class;
   int _index;
   int _num_input_channels;
@@ -19,8 +20,10 @@ public:
   Speech(int);
   ~Speech();
   void SetNumReservoirChannel(int);
+  void SetNumReadoutChannel(int);
   Channel * AddChannel(int, int);
   Channel * GetChannel(int,channelmode_t);
+  void ClearChannel(channelmode_t channelmode);
   void AnalogToSpike();
   void RateToSpike();
   int NumChannels(channelmode_t);

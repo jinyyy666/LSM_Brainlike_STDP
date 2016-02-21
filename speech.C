@@ -18,6 +18,8 @@ _class(cls)
 
 Speech::~Speech(){
   for(vector<Channel*>::iterator iter = _channels.begin(); iter != _channels.end(); iter++) delete *iter;
+  for(vector<Channel*>::iterator iter = _rChannels.begin(); iter != _rChannels.end(); iter++) delete *iter;
+  for(vector<Channel*>::iterator iter = _oChannels.begin(); iter != _oChannels.end(); iter++) delete *iter;
 }
 
 Channel * Speech::AddChannel(int step_analog, int step_spikeT){
@@ -34,6 +36,16 @@ void Speech::SetNumReservoirChannel(int size){
   }
 }
 
+
+//* intialize the channels attached to readout neurons
+void Speech::SetNumReadoutChannel(int size){
+    assert(size >= 0 && _oChannels.empty());
+    while(_oChannels.size() < size){
+	Channel * channel = new Channel;
+	_oChannels.push_back(channel);
+    }
+}
+
 Channel * Speech::GetChannel(int index, channelmode_t channelmode){
   if(channelmode == INPUTCHANNEL){
     if(index < 0 && index >= _channels.size()){
@@ -44,7 +56,7 @@ Channel * Speech::GetChannel(int index, channelmode_t channelmode){
       exit(EXIT_FAILURE);
     }
     return _channels[index];
-  }else{
+  }else if(channelmode == RESERVOIRCHANNEL){
     if(index < 0 && index >= _rChannels.size()){
       cout<<"Invalid channel index: "<<index
 	  <<" seen in aquiring reservoir channels!\n"
@@ -54,6 +66,38 @@ Channel * Speech::GetChannel(int index, channelmode_t channelmode){
     }
     return _rChannels[index];
   }
+  else if(channelmode == READOUTCHANNEL){
+     if(index < 0 && index >= _oChannels.size()){
+      cout<<"Invalid channel index: "<<index
+	  <<" seen in aquiring readout channels!\n"
+	  <<"Total number of readout channels: "<<_oChannels.size()
+	  <<endl;
+      exit(EXIT_FAILURE);
+    }
+    return _oChannels[index]; 
+  }
+  else{
+      cout<<"Invalid channel mode: "<<channelmode<<endl;
+      exit(EXIT_FAILURE);
+  }
+}
+
+//* clear the targeted channels:
+void Speech::ClearChannel(channelmode_t channelmode){
+    vector<Channel*> tmp;
+    vector<Channel*>& ch = channelmode == INPUTCHANNEL ? _channels : 
+	                   channelmode == RESERVOIRCHANNEL ? _rChannels :
+	channelmode == READOUTCHANNEL ? _oChannels : tmp;
+    if(ch.empty()){
+	cout<<"Invalid channel type: "<<channelmode<<endl;
+	exit(EXIT_FAILURE);
+    }
+    
+    for(size_t i = 0; i < ch.size(); ++i){
+	assert(ch[i]);
+	ch[i]->Clear();
+    }
+    
 }
 
 void Speech::AnalogToSpike(){

@@ -1219,8 +1219,14 @@ void NeuronGroup::PrintMembranePotential(double t){
 //* channel mode can be INPUTCHANNEL or RESERVOIRCHANNEL, which is a way to tell the types of the neuron:
 void NeuronGroup::LSMLoadSpeech(Speech * speech, int * n_channel, neuronmode_t neuronmode, channelmode_t channelmode){
   if(_neurons.size() != speech->NumChannels(channelmode)){
-    assert((channelmode == RESERVOIRCHANNEL) && (speech->NumChannels(channelmode) == 0));
-    speech->SetNumReservoirChannel(_neurons.size());
+    assert((channelmode == RESERVOIRCHANNEL) && (speech->NumChannels(channelmode) == 0)
+	   || (channelmode == READOUTCHANNEL) && speech->NumChannels(channelmode) == 0);
+    if(channelmode == RESERVOIRCHANNEL)
+	speech->SetNumReservoirChannel(_neurons.size());
+    else if(channelmode == READOUTCHANNEL)
+	speech->SetNumReadoutChannel(_neurons.size());
+    else
+	assert(0); // your code should never go here
   }
   *n_channel = speech->NumChannels(channelmode);
   // assign the channel ptr to each neuron & set the neuron mode:
