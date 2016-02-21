@@ -37,7 +37,11 @@
 #define STDP_TRAINING_RESERVOIR
 
 // the control variable to enable adaptive power gating:
+<<<<<<< HEAD
 //#define ADAPTIVE_POWER_GATING
+=======
+#define ADAPTIVE_POWER_GATING
+>>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 // the in/out degree criterior for gating one node:
 #define INDEG_LIMIT  1
 #define OUTDEG_LIMIT  1
@@ -50,7 +54,11 @@
 #define DAMPING_BIT 2
 
 // learning rate for STDP (1/512):
+<<<<<<< HEAD
 #define LAMBDA 0.00195 
+=======
+#define LAMBDA 0.00195  
+>>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 // shifting bits implementing learning rate for STDP:
 #define LAMBDA_BIT 12 // 12 for multi; 10 for additive
 

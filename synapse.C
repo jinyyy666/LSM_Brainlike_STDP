@@ -12,8 +12,11 @@
 //#define _DEBUG_SYN_UPDATE
 //#define _DEBUG_SYN_LEARN
 //#define _DEBUG_LOOKUP_TABLE
+<<<<<<< HEAD
 //#define _DEBUG_TRUNC
 //#define _DEBUG_SIMPLE_STDP
+=======
+>>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 
 using namespace std;
 
@@ -170,18 +173,26 @@ void Synapse::_init_lookup_table(){
 #ifdef DIGITAL
       if(i == 0)
 	  _TABLE_LTP.push_back(UNIT_DELTA*a_pos);
+<<<<<<< HEAD
       else{
 	  _TABLE_LTP[i-1]/tau_x_trace == 0 && _TABLE_LTP[i-1] > 0 ?
 	  _TABLE_LTP.push_back( _TABLE_LTP[i-1] - 1) : 
 	  _TABLE_LTP.push_back( _TABLE_LTP[i-1] - _TABLE_LTP[i-1]/tau_x_trace);
       }
+=======
+      else
+	  _TABLE_LTP.push_back( _TABLE_LTP[i-1] - _TABLE_LTP[i-1]/tau_x_trace);
+>>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 #else
       if(i == 0)
 	  _TABLE_LTP.push_back(double_a_pos);
       else
 	  _TABLE_LTP.push_back(_TABLE_LTP[i-1] - _TABLE_LTP[i-1]/tau_x_trace);
 #endif
+<<<<<<< HEAD
 
+=======
+>>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 #ifdef _DEBUG_LOOKUP_TABLE 
       cout<<_TABLE_LTP[i]<<"\t";
 #endif
@@ -195,11 +206,16 @@ void Synapse::_init_lookup_table(){
 #ifdef DIGITAL
       if(i == 0)
 	  _TABLE_LTD.push_back(-1*UNIT_DELTA*a_neg);
+<<<<<<< HEAD
       else{
 	  _TABLE_LTD[i-1]/tau_y_trace == 0 && _TABLE_LTD[i-1] < 0 ? 
 	  _TABLE_LTD.push_back( _TABLE_LTD[i-1] + 1) :
 	  _TABLE_LTD.push_back( _TABLE_LTD[i-1] - _TABLE_LTD[i-1]/tau_y_trace);
       }
+=======
+      else
+	  _TABLE_LTD.push_back( _TABLE_LTD[i-1] - _TABLE_LTD[i-1]/tau_y_trace);
+>>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 #else
       if(i == 0)
 	  _TABLE_LTD.push_back(-1*double_a_neg);

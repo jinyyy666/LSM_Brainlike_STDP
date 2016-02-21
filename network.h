@@ -136,6 +136,7 @@ public:
   void SpeechInfo();
   // print the spikes into the file
   void SpeechPrint(int info);
+<<<<<<< HEAD
   // print the spiking frequency into the file:
   void SpeechSpikeFreq(const char * type, std::ofstream & f_out, std::ofstream & f_label);
 
@@ -148,6 +149,14 @@ public:
   void WriteSynActivityToFile(char * pre_name, char * post_name, char * filename);
   void DestroyReservoirConn(NeuronGroup * reservoir);
   void TruncateIntermSyns(const char * syn_type);
+=======
+  
+  // supporting functions:
+  // this last parameter is used to indicate which neurongroup does the syn belongs to.
+  void WriteSynWeightsToFile(const char * syn_type, char * filename);
+  void LoadSynWeightsFromFile(const char * syn_type, char * filename);
+  void WriteSynActivityToFile(char * pre_name, char * post_name, char * filename);
+>>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
   void VisualizeReservoirSyns(int indicator);
 
 

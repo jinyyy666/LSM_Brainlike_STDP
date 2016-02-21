@@ -1,12 +1,12 @@
-neurongroup input  77 excitatory
-column reservoir 3 3 15
-neurongroup output 10 excitatory
+# This the netlist for the topology extracted from brain connection. 
+# The only difference from Yong's netlist is that the information of reservoir neurons and synatic connections is explicitly provided. 
+# file: "model/reservoir_neuron_info_ei.txt" contains information about neurons;
+# file: "model/reservoir_synapse_info_connection.txt" contains information about synapses;
+neurongroup  input  77  excitatory
+brain  reservoir  model/reservoir_neuron_info_ei.txt  model/reservoir_synapse_info_connection.txt
+neurongroup  output  10  excitatory
 lsmsynapse input reservoir 1 4 8 1 fixed
-<<<<<<< HEAD
-lsmsynapse reservoir output -1 -1 8 2 learning
-=======
 lsmsynapse reservoir output -1 -1 8 0 learning
->>>>>>> 1a3c78bdff46763ea6e6391487983190f3f82f4a
 speech	0	data/s1_u1_d0.dat
 speech	1	data/s1_u1_d1.dat
 speech	2	data/s1_u1_d2.dat
