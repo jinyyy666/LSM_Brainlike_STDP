@@ -111,6 +111,13 @@ void Channel::PoissonSpike(){
   }
 }
 
+//* clear the channel:
+void Channel::Clear(){
+    // Note that this is going to invalid the iterator!!
+    // So when you are using the iterator, please call FirstSpike() at first!!
+    _spikeT.clear();
+}
+
 void Channel::Print(FILE * fp){
   if(_spikeT.empty() == true) fprintf(fp,"%d\n",-99);
   for(_iter_spikeT = _spikeT.begin(); _iter_spikeT != _spikeT.end(); _iter_spikeT++) 

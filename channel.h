@@ -29,6 +29,7 @@ public:
   void SetMode(channelmode_t channelmode){_mode = channelmode;}
   void GetAllSpikes(std::vector<int>& v){v = _spikeT;}
   channelmode_t Mode(){return _mode;}
+  void Clear();
   void Print(FILE *);
   void Print(std::ofstream& f_out);
 };
