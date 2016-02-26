@@ -30,6 +30,9 @@ private:
   bool _fixed;
   bool _liquid;
 
+  // _disable is the switch to disable this synapse:
+  bool _disable;
+
   // _lsm_active is to indicate whether or not 
   // there is readout synapse to be trained
   bool _lsm_active;
@@ -107,6 +110,9 @@ private:
 public:
   Synapse(Neuron*,Neuron*,double,bool,double,bool,bool); // only for non-digital liquid state machine
   Synapse(Neuron*,Neuron*,int,bool,int,bool,bool); // only for digital liquid state machine (including initializing synapse in liquid)
+
+  void DisableStatus(bool disable){ _disable = disable; }
+  bool DisableStatus(){ return _disable; }
 
   //* Get the _lsm_active of the synapse, which is the flag indicating whether or not the synapse is activated:
   bool GetActiveStatus(){return _lsm_active;}

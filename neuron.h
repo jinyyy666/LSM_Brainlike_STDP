@@ -3,6 +3,7 @@
 
 #include <list>
 #include <vector>
+#include <map>
 #include <set>
 #include "def.h"
 #include <cstdio>
@@ -21,6 +22,7 @@ private:
 
   std::list<Synapse*> _outputSyns; 
   std::list<Synapse*> _inputSyns; 
+  std::vector<double> _fire_freq;
   bool _excitatory; 
   int _teacherSignal;
   int _indexInGroup;
@@ -78,6 +80,10 @@ public:
 
   void LSMPrintInputSyns();
 
+  // record the firing frequency
+  void FireFreq(double f){_fire_freq.push_back(f);}
+  double FireFreq(){return _fire_freq.empty() ? 0 : _fire_freq.back();}
+
   // set the neuron index under the separated reservoir cases:
   void Index(int ind){_ind = ind;}
   
@@ -121,10 +127,12 @@ public:
   void LSMRemoveChannel();
   void LSMSetNeuronMode(neuronmode_t neuronmode){_mode = neuronmode;}
   bool LSMCheckNeuronMode(neuronmode_t neuronmode){return _mode == neuronmode;}
+  double ComputeVariance();
   void ResizeSyn();
   void LSMPrintOutputSyns(FILE*);
   void LSMPrintLiquidSyns(FILE*);
   int SizeOutputSyns(){return _outputSyns.size();} //Calculate # of output synapses for verfication
+  void DisableOutputSyn(synapsetype_t syn_t);
   std::list<Synapse*> * LSMDisconnectNeuron();
   void LSMDeleteInputSynapse(char* pre_name);
   void DeleteSyn(const char * t, const char s);
@@ -178,6 +186,9 @@ public:
   void LSMLoadSpeech(Speech*,int*,neuronmode_t,channelmode_t);
   void LSMSetNeurons(Speech* speech, neuronmode_t neuronmode, channelmode_t channelmode, int offset);
   void LSMIndexNeurons(int offset);
+
+  void ScatterFreq(std::vector<double>& fs, std::size_t & bias, std::size_t & cnt);
+  void CollectVariance(std::map<double, Neuron*>& my_map);
   void LSMRemoveSpeech();
   void LSMSetTeacherSignal(int);
   void LSMRemoveTeacherSignal(int);

@@ -45,6 +45,7 @@ private:
   NeuronGroup * _lsm_output_layer;
   int _lsm_input;
   int _lsm_reservoir;
+  int _lsm_readout;
   int _lsm_t;
   networkmode_t _network_mode;
 public:
@@ -99,13 +100,14 @@ public:
 		    NeuronGroup * output,
 		    neuronmode_t neuronmode_input,
 		    neuronmode_t neuronmode_reservoir,
+		    neuronmode_t neuronmode_readout,
 		    bool train,
 		    bool ignore_reservoir
 		    );
   void LoadSpeechToAllReservoirs(Speech *sp, neuronmode_t neuronmode_reservoir);
   void LSMNetworkRemoveSpeech();
   void LSMLoadLayers(NeuronGroup * reservoir_group);
-  void DetermineNetworkNeuronMode(const networkmode_t &, neuronmode_t &, neuronmode_t &);
+  void DetermineNetworkNeuronMode(const networkmode_t &, neuronmode_t &, neuronmode_t &, neuronmode_t&);
 
   int LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup* group = NULL);
   int LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup* group, bool inputExist);
@@ -136,9 +138,11 @@ public:
   void SpeechInfo();
   // print the spikes into the file
   void SpeechPrint(int info);
+  void CollectSpikeFreq(const char * type, std::vector<double>& fs, int end_t);
+  void ScatterSpikeFreq(const char * type, std::vector<double>& fs);
   // print the spiking frequency into the file:
   void SpeechSpikeFreq(const char * type, std::ofstream & f_out, std::ofstream & f_label);
-
+  void VarBasedSparsify(const char * type);
   
   // supporting functions:
   // this first parameter is used to indicate which neurongroup does the syn belongs to.

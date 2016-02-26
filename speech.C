@@ -119,7 +119,8 @@ void Speech::RateToSpike(){
 
 int Speech::NumChannels(channelmode_t channelmode){
   if(channelmode == INPUTCHANNEL) return _channels.size();
-  else return _rChannels.size();
+  else if(channelmode == RESERVOIRCHANNEL) return _rChannels.size();
+  else return _oChannels.size();
 }
 
 void Speech::Info(){
@@ -203,4 +204,27 @@ void Speech::SpikeFreq(ofstream & f_out, const vector<Channel*> & channels){
         f_out<<channels[i]->SizeSpikeT()<<"\t";
     }
     f_out<<endl;
+}
+
+
+//* Collect the firing fq into a vector:
+void Speech::CollectFreq(synapsetype_t syn_t, vector<double>& fs, int end_t){
+  vector<Channel*> tmp;
+  vector<Channel*> & channels = syn_t == INPUT_SYN ? _channels : 
+                                syn_t == RESERVOIR_SYN ? _rChannels :
+                                syn_t == READOUT_SYN ? _oChannels : tmp;
+
+  if(channels.empty()){
+      cout<<"In Speech::CollectFreq(), you are reading: "<<syn_t<<" channels.\n "
+	  <<"Is the synapse type undefined or the channels are empty ?"<<endl;
+      assert(!channels.empty());
+  }
+  if(end_t == 0){
+      cout<<"The ending time of the speech is zero!!"<<endl;
+      assert(end_t != 0);
+  }
+  for(size_t i = 0; i < channels.size(); ++i){
+      assert(channels[i]);
+      fs.push_back(((double)(channels[i]->SizeSpikeT()))/end_t);
+  }
 }

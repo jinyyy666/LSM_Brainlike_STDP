@@ -5,8 +5,8 @@
 #define _MNIST    0
 #define _TRAFFIC   0
 #define _SPEECH    1
-#define _LETTER    0
-#define _DIGIT    1
+#define _LETTER    1
+#define _DIGIT    0
 
 // this control variable is defined to direct compute the \delta_t 
 // for stdp rule update. this is what the hardware is going to do.
@@ -119,7 +119,7 @@
 #define ITER_SEARCH_CONV 50
 //#define CLS 26
 #define CLS 26
-#define NUM_THREADS 1
+#define NUM_THREADS 5
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -142,7 +142,11 @@
 
 #define NUM_DEC_DIGIT_RESERVOIR_MEM 0  // Number of bits represent 'one' for V_mem in the Liquid
 #define NUM_DEC_DIGIT_READOUT_MEM 0   // Number of bits represent 'one' for V_mem in the readout
-				   
+	
+// The control variable to enable the var-based sparsification
+#define _VARBASED_SPARSE		
+// The percentage of neurons being sparsification under var-based rule 
+#define _TOP_PERCENT 0.1
 
 #define LOST_RATE 0.0
 #define DIGITAL

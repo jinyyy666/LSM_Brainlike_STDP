@@ -25,6 +25,7 @@ _post(post),
 _excitatory(excitatory),
 _fixed(fixed),
 _liquid(liquid),
+_disable(false),
 _lsm_active(false),
 _lsm_stdp_active(false),
 _mem_pos(0),
@@ -77,6 +78,7 @@ _post(post),
 _excitatory(excitatory),
 _fixed(fixed),
 _liquid(liquid),
+_disable(false),
 _lsm_active(false),
 _lsm_stdp_active(false),
 _mem_pos(0),
@@ -786,7 +788,7 @@ void Synapse::LSMLiquidHarewareLearn(int t){
       // implement the simple STDP rule here:
       // delta_w == 0 ---> w += 2  delta_w == 1 or 2 ---> w += 1 otherwises delta_w = 0 
       if(d == 0)  _D_lsm_weight += 1;
-      if(d == 1)  _D_lsm_weight += 2;
+      if(d == 1) _D_lsm_weight += 1;
       else if(d < 3)  _D_lsm_weight += 1;
   }
 
@@ -797,9 +799,9 @@ void Synapse::LSMLiquidHarewareLearn(int t){
       // there are two cases you can try: 1. reset w = 0; 2. decrease w by 1
       if(_t_spike_post != _t_spike_pre && d <= 3)
 	  if(_D_lsm_weight == 8)
-	      _D_lsm_weight = 2;
+	      _D_lsm_weight = 0;
 	  else
-	      _D_lsm_weight -= 1;
+	      _D_lsm_weight = 0;
   }
 #ifdef _DEBUG_SIMPLE_STDP
   if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_15"))
@@ -860,7 +862,7 @@ void Synapse::RemapReservoirWeight(){
   // only consider for excitatory synapses:
   if(_excitatory){
     if(_D_lsm_weight <= 0) _D_lsm_weight = 0;
-    else if(_D_lsm_weight <= 2) _D_lsm_weight = _D_lsm_weight;
+    else if(_D_lsm_weight <= 1) _D_lsm_weight = _D_lsm_weight;
     else _D_lsm_weight = 8;
   }
 }

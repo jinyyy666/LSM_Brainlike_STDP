@@ -12,6 +12,7 @@
 #include <sys/time.h>
 
 //#define _DEBUG_NETWORK_SEPARATE
+//#define _DEBUG_VARBASE
 
 using namespace std;
 FILE * Fp_syn;
@@ -673,6 +674,7 @@ void Network::LoadSpeeches(Speech      * sp,
 			   NeuronGroup * output,
 			   neuronmode_t neuronmode_input,
 			   neuronmode_t neuronmode_reservoir,
+			   neuronmode_t neuronmode_readout,
 			   bool train,
 			   bool ignore_reservoir
 			   )
@@ -694,6 +696,9 @@ void Network::LoadSpeeches(Speech      * sp,
 	reservoir->LSMSetNeurons(NULL, neuronmode_reservoir, RESERVOIRCHANNEL, 0);
     }
     
+    // load the speech to the output layer and setup its channels
+    output->LSMLoadSpeech(sp,&_lsm_readout,neuronmode_readout,READOUTCHANNEL);
+
     // if train the readout 
     if(train == true){
 	assert(output);
@@ -786,16 +791,19 @@ void Network::LSMLoadLayers(NeuronGroup* reservoir_group){
   assert(_lsm_output_layer != NULL);
 }
 
-void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neuronmode_t & neuronmode_input, neuronmode_t & neuronmode_reservoir){
+void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neuronmode_t & neuronmode_input, neuronmode_t & neuronmode_reservoir, neuronmode_t & neuronmode_readout){
   if(networkmode == TRANSIENTSTATE){
     neuronmode_input = READCHANNEL;
     neuronmode_reservoir = WRITECHANNEL;
+    neuronmode_readout = NORMAL;
   }else if(networkmode == TRAINRESERVOIR){
     neuronmode_input = READCHANNEL;
     neuronmode_reservoir = STDP;
+    neuronmode_readout = NORMAL;
   }else if(networkmode == READOUT){
     neuronmode_input = DEACTIVATED;
     neuronmode_reservoir = READCHANNEL;
+    neuronmode_readout = NORMAL;
   }else{
     cout<<"Unrecognized network mode!"<<endl;
     exit(EXIT_FAILURE);
@@ -806,15 +814,15 @@ void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neur
 int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup * group){
     LSMLoadLayers(group);
 
-    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL;
+    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
     // determine the neuron mode by the network mode:
-    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir); 
+    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout); 
 
     bool ignore_reservoir = networkmode == TRAINRESERVOIR ? true : false;
 
     _sp_iter = _speeches.begin();
     if(_sp_iter != _speeches.end()){
-	LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer,neuronmode_input, neuronmode_reservoir, train, ignore_reservoir);
+        LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer,neuronmode_input, neuronmode_reservoir, neuronmode_readout, train, ignore_reservoir);
 	return (*_sp_iter)->Index();
     }else{
 	return -1;
@@ -839,16 +847,15 @@ int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup 
     }
 
     LSMLoadLayers(group);
-
-    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL;
+    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
     // determine the neuron mode by the network mode:
-    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir); 
-
+    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
+    
     bool ignore_reservoir = networkmode == TRAINRESERVOIR ? true : false;
 
     _sp_iter = _speeches.begin();
     if(_sp_iter != _speeches.end()){
-	LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer,neuronmode_input, neuronmode_reservoir, train, ignore_reservoir);
+        LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer,neuronmode_input, neuronmode_reservoir, neuronmode_readout,train, ignore_reservoir);
 	return (*_sp_iter)->Index();
     }else{
 	return -1;
@@ -861,15 +868,16 @@ int Network::LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup *
     assert(_lsm_reservoir_layer != NULL || _allReservoirs.size() > 1);
     assert(_lsm_output_layer != NULL);
 
-    neuronmode_t neuronmode_input, neuronmode_reservoir;
+    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
     // determine the neuron mode by the network mode:
-    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir); 
+    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
+
     bool ignore_reservoir = networkmode == TRAINRESERVOIR ? true : false;
 
     if(train == true) _lsm_output_layer->LSMRemoveTeacherSignal((*_sp_iter)->Class());
     _sp_iter++;
     if(_sp_iter != _speeches.end()){
-	LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, train, ignore_reservoir);
+      LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout, train, ignore_reservoir);
 	return (*_sp_iter)->Index();
     }else{
 	LSMNetworkRemoveSpeech();
@@ -884,9 +892,10 @@ int Network::LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup *
     assert(_lsm_reservoir_layer != NULL || _allReservoirs.size() > 1);
     assert(_lsm_output_layer != NULL);
 
-    neuronmode_t neuronmode_input, neuronmode_reservoir;
+    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
     // determine the neuron mode by the network mode:
-    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir); 
+    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
+
     bool ignore_reservoir = networkmode == TRAINRESERVOIR ? true : false;
 
     if(train == true) _lsm_output_layer->LSMRemoveTeacherSignal((*_sp_iter)->Class());
@@ -900,7 +909,7 @@ int Network::LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup *
 	  assert(_lsm_input_layer != NULL);
 	}
 	  
-	LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, train, ignore_reservoir);
+	LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout,train, ignore_reservoir);
 	return (*_sp_iter)->Index();
     }else{
 	LSMNetworkRemoveSpeech();
@@ -913,16 +922,16 @@ int Network::LoadFirstSpeechTrainCV(networkmode_t networkmode){
   assert((_fold_ind>=0)&&(_fold_ind<_fold));
  
   LSMLoadLayers(NULL);
-
-  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL;
+  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
   // determine the neuron mode by the network mode:
-  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir); 
+  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
+   
     
   if(_fold_ind == 0) _train_fold_ind = 1;
   else _train_fold_ind = 0;
   _cv_train_sp_iter = _CVspeeches[_train_fold_ind]->begin();
   if(_cv_train_sp_iter != _CVspeeches[_train_fold_ind]->end()){
-      LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, true, false); 
+    LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout,true, false); 
       return (*_cv_train_sp_iter)->Index();
   }else{
       cout<<"Warning, no training speech is specified!!"<<endl;
@@ -934,15 +943,15 @@ int Network::LoadNextSpeechTrainCV(networkmode_t networkmode){
   assert(_lsm_input_layer != NULL);
   assert(_lsm_reservoir_layer != NULL || _allReservoirs.size() > 1);
   assert(_lsm_output_layer != NULL);
-
-  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL;
+  
+  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
   // determine the neuron mode by the network mode:
-  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir); 
+  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout); 
 
   _lsm_output_layer->LSMRemoveTeacherSignal((*_cv_train_sp_iter)->Class());
   _cv_train_sp_iter++;
   if(_cv_train_sp_iter != _CVspeeches[_train_fold_ind]->end()){
-    LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, true, false);
+    LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout,true, false);
     return (*_cv_train_sp_iter)->Index();
   }else{
     ++_train_fold_ind;
@@ -951,7 +960,7 @@ int Network::LoadNextSpeechTrainCV(networkmode_t networkmode){
     if(_train_fold_ind < _fold){
 	_cv_train_sp_iter = _CVspeeches[_train_fold_ind]->begin();
 	if(_cv_train_sp_iter != _CVspeeches[_train_fold_ind]->end()){
-	    LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, true, false);
+      	    LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir,neuronmode_readout, true, false);
 	    return (*_cv_train_sp_iter)->Index();
 	}else{
 	    assert(0);
@@ -968,14 +977,14 @@ int Network::LoadFirstSpeechTestCV(networkmode_t networkmode){
   assert((_fold_ind>=0)&&(_fold_ind<_fold));
 
   LSMLoadLayers(NULL);
+  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
+  // determine the neuron mode by the network mode:
+  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout); 
 
-  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL;
-  // determine the neuron operation mode by network mode:
-  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir);
   
   _cv_test_sp_iter = _CVspeeches[_fold_ind]->begin();
   if(_cv_test_sp_iter != _CVspeeches[_fold_ind]->end()){
-    LoadSpeeches(*_cv_test_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, false, false);
+    LoadSpeeches(*_cv_test_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout, false, false);
     return (*_cv_test_sp_iter)->Index();
   }else{
     return -1;
@@ -987,13 +996,13 @@ int Network::LoadNextSpeechTestCV(networkmode_t networkmode){
   assert(_lsm_reservoir_layer != NULL || _allReservoirs.size() > 1);
   assert(_lsm_output_layer != NULL);
 
-  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL;
-  // determine the neuron operation mode by networkmode:
-  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir);
+  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
+  // determine the neuron mode by the network mode:
+  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
  
   _cv_test_sp_iter++;
   if(_cv_test_sp_iter != _CVspeeches[_fold_ind]->end()){
-    LoadSpeeches(*_cv_test_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, false, false);
+    LoadSpeeches(*_cv_test_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout, false, false);
     return (*_cv_test_sp_iter)->Index();
   }else{
       LSMNetworkRemoveSpeech();
@@ -1069,6 +1078,40 @@ void Network::SpeechPrint(int info){
 	(*_sp_iter)->PrintSpikes(info);
 }
 
+//* this function is to collect the firing fq from speech for each neuron:
+void Network::CollectSpikeFreq(const char * type, vector<double>& fs, int end_t){
+    synapsetype_t  syn_type = INVALID;
+    DetermineSynType( type, syn_type, "CollectSpikeFreq()");
+    
+    if(_sp_iter == _speeches.end()){
+        cout<<"In Network::CollectSpikeFreq(), you are trying to access the "
+	    <<"current speech. But you have hit the _speeches.end()!"<<endl;
+	cout<<"Abort the problem";
+	assert(_sp_iter != _speeches.end());  
+    }
+
+    // collect the firing fq from the speech:
+    assert(fs.empty());
+    (*_sp_iter)->CollectFreq(syn_type, fs, end_t);
+
+}
+
+//* this function is to scatter the collected fq back to each neuron
+//  now I only support the case of reservoir neurons:
+void Network::ScatterSpikeFreq(const char * type, vector<double>& fs){
+    synapsetype_t  syn_type = INVALID;
+    DetermineSynType(type, syn_type, "ScatterSpikeFreq()");
+    
+    assert(syn_type == RESERVOIR_SYN);
+    
+    size_t bias = 0, cnt = 0;
+    for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+        assert(*it);
+        (*it)->ScatterFreq(fs, bias, cnt);
+    }
+    assert(cnt == fs.size());
+}
+
 //* this function is to output the firing frequency of each neuron:
 //* the first param: the type (input/reservoir neurons' firing frequency)
 //* the second param: the output file stream for collecting the firing freq.
@@ -1076,6 +1119,36 @@ void Network::SpeechSpikeFreq(const char * type, ofstream & f_out, ofstream & f_
     if(_sp_iter != _speeches.end()){
 	assert(f_out.is_open() && f_label.is_open());
 	f_label<<(*_sp_iter)->PrintSpikeFreq(type, f_out)<<"\t";
+    }
+}
+
+//* this function is to implement the variance based sparification:
+void Network::VarBasedSparsify(const char * type){
+    synapsetype_t  syn_type = INVALID;
+    DetermineSynType(type, syn_type, "VarBasedSparsify()"); 
+    
+    // compute the variance of the firing rate for each neuron:
+    map<double, Neuron*> my_map;
+    for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+        assert(*it);
+        (*it)->CollectVariance(my_map);
+    }
+    
+    // apply var-based sparisfication to the neurons with low variance :
+    int cnt_limit = _TOP_PERCENT*my_map.size(), cnt = 0;
+#ifdef _DEBUG_VARBASE
+    cout<<"The lower "<<cnt_limit<<" neurons are applied with sparification."
+	<<endl;
+#endif
+    for(map<double, Neuron*>::iterator it = my_map.begin(); it != my_map.end(); ++it){
+        if(cnt < cnt_limit){
+#ifdef _DEBUG_VARBASE
+	    cout<<"Low "<<cnt+1<<"th neuron with var: "<<(*it).first<<endl;
+#endif
+	    // Apply the sparsification here:
+	    (*it).second->DisableOutputSyn(syn_type);
+        }
+	++cnt;
     }
 }
 

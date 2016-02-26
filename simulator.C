@@ -61,32 +61,9 @@ void Simulator::LSMRun(long tid){
     fclose(Foutp);
   }
 #endif
-  //simulate the permanent neuron loss
-/*  x = _network->LSMSizeAllNeurons();
-  loss_neuron = LOST_RATE*(x-83-26);
-  cout<<"# of neuron loss:"<<loss_neuron<<endl;
-  _network->LSMTruncNeurons(loss_neuron);
-  y = _network->LSMSizeAllNeurons();
-  temp = ((double)y)/((double)x);
-  cout<<"x = "<<x<<"y = "<<y<<"\t"<<"Lost rate: "<<temp<<"\t"<<"Desired loss rate: "<<LOST_RATE<<endl; */
-  
-  // clear the connections in the reservoir and then reconstruct the connections:
-  //_network->DestroyReservoirConn(NULL);
-  //_network->ReconstructReservoirConn("r_weights_info.txt");
-  //sprintf(filename, "reservoir_weights_%ld_org.txt", tid);
-  //_network->WriteSynWeightsToFile("reservoir",filename);
-  //assert(0);
+
   // visualize the reservoir synapses before stdp training:
   // _network->VisualizeReservoirSyns(0);
-
-
-  // detect total number of hubs in the reservoir BEFORE stdp training:
-  //cout<<"Before STDP training:"<<endl;
-  //_network->LSMHubDetection();
-
-  // visualize the reservoir synapses before stdp training:
-  _network->VisualizeReservoirSyns(0);
-
 
   // detect total number of hubs in the reservoir BEFORE stdp training:
   //cout<<"Before STDP training:"<<endl;
@@ -108,9 +85,6 @@ void Simulator::LSMRun(long tid){
   // train the reservoir using STDP rule:
   networkmode = TRAINRESERVOIR;
   _network->LSMSetNetworkMode(networkmode);
-
-  // just a test to verify whether or not the weight will stay still!
-  //_network->LoadSynWeightsFromFile("reservoir", "reservoir_weights_9.txt");
 
   gettimeofday(&val1, &zone);
   // repeatedly training the reservoir for a certain amount of iterations:
@@ -150,20 +124,6 @@ void Simulator::LSMRun(long tid){
   gettimeofday(&val2, &zone);
   cout<<"Total time spent in training the reservoir: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
 
-
-  assert(0);
-
-#ifdef ADAPTIVE_POWER_GATING
-  // apply the power gating scheme to turn off some neurons with low connectivity
-  _network->LSMAdaptivePowerGating(); 
-  // retrain the network for few echos:
-  for(int i = 0; i < 5; ++i)
-      _network->LSMReservoirTraining(networkmode);
-#endif
-  _network->LSMSumGatedNeurons();
-  gettimeofday(&val2, &zone);
-  cout<<"Total time spent in training the reservoir: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
-
   // Write the weight back to file after training the reservoir with STDP:
   if(tid == 0){
     sprintf(filename, "r_weights_info.txt");
@@ -171,7 +131,7 @@ void Simulator::LSMRun(long tid){
   }
   
   // Load the weight from file:
-  sprintf(filename, "r_weights_info_best.txt");
+  // sprintf(filename, "r_weights_info_best.txt");
   //_network->LoadSynWeightsFromFile("reservoir", filename);
 #endif  
 
@@ -203,21 +163,33 @@ void Simulator::LSMRun(long tid){
     }
 
     //cout<<"Speech "<<count<<endl;
-    _network->SpeechPrint(info);
+    //_network->SpeechPrint(info);
     // print the firing frequency into the file:
     //_network->SpeechSpikeFreq("input", f1, f2);
+    
+#ifdef _VARBASED_SPARSE
+    // Collect the firing activity of each reservoir neurons from sp
+    // and scatter the frequency back to the network:
+    vector<double> fs;
+    _network->CollectSpikeFreq("reservoir", fs, time);
+    _network->ScatterSpikeFreq("reservoir", fs);
+#endif
 
     _network->LSMClearSignals();
     info = _network->LoadNextSpeech(false, networkmode);
   }
-  ///////////////////////////////////////////////////////////////////////////////
+
+  //////////////////////////////////////////////////////////////////////////////
   // REMEMBER TO REMOVE THESE CODES!
   //_network->LSMSumGatedNeurons();
   // f2<<endl;
   // f1.close(); f2.close();
+  /////////////////////////////////////////////////////////////////////////////
 
-  assert(0);
-  //////////////////////////////////////////////////////////////////////////////
+#ifdef _VARBASED_SPARSE
+  // sparsify the reservoir to readout connection using var-based technique:
+  _network->VarBasedSparsify("readout");
+#endif
 
   // train the readout layer
   networkmode = READOUT;
@@ -330,4 +302,20 @@ void Simulator::PrintSynAct(int info){
   sprintf(filename, "activity/speech_%d.txt", info);
   
   _network->WriteSynActivityToFile(name1, name2, filename);
+}
+
+
+//* Print out the frequencies to file:
+void Simulator::PrintOutFreqs(const vector<vector<double> >& all_fs){
+  ofstream f_out("all_readout_freq.txt");
+  assert(f_out.is_open());
+  for(size_t i = 0; i < all_fs.size(); ++i){
+      for(size_t j = 0; j < all_fs[i].size(); ++j){
+	f_out<<all_fs[i][j]<<"\t";
+      }
+      f_out<<endl;
+      f_out<<"*******************************************************************"<<endl;
+      f_out<<endl;
+  }
+  f_out.close();
 }

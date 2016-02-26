@@ -12,8 +12,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <utility>
 
 //#define _DEBUG_NEURON
+//#define _DEBUG_VARBASE
 
 // NOTE: The time constants have been changed to 2*original settings 
 //       optimized performance for letter recognition.
@@ -505,6 +507,9 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
     // need to get rid of the deactivated neuron !
     if((*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == true)  continue;
 
+    // need to get rid of the deactivated synapse !
+    if((*iter)->DisableStatus())  continue;
+
     (*iter)->LSMPreSpike(1);  
     (*iter)->SetPreSpikeT(time);
     
@@ -741,6 +746,17 @@ void Neuron::LSMRemoveChannel(){
   _lsm_channel = NULL;
 }
 
+//* compute the variance of the firing freq:
+double Neuron::ComputeVariance(){
+  double avg = 0;
+  for(size_t i = 0; i < _fire_freq.size(); ++i)  avg += _fire_freq[i];
+  avg = _fire_freq.empty() ? 0 : avg/_fire_freq.size();
+  double var = 0;
+  for(size_t i = 0; i < _fire_freq.size(); ++i) var += (_fire_freq[i] - avg)*(_fire_freq[i] - avg);
+  
+  return  _fire_freq.empty() ? 0 : var/_fire_freq.size();
+}
+
 /* Remove/Resize the outputs synapse */
 void Neuron::ResizeSyn(){
   int n,m,i;
@@ -806,6 +822,22 @@ void Neuron::LSMPrintLiquidSyns(FILE * fp){
   return;
 }
 
+//* this function is to disable the output synapses whose type is syn_t
+void Neuron::DisableOutputSyn(synapsetype_t syn_t){
+  for(list<Synapse*>::iterator it = _outputSyns.begin(); it != _outputSyns.end(); ++it){
+    bool flag = syn_t == INPUT_SYN ? (*it)->IsInputSyn() :
+                syn_t == READOUT_SYN ? (*it)->IsReadoutSyn() : 
+                syn_t == RESERVOIR_SYN ? (*it)->IsLiquidSyn() : false;
+    if(flag){
+#ifdef _DEBUG_VARBASE
+      (*it)->DisableStatus(true);
+      cout<<"Disable synapse from "<<(*it)->PreNeuron()->Name()<<" to "
+	  <<(*it)->PostNeuron()->Name()<<endl;
+#endif
+    }
+  }
+      
+}
 
 list<Synapse*>* Neuron::LSMDisconnectNeuron(){
   Neuron * pre;
@@ -1219,8 +1251,10 @@ void NeuronGroup::PrintMembranePotential(double t){
 //* channel mode can be INPUTCHANNEL or RESERVOIRCHANNEL, which is a way to tell the types of the neuron:
 void NeuronGroup::LSMLoadSpeech(Speech * speech, int * n_channel, neuronmode_t neuronmode, channelmode_t channelmode){
   if(_neurons.size() != speech->NumChannels(channelmode)){
-    assert((channelmode == RESERVOIRCHANNEL) && (speech->NumChannels(channelmode) == 0)
-	   || (channelmode == READOUTCHANNEL) && speech->NumChannels(channelmode) == 0);
+    if(!((channelmode == RESERVOIRCHANNEL && (speech->NumChannels(channelmode) == 0)) ||((channelmode == READOUTCHANNEL) && speech->NumChannels(channelmode) == 0))){
+      cout<<"channelmode: "<<channelmode<<" has "<<speech->NumChannels(channelmode)<<" channels!"<<endl;
+      assert(((channelmode == RESERVOIRCHANNEL && (speech->NumChannels(channelmode) == 0)) ||((channelmode == READOUTCHANNEL) && speech->NumChannels(channelmode) == 0)));
+    }
     if(channelmode == RESERVOIRCHANNEL)
 	speech->SetNumReservoirChannel(_neurons.size());
     else if(channelmode == READOUTCHANNEL)
@@ -1261,6 +1295,25 @@ void NeuronGroup::LSMLoadSpeech(Speech * speech, int * n_channel, neuronmode_t n
 	     ind++;
 	 }
      }
+}
+
+//* Scatter the collected frequency back to each neuron:
+void NeuronGroup::ScatterFreq(vector<double>& fs, size_t& bias, size_t & cnt){
+    for(size_t i = 0; i < _neurons.size(); ++i, ++bias){
+        assert(_neurons[i]);
+	assert(bias < cnt + fs.size());
+        _neurons[i]->FireFreq(fs[bias]);
+    }
+    cnt += _neurons.size();
+}
+
+
+void NeuronGroup::CollectVariance(map<double, Neuron*>& my_map){
+    for(size_t i = 0; i < _neurons.size(); ++i){
+        assert(_neurons[i]);
+	double var = _neurons[i]->ComputeVariance();
+	my_map.insert(make_pair(var, _neurons[i]));
+    }
 }
 
 void NeuronGroup::LSMRemoveSpeech(){

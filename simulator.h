@@ -1,7 +1,8 @@
 #ifndef SIMULATOR_H
 #define SIMULATOR_H
 
-#include"network.h"
+#include "network.h"
+#include <vector>
 
 class Simulator{
 private:
@@ -17,6 +18,7 @@ public:
 
   void LSMRun(long tid);
   void PrintSynAct(int info);
+  void PrintOutFreqs(const std::vector<std::vector<double> >& all_fs);
 };
 
 #endif
