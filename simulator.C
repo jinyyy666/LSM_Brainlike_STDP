@@ -8,6 +8,7 @@
 #include <iostream>
 #include <fstream>
 #include <stdio.h>
+#include <algorithm>
 
 using namespace std;
 double TSstrength;
@@ -124,15 +125,16 @@ void Simulator::LSMRun(long tid){
   gettimeofday(&val2, &zone);
   cout<<"Total time spent in training the reservoir: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
 
+  // Load the weight from file:
+  // sprintf(filename, "reservoir_weights_15.txt");
+  //_network->LoadSynWeightsFromFile("reservoir", filename);
+
   // Write the weight back to file after training the reservoir with STDP:
   if(tid == 0){
     sprintf(filename, "r_weights_info.txt");
     _network->WriteSynWeightsToFile("reservoir", filename);
   }
   
-  // Load the weight from file:
-  // sprintf(filename, "r_weights_info_best.txt");
-  //_network->LoadSynWeightsFromFile("reservoir", filename);
 #endif  
 
   ////////////////////////////////////////////////////////////////////////
@@ -150,6 +152,12 @@ void Simulator::LSMRun(long tid){
   networkmode = TRANSIENTSTATE;
   _network->LSMSetNetworkMode(networkmode);
 
+#ifdef _RES_FIRING_CHR
+  vector<double> prob, avg_intvl;
+  vector<int> max_intvl;
+  double prob_f = 0.0, avg_intvl_f = 0.0;
+  int max_intvl_f = 0;
+#endif
   count = 0;
   _network->LSMClearSignals();
   info = _network->LoadFirstSpeech(false, networkmode);
@@ -166,6 +174,9 @@ void Simulator::LSMRun(long tid){
     //_network->SpeechPrint(info);
     // print the firing frequency into the file:
     //_network->SpeechSpikeFreq("input", f1, f2);
+#ifdef _RES_FIRING_CHR
+    _network->PreActivityStat("reservoir", prob, avg_intvl, max_intvl);
+#endif
     
 #ifdef _VARBASED_SPARSE
     // Collect the firing activity of each reservoir neurons from sp
@@ -189,6 +200,14 @@ void Simulator::LSMRun(long tid){
 #ifdef _VARBASED_SPARSE
   // sparsify the reservoir to readout connection using var-based technique:
   _network->VarBasedSparsify("readout");
+#endif
+
+#ifdef _RES_FIRING_CHR
+  CollectPAStat(prob, avg_intvl, max_intvl, prob_f, avg_intvl_f, max_intvl_f);
+  cout<<"The average probability of a pre-synaptic event: "<<prob_f<<endl;
+  cout<<"The average interval between two pre-synaptic events: "<<avg_intvl_f<<endl;
+  cout<<"The max interval between two pre-synaptic events: "<<max_intvl_f<<endl;
+  return;
 #endif
 
   // train the readout layer
@@ -318,4 +337,35 @@ void Simulator::PrintOutFreqs(const vector<vector<double> >& all_fs){
       f_out<<endl;
   }
   f_out.close();
+}
+
+/***************************************************************************** 
+ * Collect the avg pre-synaptic event statistics of each neuron and compute avg
+ * @param1-3 input vectors, each elem is the stat of each speech
+ * @param4-6 return values
+ ****************************************************************************/
+void Simulator::CollectPAStat(vector<double>& prob, 
+			      vector<double>& avg_intvl, 
+			      vector<int>& max_intvl, 
+			      double& prob_f, 
+			      double& avg_intvl_f, 
+			      int& max_intvl_f
+			      )
+{
+  // initialize the return variables:
+  prob_f = 0.0, avg_intvl_f = 0.0, max_intvl_f = 0;
+  cout<<prob.size()<<"\t"<<avg_intvl.size()<<"\t"<<max_intvl.size()<<endl;
+
+  assert(prob.size()== avg_intvl.size() 
+      && prob.size()==max_intvl.size()
+      && prob.size()==(size_t)_network->NumSpeech());
+
+  for(size_t i = 0; i < prob.size(); ++i){
+    prob_f += prob[i];
+    avg_intvl_f += avg_intvl[i];
+    max_intvl_f = max(max_intvl_f, max_intvl[i]);
+  }
+
+  prob_f = _network->NumSpeech() ? prob_f/(_network->NumSpeech()) : 0;
+  avg_intvl_f = _network->NumSpeech() ? avg_intvl_f/(_network->NumSpeech()) : 0;
 }

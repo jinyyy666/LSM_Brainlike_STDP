@@ -1078,6 +1078,37 @@ void Network::SpeechPrint(int info){
 	(*_sp_iter)->PrintSpikes(info);
 }
 
+/***************************************************************************
+* This function is to collect the pre-synaptic neuron firing actvities.
+* It will gather the pre-synaptic neuron prob, avg interval and max interval
+* between any two pre-synaptic spikes for each neuron.
+* @param1: type (only resr is supported) @param2-4 prob, avg intv and max intv
+***************************************************************************/
+void Network::PreActivityStat(const char * type, vector<double>& prob, vector<double>& avg_intvl, vector<int>& max_intvl){
+   synapsetype_t  syn_type = INVALID;
+   DetermineSynType( type, syn_type, "PreActivityStat()");
+   assert(syn_type == RESERVOIR_SYN);
+   if(_allReservoirs.empty()){
+     cout<<"No reservoir is in the list: _allReservoirs !"<<endl;
+     assert(!_allReservoirs.empty());
+   }
+   
+   double p = 0.0, avg_i = 0.0;
+   int max_i = 0;
+   // Collect the presynaptic firing activity from the neurongroup level:
+   for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+       double p_r = 0.0, avg_i_r = 0.0;
+       int max_i_r = 0;
+       assert(*it);
+       (*it)->CollectPreSynAct(p_r, avg_i_r, max_i_r);
+       p += p_r, avg_i += avg_i_r, max_i = max( max_i, max_i_r);
+   }
+   p = _allReservoirs.empty() ? 0 : p/((double)_allReservoirs.size());
+   avg_i = _allReservoirs.empty() ? 0 : avg_i/((double)_allReservoirs.size());
+
+   prob.push_back(p), avg_intvl.push_back(avg_i), max_intvl.push_back(max_i);
+}
+
 //* this function is to collect the firing fq from speech for each neuron:
 void Network::CollectSpikeFreq(const char * type, vector<double>& fs, int end_t){
     synapsetype_t  syn_type = INVALID;

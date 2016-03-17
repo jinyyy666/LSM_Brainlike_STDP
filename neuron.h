@@ -23,6 +23,7 @@ private:
   std::list<Synapse*> _outputSyns; 
   std::list<Synapse*> _inputSyns; 
   std::vector<double> _fire_freq;
+  std::vector<bool> _presyn_act;
   bool _excitatory; 
   int _teacherSignal;
   int _indexInGroup;
@@ -127,6 +128,7 @@ public:
   void LSMRemoveChannel();
   void LSMSetNeuronMode(neuronmode_t neuronmode){_mode = neuronmode;}
   bool LSMCheckNeuronMode(neuronmode_t neuronmode){return _mode == neuronmode;}
+  void CollectPreSynAct(double& p_n, double& avg_i_n, int& max_i_n);
   double ComputeVariance();
   void ResizeSyn();
   void LSMPrintOutputSyns(FILE*);
@@ -189,6 +191,7 @@ public:
 
   void ScatterFreq(std::vector<double>& fs, std::size_t & bias, std::size_t & cnt);
   void CollectVariance(std::map<double, Neuron*>& my_map);
+  void CollectPreSynAct(double & p_r, double & avg_i_r, int & max_i_r);
   void LSMRemoveSpeech();
   void LSMSetTeacherSignal(int);
   void LSMRemoveTeacherSignal(int);

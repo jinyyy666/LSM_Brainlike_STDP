@@ -138,6 +138,7 @@ public:
   void SpeechInfo();
   // print the spikes into the file
   void SpeechPrint(int info);
+  void PreActivityStat(const char * type, std::vector<double>& prob, std::vector<double>& avg_intvl, std::vector<int>& max_intvl);
   void CollectSpikeFreq(const char * type, std::vector<double>& fs, int end_t);
   void ScatterSpikeFreq(const char * type, std::vector<double>& fs);
   // print the spiking frequency into the file:

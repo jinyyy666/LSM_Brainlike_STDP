@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <utility>
+#include <algorithm>
 
 //#define _DEBUG_NEURON
 //#define _DEBUG_VARBASE
@@ -285,6 +286,7 @@ bool Neuron::IsHubChild(const char * name){
 }
 
 void Neuron::LSMClear(){
+  
   _lsm_ref = 0;
 
   _lsm_v_mem = 0;
@@ -633,6 +635,10 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
 #ifdef _DEBUG_NEURON
     vector<pair<string, int> > pre_names;
 #endif
+
+#ifdef _RES_FIRING_CHR
+  bool flag = false;
+#endif
   for(iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++){
 
 #ifdef DIGITAL
@@ -657,9 +663,20 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
 #else
 	AccumulateSynapticResponse(pos, value);
 #endif
-    }
+	
+#ifdef _RES_FIRING_CHR
+	if(!flag){
+	    _presyn_act.push_back(true);
+	    flag = true;
+	}
+#endif
+    } 
   }
   
+#ifdef _RES_FIRING_CHR
+  if(!flag)  _presyn_act.push_back(false);
+#endif
+
 #ifdef DIGITAL
   int temp = DNOrderSynapticResponse();
   // adopt my earlier work to enable resolution tuning.
@@ -746,6 +763,34 @@ void Neuron::LSMRemoveChannel(){
   _lsm_channel = NULL;
 }
 
+//* Collect the presynaptic neuron firing activity:
+void Neuron::CollectPreSynAct(double& p_n, double& avg_i_n, int& max_i_n){
+  if(_presyn_act.empty()){
+    cout<<"Do you forget to record the pre-synaptic firing activities??\n"
+        <<"Or do you mistakenly clear the vector<bool> _presyn_act ?"<<endl;
+    assert(!_presyn_act.empty());
+  }
+  
+  int sum_intvl = 0, cnt_f = 0, max_i = 0;
+  int start = -1;
+  for(int i = 0; i < _presyn_act.size(); ++i){
+    if(_presyn_act[i]){
+      ++cnt_f;
+      max_i = max(max_i, i - start - 1);
+      sum_intvl += i - start - 1;
+      start = i;
+    }
+  }
+  max_i = max(max_i, (int)_presyn_act.size() - start - 1);
+  sum_intvl += _presyn_act.size() - start - 1;
+
+  p_n = ((double)cnt_f)/((double)_presyn_act.size());
+  avg_i_n = ((double)sum_intvl)/(cnt_f+1);
+  max_i_n = max_i;
+  // clear the presynaptic neuron activity vector after visiting it!
+  _presyn_act.clear();
+}
+
 //* compute the variance of the firing freq:
 double Neuron::ComputeVariance(){
   double avg = 0;
@@ -829,8 +874,8 @@ void Neuron::DisableOutputSyn(synapsetype_t syn_t){
                 syn_t == READOUT_SYN ? (*it)->IsReadoutSyn() : 
                 syn_t == RESERVOIR_SYN ? (*it)->IsLiquidSyn() : false;
     if(flag){
-#ifdef _DEBUG_VARBASE
       (*it)->DisableStatus(true);
+#ifdef _DEBUG_VARBASE
       cout<<"Disable synapse from "<<(*it)->PreNeuron()->Name()<<" to "
 	  <<(*it)->PostNeuron()->Name()<<endl;
 #endif
@@ -1314,6 +1359,19 @@ void NeuronGroup::CollectVariance(map<double, Neuron*>& my_map){
 	double var = _neurons[i]->ComputeVariance();
 	my_map.insert(make_pair(var, _neurons[i]));
     }
+}
+
+//* Collect the presynaptic firing activity:
+ void NeuronGroup::CollectPreSynAct(double & p_r, double & avg_i_r, int & max_i_r){
+    double p_n = 0.0, avg_i_n = 0.0;
+    int max_i_n = 0;
+    for(size_t i = 0; i < _neurons.size(); ++i){
+        assert(_neurons[i]);
+	_neurons[i]->CollectPreSynAct(p_n, avg_i_n, max_i_n);
+	p_r += p_n,  avg_i_r += avg_i_n, max_i_r = max(max_i_r, max_i_n);
+    }
+    p_r = _neurons.empty() ? 0 : p_r/((double)_neurons.size());
+    avg_i_r = _neurons.empty() ? 0 : avg_i_r/((double)_neurons.size());
 }
 
 void NeuronGroup::LSMRemoveSpeech(){

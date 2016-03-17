@@ -19,6 +19,13 @@ public:
   void LSMRun(long tid);
   void PrintSynAct(int info);
   void PrintOutFreqs(const std::vector<std::vector<double> >& all_fs);
+  void CollectPAStat(std::vector<double>& prob, 
+		     std::vector<double>& avg_intvl, 
+		     std::vector<int>& max_intvl, 
+		     double& prob_f, 
+		     double& avg_intvl_f, 
+		     int& max_intvl_f
+		    );
 };
 
 #endif

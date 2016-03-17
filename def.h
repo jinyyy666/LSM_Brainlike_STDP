@@ -15,7 +15,6 @@
 // this control variable is to enable the simple STDP update rule
 // NEED TO ENABLE _HARDWARE_CODE first!
 //#define _SIMPLE_STDP
-
 // this control variable is defined to test my thought of separate
 // the reservoir into several parts and stimulate each part with 
 // speeches that are similar to each other under STDP training:
@@ -159,6 +158,9 @@
 
 #define CV
 #define NFOLD 5
+
+//* This is the control variable to enable print pre-synaptic events
+//#define _RES_FIRING_CHR
 
 enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL,READOUTCHANNEL};
 enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,NORMAL};
