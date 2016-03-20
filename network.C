@@ -1159,7 +1159,7 @@ void Network::VarBasedSparsify(const char * type){
     DetermineSynType(type, syn_type, "VarBasedSparsify()"); 
     
     // compute the variance of the firing rate for each neuron:
-    map<double, Neuron*> my_map;
+    multimap<double, Neuron*> my_map;
     for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
         assert(*it);
         (*it)->CollectVariance(my_map);
@@ -1171,7 +1171,7 @@ void Network::VarBasedSparsify(const char * type){
     cout<<"The lower "<<cnt_limit<<" neurons are applied with sparification."
 	<<endl;
 #endif
-    for(map<double, Neuron*>::iterator it = my_map.begin(); it != my_map.end(); ++it){
+    for(multimap<double, Neuron*>::iterator it = my_map.begin(); it != my_map.end(); ++it){
         if(cnt < cnt_limit){
 #ifdef _DEBUG_VARBASE
 	    cout<<"Low "<<cnt+1<<"th neuron with var: "<<(*it).first<<endl;

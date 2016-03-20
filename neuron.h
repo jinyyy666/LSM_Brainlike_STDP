@@ -190,7 +190,7 @@ public:
   void LSMIndexNeurons(int offset);
 
   void ScatterFreq(std::vector<double>& fs, std::size_t & bias, std::size_t & cnt);
-  void CollectVariance(std::map<double, Neuron*>& my_map);
+  void CollectVariance(std::multimap<double, Neuron*>& my_map);
   void CollectPreSynAct(double & p_r, double & avg_i_r, int & max_i_r);
   void LSMRemoveSpeech();
   void LSMSetTeacherSignal(int);

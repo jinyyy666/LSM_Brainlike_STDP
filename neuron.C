@@ -1353,7 +1353,7 @@ void NeuronGroup::ScatterFreq(vector<double>& fs, size_t& bias, size_t & cnt){
 }
 
 
-void NeuronGroup::CollectVariance(map<double, Neuron*>& my_map){
+void NeuronGroup::CollectVariance(multimap<double, Neuron*>& my_map){
     for(size_t i = 0; i < _neurons.size(); ++i){
         assert(_neurons[i]);
 	double var = _neurons[i]->ComputeVariance();
