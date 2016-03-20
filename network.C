@@ -1185,7 +1185,9 @@ void Network::VarBasedSparsify(const char * type){
 
 void Network::LSMChannelDecrement(channelmode_t channelmode){
   if(channelmode == INPUTCHANNEL) _lsm_input--;
-  else _lsm_reservoir--;
+  else if(channelmode == RESERVOIRCHANNEL) _lsm_reservoir--;
+  else if(channelmode == READOUTCHANNEL) _lsm_readout--;
+  else assert(0); // you code should never go here!
 }
 
 
