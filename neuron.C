@@ -17,6 +17,8 @@
 
 //#define _DEBUG_NEURON
 //#define _DEBUG_VARBASE
+//#define _DEBUG_RM_ZERO_W
+
 
 // NOTE: The time constants have been changed to 2*original settings 
 //       optimized performance for letter recognition.
@@ -918,6 +920,35 @@ void Neuron::LSMDeleteInputSynapse(char * pre_name){
   }
 }
 
+// erase the ptr of the synapses whose weight is zero with the given type
+// @param1: synapsetype_t , @param2: "in" or "out" synapses
+void Neuron::RMZeroSyns(synapsetype_t syn_t, const char * t){
+  bool f;
+  if(strcmp(t, "in") == 0)  f = false;
+  else if(strcmp(t, "out") == 0)  f = true;
+  else assert(0);
+  list<Synapse*>& syns = !f ? _inputSyns : _outputSyns;
+  
+  for(list<Synapse*>::iterator iter = syns.begin(); iter != syns.end(); ){
+    assert(*iter);
+    bool flag = syn_t == INPUT_SYN ? (*iter)->IsInputSyn() :
+                syn_t == READOUT_SYN ? (*iter)->IsReadoutSyn() : 
+                syn_t == RESERVOIR_SYN ? (*iter)->IsLiquidSyn() : false;
+    flag &= (*iter)->IsWeightZero();
+    if(flag){
+#ifdef _DEBUG_RM_ZERO_W
+      if(!f)
+	cout<<"The synapse from "<<(*iter)->PreNeuron()->Name()<<" to "<<_name<<" has benn removed!"<<endl;
+      else
+	cout<<"The synapse from "<<_name<<" to "<<(*iter)->PostNeuron()->Name()<<" has benn removed!"<<endl;
+#endif
+      iter = syns.erase(iter);
+    }
+    else
+      iter++;	       
+  }
+}
+
 
 //* This function is to delete all the in/out synapses starts with char 's'
 // @param1: the type : "in" or "out"; @param2: the start character
@@ -1412,4 +1443,13 @@ void NeuronGroup::LSMPrintInputSyns(){
 	 _neurons[i]->PrintSyn(f_out,"in", 'r');
 	 _neurons[i]->PrintSyn(f_out,"out", 'r');
      }
+}
+
+//* Remove the outcoming synapses with weight zeros for each neuron
+ void NeuronGroup::RemoveZeroSyns(synapsetype_t syn_type){
+   for(size_t i = 0; i < _neurons.size(); ++i){
+     assert(_neurons[i]);
+     _neurons[i]->RMZeroSyns(syn_type, "in");
+     _neurons[i]->RMZeroSyns(syn_type, "out");
+   }
 }

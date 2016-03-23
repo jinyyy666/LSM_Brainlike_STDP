@@ -149,6 +149,7 @@ public:
   // this first parameter is used to indicate which neurongroup does the syn belongs to.
   void DetermineSynType(const char * syn_type, synapsetype_t & ret_syn_type, const char * func_name);
   void NormalizeContinuousWeights(const char * syn_type);
+  void RemoveZeroWeights(const char * type);
   void WriteSynWeightsToFile(const char * syn_type, char * filename);
   void LoadSynWeightsFromFile(const char * syn_type, char * filename);
   void WriteSynActivityToFile(char * pre_name, char * post_name, char * filename);

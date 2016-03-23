@@ -137,6 +137,14 @@ public:
   void Weight(int weight){_D_lsm_weight = weight;}
   void Weight(double weight){_lsm_weight = weight;}
 
+  bool IsWeightZero(){
+#ifdef DIGITAL
+    return _D_lsm_weight == 0;
+#else
+    return _lsm_weight == 0;
+#endif
+  }
+
   // * Truncate the intermediate weights
   bool TruncIntermWeight();
 

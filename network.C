@@ -40,6 +40,10 @@ Network::~Network(){
     delete (*iter);
   for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
     delete (*iter);
+  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++)
+    delete (*iter);
+  for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++)
+    delete (*iter);
 }
 
 bool Network::CheckExistence(char * name){
@@ -1174,7 +1178,7 @@ void Network::VarBasedSparsify(const char * type){
     for(multimap<double, Neuron*>::iterator it = my_map.begin(); it != my_map.end(); ++it){
         if(cnt < cnt_limit){
 #ifdef _DEBUG_VARBASE
-	    cout<<"Low "<<cnt+1<<"th neuron with var: "<<(*it).first<<endl;
+	    cout<<"Low "<<cnt+1<<"th "<<(*it).second->Name()<<" with var: "<<(*it).first<<endl;
 #endif
 	    // Apply the sparsification here:
 	    (*it).second->DisableOutputSyn(syn_type);
@@ -1290,6 +1294,31 @@ void Network::NormalizeContinuousWeights(const char * syn_type){
 	synapses[i]->Weight(new_w);
     }
 }
+
+//* this function is to remove the synapses with zero weights:
+void Network::RemoveZeroWeights(const char * type){
+  synapsetype_t  syn_type = INVALID;
+  DetermineSynType(type, syn_type, "WriteSynWeightsToFile()");
+  assert(syn_type != INVALID);
+  
+  if(syn_type == RESERVOIR_SYN){
+    for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+        assert(*it);
+        (*it)->RemoveZeroSyns(syn_type);
+    }
+  }
+  else if(syn_type == READOUT_SYN){
+    if(!_lsm_output_layer){
+      cout<<"In Network::RemoveZeroWeights(), found that you did not load the readout layer!!"<<endl;
+      assert(_lsm_output_layer);
+    }
+    _lsm_output_layer->RemoveZeroSyns(syn_type);
+  }
+  else{
+    assert(0); // your code shoule never go here.
+  }
+}
+
 
 //* This function is to write the synaptic weights back into a file:
 //* "syn_type" can be reservoir or readout
