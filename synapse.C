@@ -775,6 +775,12 @@ void Synapse::LSMLiquidHarewareLearn(int t){
   assert(0);
 #endif
 
+  // typeFlag = true -> E-E  if false -> E-I (or I-E / I-I which I don't care)
+  bool typeFlag = _pre->IsExcitatory()&&_post->IsExcitatory() ? true : false;
+  // i design this rule by myself:
+  int tau_x = typeFlag ? 4 : 2;
+  int tau_y = typeFlag ? 6 : 3;
+
 #ifdef _DEBUG_SIMPLE_STDP
   if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_15")){
       cout<<"The weight before : "<<_D_lsm_weight<<endl;
@@ -788,8 +794,8 @@ void Synapse::LSMLiquidHarewareLearn(int t){
       // implement the simple STDP rule here:
       // delta_w == 0 ---> w += 2  delta_w == 1 or 2 ---> w += 1 otherwises delta_w = 0 
       if(d == 0)  _D_lsm_weight += 1;
-      if(d == 1) _D_lsm_weight += 1;
-      else if(d < 3)  _D_lsm_weight += 1;
+      if(d <= tau_x/2) _D_lsm_weight += 2;
+      else if(d <= tau_x)  _D_lsm_weight += 1;
   }
 
   if(t == _t_spike_pre){ // LTD:
@@ -797,11 +803,13 @@ void Synapse::LSMLiquidHarewareLearn(int t){
       size_t d = _t_spike_pre - _t_spike_post;
       // implement the simple STDP rule here:
       // there are two cases you can try: 1. reset w = 0; 2. decrease w by 1
-      if(_t_spike_post != _t_spike_pre && d <= 3)
-	  if(_D_lsm_weight == 8)
+      if(_t_spike_post != _t_spike_pre && d <= tau_y)
+	  if(d <= tau_y/3)
 	      _D_lsm_weight = 0;
+          else if(d <= 2*tau_y/3)
+	      _D_lsm_weight = 1;
 	  else
-	      _D_lsm_weight = 0;
+	      _D_lsm_weight -= 1;
   }
 #ifdef _DEBUG_SIMPLE_STDP
   if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "reservoir_15"))
@@ -862,7 +870,7 @@ void Synapse::RemapReservoirWeight(){
   // only consider for excitatory synapses:
   if(_excitatory){
     if(_D_lsm_weight <= 0) _D_lsm_weight = 0;
-    else if(_D_lsm_weight <= 1) _D_lsm_weight = _D_lsm_weight;
+    else if(_D_lsm_weight <= 2) _D_lsm_weight = _D_lsm_weight;
     else _D_lsm_weight = 8;
   }
 }
