@@ -13,6 +13,7 @@
 
 //#define _DEBUG_NETWORK_SEPARATE
 //#define _DEBUG_VARBASE
+//#define _SHOW_SPEECH_ORDER
 
 using namespace std;
 FILE * Fp_syn;
@@ -511,7 +512,31 @@ void Network::LSMHubDetection(){
     cout<<"Total number of hubs in the reservoir is "<<cnt<<endl;
 }
 
+//* this is a function wrapper for training the input. Now I am using STDP:
+void Network::LSMInputTraining(networkmode_t networkmode){
+    int info = -1;
+    // 1. Clear the signals
+    LSMClearSignals();
+    
+    // 2. Load the first speech:
+    info = LoadFirstSpeech(false, networkmode);
 
+    // 3. Simulate
+    while(info != -1){
+        int time = 0;
+#ifdef _SHOW_SPEECH_ORDER
+	    cout<<"================================================\n"
+		<<"Loading speech: "<<info
+	        <<"\n===============================================\n"<<endl;
+#endif
+	while(!LSMEndOfSpeech(networkmode)){
+	    LSMNextTimeStep(++time, false, 1, NULL, NULL); 
+	}
+	LSMClearSignals();
+	info = LoadNextSpeech(false, networkmode);
+    }
+ 
+}
 
 //* this is a function wrapper to train the reservoir. right now I am using STDP.
 //* the readout layer is not trained during this stage
@@ -540,6 +565,11 @@ void Network::LSMReservoirTraining(networkmode_t networkmode){
 	    cout<<"Inputing speech: "<<info<<" for "<<cnt_reservoir<<"th reservoir"<<endl;
 #endif
 	    int time = 0;
+#ifdef _SHOW_SPEECH_ORDER
+	    cout<<"================================================\n"
+		<<"Loading speech: "<<info
+	        <<"\n===============================================\n"<<endl;
+#endif
 	    while(!LSMEndOfSpeech(networkmode)){
 		// the 5th parameter is the pointer to the individual reservoir,
 		// if the 5th parameter is NULL meaning we are using all reservoirs.
@@ -570,7 +600,7 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration, FILE * Foutp, FIL
   _lsmActiveSyns.clear();
 
   // Please remember that the neuron firing activity will change the list: 
-  // _lsmActiveSyns, _lsmActiveReservoirLearnSyns, and _lsmActiveLearnSyns:
+  // _lsmActiveSyns, _lsmActiveSTDPLearnSyns, and _lsmActiveLearnSyns:
   if(reservoir){
       // one individual reservoir is considered :
       // this case happens only when STDP training and we don't need to train readout!
@@ -584,30 +614,39 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration, FILE * Foutp, FIL
       // all reservoirs are considered:
       for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMNextTimeStep(t, Foutp, Fp, train);
   }
-  // train the reservoir using STDP:
-  if(_network_mode == TRAINRESERVOIR){
+  // train the reservoir/input using STDP:
+  if(_network_mode == TRAINRESERVOIR || _network_mode == TRAININPUT){
 #ifndef _HARDWARE_CODE 
       // if not considering using simply hardware implementation
-      if(reservoir){
+      // for training the reservoir synapse 
+      if(_network_mode == TRAINRESERVOIR)
+	if(reservoir){
 	  // if the individual reservoir is specified:
 	  for(Synapse * synapse = reservoir->FirstSynapse(); synapse != NULL; synapse = reservoir->NextSynapse()){
 	      synapse->LSMUpdate(t);
 	  }    
-      }
-      else{
+	}
+	else{
 	  // if simulating the whole network:
 	  for(vector<Synapse*>::iterator iter = _rsynapses.begin(); iter != _rsynapses.end(); ++iter){
 	      // Update the local variable implememnting STDP:
 	      (*iter)->LSMUpdate(t);        
 	  }
+	}
+      else{
+	// for training the input synapses
+	for(vector<Synapse*>::iterator iter = _isynapses.begin(); iter != _isynapses.end(); ++iter){
+	  // Update the local variable implememnting STDP:
+	  (*iter)->LSMUpdate(t);        
+	}
       }
 #endif
       
-      for(list<Synapse*>::iterator iter = _lsmActiveReservoirLearnSyns.begin(); iter != _lsmActiveReservoirLearnSyns.end(); iter++){   
-	  // train the reservoir synapse with STDP rule:
+      for(list<Synapse*>::iterator iter = _lsmActiveSTDPLearnSyns.begin(); iter != _lsmActiveSTDPLearnSyns.end(); iter++){   
+	  // train the targeted synapse with STDP rule:
 	  (*iter)->LSMLiquidLearn(t);
       }
-      _lsmActiveReservoirLearnSyns.clear();
+      _lsmActiveSTDPLearnSyns.clear();
   }
     
 //  cout<<t<<"\t"<<((val2.tv_sec-val1.tv_sec)+double(val2.tv_usec-val1.tv_usec)*1e-6)<<"\t"<<((val3.tv_sec-val2.tv_sec)+double(val3.tv_usec-val2.tv_usec)*1e-6)<<endl;
@@ -687,9 +726,9 @@ void Network::LoadSpeeches(Speech      * sp,
     input->LSMLoadSpeech(sp,&_lsm_input,neuronmode_input,INPUTCHANNEL);
 
     // the reservoir will be ignore if we are doing STDP training.
-    // this if loop is only accessed when networkmode is not TRAINRESERVOIR
+    // this "if" is only accessed when networkmode is not TRAINRESERVOIR/INPUT
     if(!ignore_reservoir){
-	assert(_network_mode != TRAINRESERVOIR);
+	assert(_network_mode != TRAINRESERVOIR && _network_mode != TRAININPUT);
 	if(reservoir)
 	    reservoir->LSMLoadSpeech(sp,&_lsm_reservoir,neuronmode_reservoir,RESERVOIRCHANNEL);
 	else
@@ -804,6 +843,10 @@ void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neur
     neuronmode_input = READCHANNEL;
     neuronmode_reservoir = STDP;
     neuronmode_readout = NORMAL;
+  }else if(networkmode == TRAININPUT){
+    neuronmode_input = READCHANNELSTDP;
+    neuronmode_reservoir = NORMALSTDP; // this enable inputSyns trained by STDP
+    neuronmode_readout = NORMAL;
   }else if(networkmode == READOUT){
     neuronmode_input = DEACTIVATED;
     neuronmode_reservoir = READCHANNEL;
@@ -822,7 +865,7 @@ int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup 
     // determine the neuron mode by the network mode:
     DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout); 
 
-    bool ignore_reservoir = networkmode == TRAINRESERVOIR ? true : false;
+    bool ignore_reservoir = networkmode == TRAINRESERVOIR || networkmode == TRAININPUT ? true : false;
 
     _sp_iter = _speeches.begin();
     if(_sp_iter != _speeches.end()){
@@ -855,7 +898,7 @@ int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup 
     // determine the neuron mode by the network mode:
     DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
     
-    bool ignore_reservoir = networkmode == TRAINRESERVOIR ? true : false;
+    bool ignore_reservoir = networkmode == TRAINRESERVOIR || networkmode == TRAININPUT ? true : false;
 
     _sp_iter = _speeches.begin();
     if(_sp_iter != _speeches.end()){
@@ -875,8 +918,8 @@ int Network::LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup *
     neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
     // determine the neuron mode by the network mode:
     DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
-
-    bool ignore_reservoir = networkmode == TRAINRESERVOIR ? true : false;
+    
+    bool ignore_reservoir = networkmode == TRAINRESERVOIR || networkmode == TRAININPUT ? true : false;
 
     if(train == true) _lsm_output_layer->LSMRemoveTeacherSignal((*_sp_iter)->Class());
     _sp_iter++;
@@ -900,7 +943,7 @@ int Network::LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup *
     // determine the neuron mode by the network mode:
     DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
 
-    bool ignore_reservoir = networkmode == TRAINRESERVOIR ? true : false;
+    bool ignore_reservoir = networkmode == TRAINRESERVOIR || networkmode == TRAININPUT ? true : false;
 
     if(train == true) _lsm_output_layer->LSMRemoveTeacherSignal((*_sp_iter)->Class());
     _sp_iter++;
@@ -1046,7 +1089,7 @@ void Network::LSMClearSignals(){
   // Remember to clear the list to store the synapses:      
   _lsmActiveLearnSyns.clear();                              
   _lsmActiveSyns.clear();
-  _lsmActiveReservoirLearnSyns.clear(); 
+  _lsmActiveSTDPLearnSyns.clear(); 
 }
 void Network::LSMClearWeights(){
   for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClearLearningSynWeights();
@@ -1059,7 +1102,7 @@ bool Network::LSMEndOfSpeech(networkmode_t networkmode){
     return true;
   }
 */
-  if((networkmode == TRAINRESERVOIR)&&(_lsm_input>0)){
+  if((networkmode == TRAINRESERVOIR||networkmode ==TRAININPUT)&&(_lsm_input>0)){
     return false;
   }
 
@@ -1196,9 +1239,9 @@ void Network::LSMChannelDecrement(channelmode_t channelmode){
 
 
 //* add the active reservoir synapse about to be trained by STDP
-void Network::LSMAddReservoirActiveSyn(Synapse * synapse){
+void Network::LSMAddSTDPActiveSyn(Synapse * synapse){
   assert(synapse->GetActiveStatus() == false);
-  _lsmActiveReservoirLearnSyns.push_back(synapse);
+  _lsmActiveSTDPLearnSyns.push_back(synapse);
 }
 
 void Network::CrossValidation(int fold){
@@ -1242,11 +1285,11 @@ void Network::DetermineSynType(const char * syn_type, synapsetype_t & ret_syn_ty
   if(strcmp(syn_type, "reservoir") == 0){
     // Write reservoir syns into the file
     ret_syn_type = RESERVOIR_SYN;
-  }
-  else if(strcmp(syn_type, "readout") == 0){
+  }else if(strcmp(syn_type, "readout") == 0){
     ret_syn_type = READOUT_SYN;
-  }
-  else{
+  }else if(strcmp(syn_type, "input") == 0){
+    ret_syn_type = INPUT_SYN;
+  }else{
     cout<<"In Network::"<<func_name<<", undefined synapse type: "<<syn_type<<endl;
     exit(EXIT_FAILURE);
   } 
@@ -1298,7 +1341,7 @@ void Network::NormalizeContinuousWeights(const char * syn_type){
 //* this function is to remove the synapses with zero weights:
 void Network::RemoveZeroWeights(const char * type){
   synapsetype_t  syn_type = INVALID;
-  DetermineSynType(type, syn_type, "WriteSynWeightsToFile()");
+  DetermineSynType(type, syn_type, "RemoveZeroWeights()");
   assert(syn_type != INVALID);
   
   if(syn_type == RESERVOIR_SYN){
@@ -1321,7 +1364,7 @@ void Network::RemoveZeroWeights(const char * type){
 
 
 //* This function is to write the synaptic weights back into a file:
-//* "syn_type" can be reservoir or readout
+//* "syn_type" can be reservoir or readout or input
 void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
   ofstream f_out(filename);
   if(!f_out.is_open()){
@@ -1332,9 +1375,12 @@ void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
   synapsetype_t  wrt_syn_type = INVALID;
   DetermineSynType(syn_type, wrt_syn_type, "WriteSynWeightsToFile()");
   assert(wrt_syn_type != INVALID);
+  vector<Synapse*> tmp;
 
-  const vector<Synapse*> & synapses = wrt_syn_type == RESERVOIR_SYN ? _rsynapses : 
-    (wrt_syn_type == READOUT_SYN ? _rosynapses : vector<Synapse*>());
+  const vector<Synapse*> & synapses = 
+    wrt_syn_type == RESERVOIR_SYN ? _rsynapses : 
+    wrt_syn_type == READOUT_SYN ? _rosynapses : 
+    wrt_syn_type == INPUT_SYN ? _isynapses : tmp;
   
   // write the synapse back to the file:
   assert(!synapses.empty());
@@ -1356,7 +1402,7 @@ void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
 }
 
 //* This function is to load the synaptic weights from file and assign it to the synapses:
-//* "syn_type" can be reservoir or readout
+//* "syn_type" can be reservoir or readout or input
 void Network::LoadSynWeightsFromFile(const char * syn_type, char * filename){
   ifstream f_in(filename);
   if(!f_in.is_open()){
@@ -1367,10 +1413,14 @@ void Network::LoadSynWeightsFromFile(const char * syn_type, char * filename){
   synapsetype_t read_syn_type = INVALID;
   DetermineSynType(syn_type, read_syn_type, "LoadSynWeightsFromFile()");
   assert(read_syn_type != INVALID);
+  vector<Synapse*> tmp;
 
-  const vector<Synapse*> & synapses = read_syn_type == RESERVOIR_SYN ? _rsynapses : 
-    (read_syn_type == READOUT_SYN ? _rosynapses : vector<Synapse*>());
+  const vector<Synapse*> & synapses = 
+    read_syn_type == RESERVOIR_SYN ? _rsynapses : 
+    read_syn_type == READOUT_SYN ? _rosynapses :
+    read_syn_type == INPUT_SYN ? _isynapses : tmp;
 
+  assert(!synapses.empty());  
   // load the synaptic weights from file:
   // the synaptic weight is stored in the file in the same order as the corresponding synapses store in the vector
   int index;

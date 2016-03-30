@@ -39,7 +39,7 @@ void Speech::SetNumReservoirChannel(int size){
 
 //* intialize the channels attached to readout neurons
 void Speech::SetNumReadoutChannel(int size){
-    assert(size >= 0 && _oChannels.empty());
+    assert(size >= 0 || _oChannels.empty());
     while(_oChannels.size() < size){
 	Channel * channel = new Channel;
 	_oChannels.push_back(channel);

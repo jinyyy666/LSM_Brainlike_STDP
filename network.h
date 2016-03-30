@@ -26,10 +26,11 @@ private:
   std::list<NeuronGroup*> _allReservoirs;
   std::list<Synapse*> _synapses;
   std::vector<Synapse*> _rsynapses;       
-  std::vector<Synapse*> _rosynapses;;
+  std::vector<Synapse*> _rosynapses;
+  std::vector<Synapse*> _isynapses;
   std::list<Synapse*> _lsmActiveLearnSyns;
   std::list<Synapse*> _lsmActiveSyns;
-  std::list<Synapse*> _lsmActiveReservoirLearnSyns;
+  std::list<Synapse*> _lsmActiveSTDPLearnSyns;
 
   // for LSM
   std::vector<Speech*> _speeches;
@@ -83,6 +84,7 @@ public:
   void LSMSumGatedNeurons();
   void LSMHubDetection();
 
+  void LSMInputTraining(networkmode_t networkmode);
   void LSMReservoirTraining(networkmode_t networkmode);
   void LSMNextTimeStep(int t, bool train, int iteration, FILE* Foutp, FILE* fp, NeuronGroup* reservoir = NULL);
 
@@ -129,8 +131,8 @@ public:
   void LSMAddActiveLearnSyn(Synapse*synapse){_lsmActiveLearnSyns.push_back(synapse);}
   void LSMAddActiveSyn(Synapse*synapse){_lsmActiveSyns.push_back(synapse);}
 
-  //* this function is to add the reservoir synapses that should be trained by STDP:
-  void LSMAddReservoirActiveSyn(Synapse * synapse);
+  //* Add the target synapses that should be trained by STDP:
+  void LSMAddSTDPActiveSyn(Synapse * synapse);
 
   void CrossValidation(int);
   void Fold(int fold_ind){_fold_ind = fold_ind;}
@@ -163,11 +165,13 @@ public:
   void LSMAddSynapse(Neuron * pre, Neuron * post, T weight, bool fixed, T weight_limit,bool liquid, NeuronGroup * group = NULL){
     Synapse * synapse = new Synapse(pre, post, weight, fixed, weight_limit, pre->IsExcitatory(),liquid);
     _synapses.push_back(synapse);
-    // push back the reservoir and readout synapses into the vector:
+    // push back the reservoir, readout and input synapses into the vector:
     if(!synapse->IsReadoutSyn() && !synapse->IsInputSyn())
       _rsynapses.push_back(synapse);
-    if(synapse->IsReadoutSyn())
+    else if(synapse->IsReadoutSyn())
       _rosynapses.push_back(synapse);
+    else
+      _isynapses.push_back(synapse);
 
     if(group)  group->AddSynapse(synapse);
     pre->AddPostSyn(synapse);

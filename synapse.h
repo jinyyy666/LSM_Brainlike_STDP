@@ -1,3 +1,4 @@
+
 #ifndef SYNAPSE_H
 #define SYNAPSE_H
 
@@ -165,7 +166,7 @@ public:
   void LSMClearLearningSynWeights();
   void LSMLearn(int iteration);
   void LSMActivate(Network * network, bool stdp_flag, bool train);
-  void LSMActivateReservoirSyns(Network*);
+  void LSMActivateSTDPSyns(Network * network, const char * type);
   void LSMDeactivate(){ _lsm_active = false;}
 
   // determine whether or not this synapse is in the liquid?

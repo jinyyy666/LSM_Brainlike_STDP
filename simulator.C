@@ -75,13 +75,14 @@ void Simulator::LSMRun(long tid){
   _network->WriteSynWeightsToFile("reservoir",filename);
 #endif
 
-#ifndef STDP_TRAINING_RESERVOIR
+#ifndef STDP_TRAINING
   if(tid == 0){
     sprintf(filename, "r_weights_info.txt");
     _network->WriteSynWeightsToFile("reservoir", filename);
   }
 #endif
 
+#ifdef STDP_TRAINING
 #ifdef STDP_TRAINING_RESERVOIR
   // train the reservoir using STDP rule:
   networkmode = TRAINRESERVOIR;
@@ -89,7 +90,7 @@ void Simulator::LSMRun(long tid){
 
   gettimeofday(&val1, &zone);
   // repeatedly training the reservoir for a certain amount of iterations:
-  for(int i = 0; i < 0; ++i){
+  for(int i = 0; i < 25; ++i){
       _network->LSMReservoirTraining(networkmode);
 
 #if NUM_THREADS == 1  
@@ -97,11 +98,33 @@ void Simulator::LSMRun(long tid){
       sprintf(filename, "reservoir_weights_%d.txt", i);
       _network->WriteSynWeightsToFile("reservoir",filename);
 #endif       
-
   }
-  // visualize the reservoir synapses after stdo training:
+  gettimeofday(&val2, &zone);
+  cout<<"Total time spent in training the reservoir: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
+#endif
+
+  // visualize the reservoir synapses after stdp training:
   //_network->VisualizeReservoirSyns(1);
 
+#ifdef STDP_TRAINING_INPUT
+  // train the input using STDP rule:
+  networkmode = TRAININPUT;
+  _network->LSMSetNetworkMode(networkmode);
+
+  gettimeofday(&val1, &zone);
+  // repeatedly training the input for a certain amount of iterations:
+  for(int i = 0; i < 20; ++i){
+      _network->LSMInputTraining(networkmode);
+
+#if NUM_THREADS == 1
+      // Write the weight back to file after training the input with STDP:
+      sprintf(filename, "input_weights_%d.txt", i);
+      _network->WriteSynWeightsToFile("input",filename);
+#endif
+  }
+  gettimeofday(&val2, &zone);
+  cout<<"Total time spent in training the input: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
+#endif
 
   ////////////////////////////////////////////////////////////////////////
   // REMEMBER TO REMOVE THESE CODES!!
@@ -122,21 +145,25 @@ void Simulator::LSMRun(long tid){
       _network->LSMReservoirTraining(networkmode);
 #endif
   _network->LSMSumGatedNeurons();
-  gettimeofday(&val2, &zone);
-  cout<<"Total time spent in training the reservoir: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
+
 
   // Load the weight from file:
-  // sprintf(filename, "reservoir_weights_15.txt");
-  //_network->LoadSynWeightsFromFile("reservoir", filename);
+  // sprintf(filename, "r_weights_info.txt");
+  // _network->LoadSynWeightsFromFile("reservoir", filename);
 
   // Write the weight back to file after training the reservoir with STDP:
   if(tid == 0){
     sprintf(filename, "r_weights_info.txt");
     _network->WriteSynWeightsToFile("reservoir", filename);
+    sprintf(filename, "i_weights_info.txt");
+    _network->WriteSynWeightsToFile("input", filename);
   }
-  
-#endif  
 
+#ifdef _RM_ZERO_RES_WEIGHT
+  _network->RemoveZeroWeights("reservoir");
+#endif  
+ 
+#endif
   ////////////////////////////////////////////////////////////////////////
   // REMEMBER TO REMOVE THESE CODES!!
   // sprintf(filename, "r_weights_info_best.txt");
@@ -147,7 +174,7 @@ void Simulator::LSMRun(long tid){
   //ofstream f1("spike_freq.txt"), f2("spike_speech_label.txt");
   //assert(f1.is_open() && f2.is_open());
   ////////////////////////////////////////////////////////////////////////
-
+  
   // produce transient state
   networkmode = TRANSIENTSTATE;
   _network->LSMSetNetworkMode(networkmode);
@@ -181,9 +208,11 @@ void Simulator::LSMRun(long tid){
 #ifdef _VARBASED_SPARSE
     // Collect the firing activity of each reservoir neurons from sp
     // and scatter the frequency back to the network:
+    cout<<"Begin readout sparsification...."<<endl;
     vector<double> fs;
     _network->CollectSpikeFreq("reservoir", fs, time);
     _network->ScatterSpikeFreq("reservoir", fs);
+    cout<<"Done with the readout sparsification!"<<endl;
 #endif
 
     _network->LSMClearSignals();
@@ -209,7 +238,7 @@ void Simulator::LSMRun(long tid){
   cout<<"The max interval between two pre-synaptic events: "<<max_intvl_f<<endl;
   return;
 #endif
-
+  
   // train the readout layer
   networkmode = READOUT;
   _network->LSMSetNetworkMode(networkmode);
@@ -242,7 +271,7 @@ void Simulator::LSMRun(long tid){
     info = _network->LoadNextSpeechTestCV(networkmode);
   }
 #endif
-  for(int iii = 0; iii < 500; iii++){
+  for(int iii = 0; iii < 300; iii++){
     count = 0;
     _network->LSMClearSignals();
 #ifdef CV
