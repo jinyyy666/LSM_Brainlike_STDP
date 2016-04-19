@@ -271,7 +271,7 @@ void Simulator::LSMRun(long tid){
     info = _network->LoadNextSpeechTestCV(networkmode);
   }
 #endif
-  for(int iii = 0; iii < 300; iii++){
+  for(int iii = 0; iii < 500; iii++){
     count = 0;
     _network->LSMClearSignals();
 #ifdef CV
