@@ -1,3 +1,0 @@
-neurongroup input  77 excitatory
-column reservoir 3 3 15
-lsmsynapse input reservoir excitatory fixed 0.2
