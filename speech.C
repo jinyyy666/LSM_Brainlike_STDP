@@ -194,11 +194,8 @@ int Speech::PrintSpikeFreq(const char * type, ofstream & f_out){
 //* Print the spike rate to the target file:
 void Speech::SpikeFreq(ofstream & f_out, const vector<Channel*> & channels){
     // find out the stop time for each speech:
-    int stop_t = INT_MIN;
-    for(int i = 0; i < channels.size(); i++){
-	assert(channels[i]);
-	stop_t = max(stop_t, channels[i]->LastSpikeT());
-    }
+    int stop_t = EndTime();INT_MIN;
+    
     for(int i = 0; i < channels.size(); i++){ 
 	//f_out<<(double)channels[i]->SizeSpikeT()/stop_t<<"\t";
         f_out<<channels[i]->SizeSpikeT()<<"\t";
@@ -206,6 +203,19 @@ void Speech::SpikeFreq(ofstream & f_out, const vector<Channel*> & channels){
     f_out<<endl;
 }
 
+//* find out the stop time for each speech:
+int Speech::EndTime(){
+    int stop_t = INT_MIN;
+    for(int i = 0; i < _channels.size(); i++){
+	assert(_channels[i]);
+	stop_t = max(stop_t, _channels[i]->LastSpikeT());
+    }
+    if(stop_t == INT_MIN){
+      cout<<"The speech:  "<<_index<<" contains "<<_channels.size()<<" input channels."<<endl;
+      assert(stop_t != INT_MIN);
+    }
+    return stop_t;
+}
 
 //* Collect the firing fq into a vector:
 void Speech::CollectFreq(synapsetype_t syn_t, vector<double>& fs, int end_t){

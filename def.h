@@ -41,7 +41,7 @@
 #define STDP_TRAINING
 
 // the control parameter to enable training the reservoir:
-#define STDP_TRAINING_RESERVOIR
+//#define STDP_TRAINING_RESERVOIR
 
 // the control parameter to enable training the input to reservoir syns
 //#define STDP_TRAINING_INPUT
@@ -52,7 +52,6 @@
 // the in/out degree criterior for gating one node:
 #define INDEG_LIMIT  1
 #define OUTDEG_LIMIT  1
-
 
 // damping factor for long-time potientation (under triplet case):
 // this value should be small (around 0.01) for multiplicative update!
@@ -128,9 +127,9 @@
 #define LSM_DELTA_POT 0.006
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
-//#define CLS 26
 #define CLS 26
 #define NUM_THREADS 5
+#define NUM_ITERS 5
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -170,6 +169,9 @@
 
 #define CV
 #define NFOLD 5
+
+//* Control variable to enable the old way of readout by writing outputs/*.dat
+//#define _WRITE_STAT  
 
 //* This is the control variable to enable print pre-synaptic events
 //#define _RES_FIRING_CHR

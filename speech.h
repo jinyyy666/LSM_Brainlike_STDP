@@ -40,6 +40,7 @@ public:
   void PrintSpikes(int info);
   int PrintSpikeFreq(const char * type, std::ofstream & f_out);
   void SpikeFreq(std::ofstream & f_out, const std::vector<Channel*> & channels);
+  int  EndTime();
   void CollectFreq(synapsetype_t syn_t, std::vector<double>& fs, int end_t);
 };
 #endif
