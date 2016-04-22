@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <algorithm>
 
 using namespace std;
 int file[4142];
@@ -22,20 +23,11 @@ struct NTParg{
 
 void * ParallelSim(void * NTPargptr){
 
-//  char filename[64];
   NTParg * arg = (NTParg *)NTPargptr;
   Network * network = arg->network;
   long tid = arg->tid;
   delete arg;
     
-  
-//  Parser parser(&network);
-//  parser.Parse(argv[1]);
-  
-//  sprintf(filename,"netlist/netlist_%ld.txt",tid);
-//  cout<<"filename:"<<filename<<"\n"<<endl;
-//  parser.Parse(filename);
-//  cout<<"aaaa"<<endl;
   Simulator simulator(network);
 
 #if   _IMAGE == 1
@@ -48,6 +40,25 @@ void * ParallelSim(void * NTPargptr){
   pthread_exit(NULL);
 }
 
+void PrintResultsToFile(const vector<int>& r_correct, const vector<int>& r_wrong, const vector<int>& r_even, int n_speeches){
+  assert(!r_correct.empty() && !r_wrong.empty() && !r_even.empty());
+
+  ofstream f_c("outputs/rates.txt");
+  ofstream f_w("outputs/errors.txt");
+  ofstream f_e("outputs/evens.txt");
+  if(!f_c.is_open()){
+      cout<<"Cannot open: outputs/rates_1.txt"<<endl;
+      return;
+  }
+  for(size_t i = 0; i < r_correct.size(); ++i){
+      f_c<<r_correct[i]<<endl;
+      f_w<<r_wrong[i]<<endl;
+      f_e<<r_even[i]<<endl;			
+      assert(r_correct[i] + r_wrong[i] + r_even[i] == n_speeches);
+  }
+  f_c<<endl, f_w<<endl, f_e<<endl;
+  f_c.close(), f_w.close(), f_e.close();
+}
 
 int main(int argc, char * argv[]){
   struct timeval val1,val2;
@@ -146,8 +157,33 @@ int main(int argc, char * argv[]){
   assert(0);
 #endif
 
+#ifdef _WRITE_STAT
   readout_module.Multireadout();
+#else
+  // collect the result directly from network:
+  int num_speeches = array_network[0].NumSpeech();
+  int num_iters = array_network[0].NumIteration();
+  vector<int> r_correct(num_iters, 0);
+  vector<int> r_wrong(num_iters, 0);
+  vector<int> r_even(num_iters, 0);
+
+  for(int i = 0; i < NUM_THREADS; ++i)
+    array_network[i].MergeReadoutResults(r_correct, r_wrong, r_even);
+
+  int max_rate = *max_element(r_correct.begin(),r_correct.end());
+  cout<<"Best performance = "<<max_rate<<"/"<<num_speeches<<" = "<<double(max_rate)*100/double(num_speeches)<<'%'<<endl;
+  if(r_correct.size() >= 50)
+    cout<<"Performance at 50th iteration = "<<double(r_correct[49])*100/double(num_speeches)<<'%'<<endl;
+  if(r_correct.size() >= 100)
+    cout<<"Performance at 100th iteration = "<<double(r_correct[99])*100/double(num_speeches)<<'%'<<endl;
+  if(r_correct.size() >= 200)
+    cout<<"Performance at 200th iteration = "<<double(r_correct[199])*100/double(num_speeches)<<'%'<<endl;
+  if(r_correct.size() >= 300)
+    cout<<"Performance at 300th iteration = "<<double(r_correct[299])*100/double(num_speeches)<<'%'<<endl;
   
+  PrintResultsToFile(r_correct, r_wrong, r_even, num_speeches);
+#endif
+
   pthread_exit(NULL);
 
   return 0;
