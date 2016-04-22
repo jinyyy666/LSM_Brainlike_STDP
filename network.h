@@ -32,6 +32,10 @@ private:
   std::list<Synapse*> _lsmActiveSyns;
   std::list<Synapse*> _lsmActiveSTDPLearnSyns;
 
+  std::vector<int> _readout_correct; // sign : +1
+  std::vector<int> _readout_wrong;   // sign: -1
+  std::vector<int> _readout_even;    // sign: 0
+
   // for LSM
   std::vector<Speech*> _speeches;
   std::vector<Speech*>::iterator _sp_iter;
@@ -40,6 +44,7 @@ private:
   int _train_fold_ind;
   std::vector<Speech*> ** _CVspeeches;
   std::vector<Speech*>::iterator _cv_train_sp_iter, _cv_test_sp_iter;
+  Speech * _sp;
   void RemoveCVSpeeches();
   NeuronGroup * _lsm_input_layer;
   NeuronGroup * _lsm_reservoir_layer;
@@ -86,7 +91,7 @@ public:
 
   void LSMInputTraining(networkmode_t networkmode);
   void LSMReservoirTraining(networkmode_t networkmode);
-  void LSMNextTimeStep(int t, bool train, int iteration, FILE* Foutp, FILE* fp, NeuronGroup* reservoir = NULL);
+  void LSMNextTimeStep(int t, bool train, int iteration, int end_time, FILE* Foutp, FILE* fp, NeuronGroup* reservoir = NULL);
 
   Neuron * SearchForNeuron(const char*);
   Neuron * SearchForNeuron(const char*, const char*);
@@ -95,6 +100,7 @@ public:
   void IndexSpeech();
 
   // for LSM
+  int  SpeechEndTime();
   void AddSpeech(Speech*);
   void LoadSpeeches(Speech      * sp_iter, 
 		    NeuronGroup * input,
@@ -121,12 +127,14 @@ public:
   int LoadNextSpeechTestCV(networkmode_t);
 
   int NumSpeech(){return _speeches.size();}
+  int NumIteration(){return _readout_correct.size();}
   void AnalogToSpike();
   void RateToSpike();
   void LSMClearSignals();
   void LSMClearWeights();
   bool LSMEndOfSpeech(networkmode_t);
   void LSMChannelDecrement(channelmode_t);
+  int  LSMJudge();
   //* this function is to add the active learning readout synapses:
   void LSMAddActiveLearnSyn(Synapse*synapse){_lsmActiveLearnSyns.push_back(synapse);}
   void LSMAddActiveSyn(Synapse*synapse){_lsmActiveSyns.push_back(synapse);}
@@ -148,6 +156,11 @@ public:
   void VarBasedSparsify(const char * type);
   
   // supporting functions:
+  // the push/view readout results:
+  void LSMPushResults(int correct, int wrong, int even, int n_iter);
+  std::vector<int> LSMViewResults();
+  void MergeReadoutResults(std::vector<int>& r_correct, std::vector<int>& r_wrong, std::vector<int>& r_even);
+
   // this first parameter is used to indicate which neurongroup does the syn belongs to.
   void DetermineSynType(const char * syn_type, synapsetype_t & ret_syn_type, const char * func_name);
   void NormalizeContinuousWeights(const char * syn_type);

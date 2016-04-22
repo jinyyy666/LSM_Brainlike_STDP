@@ -17,6 +17,7 @@ public:
   void SetStepSize(double);
 
   void LSMRun(long tid);
+  void ReadoutJudge(int& correct, int& wrong, int& even);
   void PrintSynAct(int info);
   void PrintOutFreqs(const std::vector<std::vector<double> >& all_fs);
   void CollectPAStat(std::vector<double>& prob, 

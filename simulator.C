@@ -53,6 +53,7 @@ void Simulator::LSMRun(long tid){
   _network->IndexSpeech();
   cout<<"Number of speeches: "<<_network->NumSpeech()<<endl;
 #ifndef CV // This is for the case without cross-validation
+#ifdef _WRITE_STAT
   for(int count = 0; count < _network->NumSpeech(); count++){
     // empty files
     sprintf(filename,"outputs/spikepattern%d.dat\0",count);
@@ -61,6 +62,7 @@ void Simulator::LSMRun(long tid){
     fprintf(Foutp,"%d\t%d\n",-1,-1);
     fclose(Foutp);
   }
+#endif
 #endif
 
   // visualize the reservoir synapses before stdp training:
@@ -143,9 +145,8 @@ void Simulator::LSMRun(long tid){
   // retrain the network for few echos:
   for(int i = 0; i < 5; ++i)
       _network->LSMReservoirTraining(networkmode);
-#endif
   _network->LSMSumGatedNeurons();
-
+#endif
 
   // Load the weight from file:
   // sprintf(filename, "r_weights_info.txt");
@@ -194,7 +195,7 @@ void Simulator::LSMRun(long tid){
     count++;
     int time = 0;
     while(!_network->LSMEndOfSpeech(networkmode)){
-      _network->LSMNextTimeStep(++time,false,1,NULL,NULL);
+      _network->LSMNextTimeStep(++time,false,1, 1, NULL,NULL);
     }
 
     //cout<<"Speech "<<count<<endl;
@@ -244,7 +245,6 @@ void Simulator::LSMRun(long tid){
   _network->LSMSetNetworkMode(networkmode);
 #ifdef CV
 #if NUM_THREADS == 1
-// network->CrossValidation(NUM_THREADS);
   cout<<"aaaa"<<endl;
   for(int fff = 0; fff < NFOLD; ++fff){
     _network->Fold(fff);
@@ -252,12 +252,12 @@ void Simulator::LSMRun(long tid){
     Tid = (int)tid;
     cout<<"Only one thread is running:Tid_"<<Tid<<endl;
 #else 
-  cout<<"bbbb"<<endl;
-     Tid = (int)tid;
-     cout<<"Tid:"<<Tid<<endl;
-     _network->Fold(Tid);
+    cout<<"bbbb"<<endl;
+    Tid = (int)tid;
+    cout<<"Tid:"<<Tid<<endl;
+    _network->Fold(Tid);
 #endif
-//  _network->LSMClearWeights();   //Clear all weights before each fold of CV
+#ifdef _WRITE_STAT
   info = _network->LoadFirstSpeechTestCV(networkmode);
   while(info != -1){
     // write the file array for the purpose of parallel writing protectation:
@@ -271,8 +271,10 @@ void Simulator::LSMRun(long tid){
     info = _network->LoadNextSpeechTestCV(networkmode);
   }
 #endif
-  for(int iii = 0; iii < 500; iii++){
-    count = 0;
+#endif
+  int correct = 0, wrong = 0, even = 0;
+  for(int iii = 0; iii < NUM_ITERS; iii++){
+    count = 0, correct = 0, wrong = 0, even = 0;
     _network->LSMClearSignals();
 #ifdef CV
     info = _network->LoadFirstSpeechTrainCV(networkmode);
@@ -286,7 +288,7 @@ void Simulator::LSMRun(long tid){
       count++;
       int time = 0;
       while(!_network->LSMEndOfSpeech(networkmode)){
-        _network->LSMNextTimeStep(++time,true,iii,NULL,NULL);;
+        _network->LSMNextTimeStep(++time,true,iii, 1, NULL,NULL);;
       }
       _network->LSMClearSignals();
 #ifdef CV
@@ -305,15 +307,20 @@ void Simulator::LSMRun(long tid){
     info = _network->LoadFirstSpeech(false, networkmode);
 #endif
     while(info != -1){
-      Fp = NULL;
+      Fp = NULL, Foutp = NULL;
+
+#ifdef _WRITE_STAT
       sprintf(filename,"outputs/spikepattern%d.dat",info);
       Foutp = fopen(filename,"a");
       assert(Foutp != NULL);
+#endif
       count++;
       int time = 0;
+      int end_time = _network->SpeechEndTime();
       while(!_network->LSMEndOfSpeech(networkmode)){
-        _network->LSMNextTimeStep(++time,false,1,Foutp,NULL);
+        _network->LSMNextTimeStep(++time,false,1,end_time, Foutp,NULL);
       }
+      /*
       if(file[info] != -1){
         if(file[info] != Tid){
         cout<<"Thread "<<Tid<<" tried to write file: "<<filename<<" but Thread "<<file[info]<<" is writing it!"<<endl;
@@ -321,9 +328,15 @@ void Simulator::LSMRun(long tid){
         }
       }
       file[info] = Tid;
+      */
+
+#ifdef _WRITE_STAT
       assert(Foutp != NULL);
       fprintf(Foutp,"%d\t%d\n",-1,-1);
       fclose(Foutp);
+#endif
+
+      ReadoutJudge(correct, wrong, even); // judge the readout output here
       _network->LSMClearSignals();
 #ifdef CV
       info = _network->LoadNextSpeechTestCV(networkmode);
@@ -331,6 +344,8 @@ void Simulator::LSMRun(long tid){
       info = _network->LoadNextSpeech(false, networkmode);
 #endif
     }
+    _network->LSMPushResults(correct, wrong, even, iii); // collect the result in network
+
 //    _network->SearchForNeuronGroup("output")->LSMPrintInputSyns();
   }
 #ifdef CV
@@ -338,6 +353,20 @@ void Simulator::LSMRun(long tid){
 }
 #endif
 #endif
+}
+
+//* judge the readout result:
+void Simulator::ReadoutJudge(int& correct, int& wrong, int& even){
+  int res = _network->LSMJudge();
+
+  if(res == 1) ++correct;
+  else if(res == -1) ++wrong;
+  else if(res == 0) ++even;
+  else{
+    cout<<"In Simulator::ReadoutJudge(int&, int&, int&)\n"
+        <<"Undefined return type: "<<res<<" returned by Network::LSMJudge()"
+        <<endl;
+  }
 }
 
 

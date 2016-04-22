@@ -83,6 +83,7 @@ _ind(-1)
 
   _indexInGroup = -1;
   _del = false;
+  _f_count = 0;
 }
 
 //FOR INPUT AND OUTPUT
@@ -135,6 +136,7 @@ _ind(-1)
 
   _indexInGroup = -1;
   _del = false;
+  _f_count = 0;
 }
 
 Neuron::~Neuron(){
@@ -288,7 +290,8 @@ bool Neuron::IsHubChild(const char * name){
 }
 
 void Neuron::LSMClear(){
-  
+  _f_count = 0;
+
   _lsm_ref = 0;
 
   _lsm_v_mem = 0;
@@ -593,7 +596,8 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
   }
 
 }
-void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
+
+void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end_time){
 
   if(_mode == DEACTIVATED) return;
   if(_mode == READCHANNEL || _mode == READCHANNELSTDP){
@@ -816,11 +820,17 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train){
 
     _lsm_ref = LSM_T_REFRAC;
 
+#ifdef _WRITE_STAT
     if((_name[0]=='r')&&(_name[9]=='_')){
       if(Fp != NULL) fprintf(Fp,"%d\t%d\n",atoi(_name+10),t);
     }else if(Foutp != NULL) 
 	fprintf(Foutp,"%d\t%d\n",atoi(_name+7),t);
-
+#else
+    if(_name[0] == 'o'){
+      if(t <= end_time/2) _f_count += 1;
+      else  ++_f_count;
+    }
+#endif
     if(_mode == WRITECHANNEL){
       if(_lsm_channel == NULL){
 	cout<<"Failure to assign a channel ptr to the neuron: "<<_name<<endl;
@@ -1480,6 +1490,26 @@ void NeuronGroup::CollectVariance(multimap<double, Neuron*>& my_map){
     }
     p_r = _neurons.empty() ? 0 : p_r/((double)_neurons.size());
     avg_i_r = _neurons.empty() ? 0 : avg_i_r/((double)_neurons.size());
+}
+
+//* judge the results of the readout layer after each speech is presented:
+int NeuronGroup::Judge(int cls){
+  vector<pair<int, int> > f_pairs;
+  auto comp = [](const pair<int, int>& x, const pair<int, int>& y){ return x.first > y.first;};
+  for(int i = 0; i < _neurons.size(); ++i){  
+    assert(_neurons[i]);
+    f_pairs.push_back(make_pair(_neurons[i]->FireCount(), i));
+  }
+  sort(f_pairs.begin(), f_pairs.end(), comp);
+  if(f_pairs.size() < 2){
+    cerr<<"Warning: only "<<f_pairs.size()<<" output neurons!!"<<endl;
+    return 0;
+  }
+
+  int res = f_pairs[0].second;
+  if(res == cls && f_pairs[0].first > f_pairs[1].first)  return 1; // correct case
+  else if(res == cls && f_pairs[0].first == f_pairs[1].first)  return 0; // even case
+  else return -1;  // wrong case
 }
 
 void NeuronGroup::LSMRemoveSpeech(){

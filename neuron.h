@@ -30,6 +30,7 @@ private:
   bool _del;
   Network * _network;
   int _ind;
+  int _f_count; // counter for firing activity
 
 /* FOR LIQUID STATE MACHINE */
   double _lsm_v_mem;
@@ -85,6 +86,10 @@ public:
   void FireFreq(double f){_fire_freq.push_back(f);}
   double FireFreq(){return _fire_freq.empty() ? 0 : _fire_freq.back();}
 
+  // record the firing count:
+  int FireCount(){return _f_count;}
+  void FireCount(int count){_f_count = count;}
+
   // set the neuron index under the separated reservoir cases:
   void Index(int ind){_ind = ind;}
   
@@ -123,7 +128,7 @@ public:
   void SetPostNeuronSpikeT(int t);
   void HandleFiringActivity(bool isInput, int time, bool train);
 
-  void LSMNextTimeStep(int t , FILE * Foutp, FILE * Fp, bool train);
+  void LSMNextTimeStep(int t , FILE * Foutp, FILE * Fp, bool train, int end_time);
   void LSMSetChannel(Channel*,channelmode_t);
   void LSMRemoveChannel();
   void LSMSetNeuronMode(neuronmode_t neuronmode){_mode = neuronmode;}
@@ -193,6 +198,7 @@ public:
   void ScatterFreq(std::vector<double>& fs, std::size_t & bias, std::size_t & cnt);
   void CollectVariance(std::multimap<double, Neuron*>& my_map);
   void CollectPreSynAct(double & p_r, double & avg_i_r, int & max_i_r);
+  int Judge(int cls);
   void LSMRemoveSpeech();
   void LSMSetTeacherSignal(int);
   void LSMRemoveTeacherSignal(int);
