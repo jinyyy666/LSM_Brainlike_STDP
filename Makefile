@@ -1,6 +1,6 @@
 TARGET = NeuromorphicSim
 CXX	= g++ 
-CXXFLAGS = -pthread  -std=c++11 -O3
+CXXFLAGS = -pthread  -std=c++11 -O9
 
 
 HDRS=	channel.h speech.h neuron.h synapse.h network.h parser.h simulator.h readout.h def.h
