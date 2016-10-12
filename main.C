@@ -47,7 +47,7 @@ void PrintResultsToFile(const vector<int>& r_correct, const vector<int>& r_wrong
   ofstream f_w("outputs/errors.txt");
   ofstream f_e("outputs/evens.txt");
   if(!f_c.is_open()){
-      cout<<"Cannot open: outputs/rates_1.txt"<<endl;
+      cout<<"Cannot open: outputs/rates.txt"<<endl;
       return;
   }
   for(size_t i = 0; i < r_correct.size(); ++i){
@@ -71,7 +71,6 @@ int main(int argc, char * argv[]){
   
   gettimeofday(&val1,&zone);
 //  srand(time(NULL));
-//  Network network;
   for(i = 0; i < 4142; ++i) file[i] = -1;
  
   Network array_network[NUM_THREADS];

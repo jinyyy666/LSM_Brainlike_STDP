@@ -24,6 +24,11 @@ private:
   std::list<Synapse*> _inputSyns; 
   std::vector<double> _fire_freq;
   std::vector<bool> _presyn_act;
+#ifdef DIGITAL
+  std::vector<int> _vmems;
+#else
+  std::vector<double> _vmems;
+#endif
   bool _excitatory; 
   int _teacherSignal;
   int _indexInGroup;
@@ -31,6 +36,11 @@ private:
   Network * _network;
   int _ind;
   int _f_count; // counter for firing activity
+
+  // collect ep/en/ip/in stat for resolution
+  int _EP_max, _EP_min, _EN_max, _EN_min, _IP_max, _IP_min, _IN_max, _IN_min;
+  // collect max pre-spike count at each time point
+  int _pre_fire_max;
 
 /* FOR LIQUID STATE MACHINE */
   double _lsm_v_mem;
@@ -47,6 +57,9 @@ private:
   const double _lsm_tau_IN;
   const double _lsm_tau_FO;
   const double _lsm_v_thresh;
+  double _ts_strength_p; // for both continuous and digital model
+  double _ts_strength_n;
+  int _ts_freq;
 
   int _lsm_ref;
   Channel * _lsm_channel;
@@ -81,7 +94,16 @@ public:
   void AddPreSyn(Synapse*);
 
   void LSMPrintInputSyns();
-
+  // return EP/EN/IP/IN max/min
+  int GetEPMax(){return _EP_max;};
+  int GetENMax(){return _EN_max;};
+  int GetIPMax(){return _IP_max;};
+  int GetINMax(){return _IN_max;};
+  int GetEPMin(){return _EP_min;};
+  int GetENMin(){return _EN_min;};
+  int GetIPMin(){return _IP_min;};
+  int GetINMin(){return _IN_min;};
+  int GetPreActiveMax(){return _pre_fire_max;}
   // record the firing frequency
   void FireFreq(double f){_fire_freq.push_back(f);}
   double FireFreq(){return _fire_freq.empty() ? 0 : _fire_freq.back();}
@@ -90,6 +112,7 @@ public:
   int FireCount(){return _f_count;}
   void FireCount(int count){_f_count = count;}
 
+  template <typename T> void GetWaveForm(std::vector<T>& v){v = _vmems;}
   // set the neuron index under the separated reservoir cases:
   void Index(int ind){_ind = ind;}
   
@@ -99,6 +122,8 @@ public:
   void SetIndexInGroup(int index){_indexInGroup = index;}
   int IndexInGroup(){return _indexInGroup;}
   void SetTeacherSignal(int signal);
+  void SetTeacherSignalStrength(double val, bool isPos){isPos? _ts_strength_p = val : _ts_strength_n = val;}
+  void SetTeacherSignalFreq(int freq){_ts_freq = freq;}
   int GetTeacherSignal(){return _teacherSignal;}
   void PrintTeacherSignal();
   void PrintMembranePotential();
@@ -195,12 +220,17 @@ public:
   void LSMSetNeurons(Speech* speech, neuronmode_t neuronmode, channelmode_t channelmode, int offset);
   void LSMIndexNeurons(int offset);
 
+  void Collect4State(int& ep_max, int& ep_min, int& ip_max, int& ip_min, 
+                     int& en_max, int& en_min, int& in_max, int& in_min, int& pre_active_max);
   void ScatterFreq(std::vector<double>& fs, std::size_t & bias, std::size_t & cnt);
   void CollectVariance(std::multimap<double, Neuron*>& my_map);
   void CollectPreSynAct(double & p_r, double & avg_i_r, int & max_i_r);
   int Judge(int cls);
+  void DumpWaveFormGroup(std::ofstream & f_out);
   void LSMRemoveSpeech();
   void LSMSetTeacherSignal(int);
+  void LSMSetTeacherSignalStrength(const double pos, const double neg, int freq);
+  void LSMResetTeacherSignalStrength();
   void LSMRemoveTeacherSignal(int);
   void LSMPrintInputSyns();
   

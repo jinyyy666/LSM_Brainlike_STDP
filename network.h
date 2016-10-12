@@ -3,6 +3,7 @@
 
 #include <list>
 #include <vector>
+#include <string>
 #include <set>
 #include <stdlib.h>
 #include "def.h"
@@ -88,8 +89,9 @@ public:
   void LSMAdaptivePowerGating();
   void LSMSumGatedNeurons();
   void LSMHubDetection();
-
-  void LSMInputTraining(networkmode_t networkmode);
+  
+  void LSMSupervisedTraining(networkmode_t networkmode, int tid, int iteration);
+  void LSMUnsupervisedTraining(networkmode_t networkmode, int tid);
   void LSMReservoirTraining(networkmode_t networkmode);
   void LSMNextTimeStep(int t, bool train, int iteration, int end_time, FILE* Foutp, FILE* fp, NeuronGroup* reservoir = NULL);
 
@@ -134,6 +136,7 @@ public:
   void LSMClearWeights();
   bool LSMEndOfSpeech(networkmode_t);
   void LSMChannelDecrement(channelmode_t);
+  void ReadoutJudge(int& correct, int& wrong, int& even);
   int  LSMJudge();
   //* this function is to add the active learning readout synapses:
   void LSMAddActiveLearnSyn(Synapse*synapse){_lsmActiveLearnSyns.push_back(synapse);}
@@ -148,6 +151,7 @@ public:
   void SpeechInfo();
   // print the spikes into the file
   void SpeechPrint(int info);
+  void CollectEPENStat(const char * type);
   void PreActivityStat(const char * type, std::vector<double>& prob, std::vector<double>& avg_intvl, std::vector<int>& max_intvl);
   void CollectSpikeFreq(const char * type, std::vector<double>& fs, int end_t);
   void ScatterSpikeFreq(const char * type, std::vector<double>& fs);
@@ -165,6 +169,7 @@ public:
   void DetermineSynType(const char * syn_type, synapsetype_t & ret_syn_type, const char * func_name);
   void NormalizeContinuousWeights(const char * syn_type);
   void RemoveZeroWeights(const char * type);
+  void DumpWaveForm(std::string dir, int info);
   void WriteSynWeightsToFile(const char * syn_type, char * filename);
   void LoadSynWeightsFromFile(const char * syn_type, char * filename);
   void WriteSynActivityToFile(char * pre_name, char * post_name, char * filename);

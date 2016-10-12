@@ -66,6 +66,7 @@ private:
   int _D_lsm_weight;
   int _D_lsm_weight_limit;
 
+  int _Unit;
 /* ONLY FOR STDP Model */
 
   int _t_spike_pre;
@@ -172,7 +173,7 @@ public:
   // determine whether or not this synapse is in the liquid?
   bool IsLiquidSyn(){ return _liquid;};
 
-  void CheckReservoirWeightOutBound();
+  void CheckPlasticWeightOutBound();
   void CheckReadoutWeightOutBound();
   void RemapReservoirWeight();
 
@@ -180,9 +181,9 @@ public:
 
   void ExpDecay(double& var, const int time_c){var -= var/time_c;}
   void LSMUpdate(int t);
-  void LSMLiquidLearn(int t);
-  void LSMLiquidHarewareLearn(int t);
-  void LSMLiquidSimpleLearn(int t);
+  void LSMSTDPLearn(int t);
+  void LSMSTDPHardwareLearn(int t);
+  void LSMSTDPSimpleLearn(int t);
   void PrintActivity(std::ofstream& f_out);
     
   void ExpDecay(int& var, const int time_c){
@@ -296,22 +297,24 @@ public:
   template<class T>
   void StochasticSTDP(const T delta_w_pos, const T delta_w_neg){
 #ifdef DIGITAL
-      const int temp1 = one<<(NUM_DEC_DIGIT_RESERVOIR_MEM + 14);
-      const int temp2 = one<<(NUM_BIT_SYN_R-NBT_STD_SYN_R + 8);
+      const int c_dec_digit = IsReadoutSyn() ? NUM_DEC_DIGIT_READOUT_MEM : NUM_DEC_DIGIT_RESERVOIR_MEM;
+      const int c_syn_bit_diff = IsReadoutSyn() ? NUM_BIT_SYN - NBT_STD_SYN : NUM_BIT_SYN_R - NBT_STD_SYN_R;
+      const int temp1 = one<<(c_dec_digit + 14);
+      const int temp2 = one<<(c_syn_bit_diff + 8);
       T temp_delta = delta_w_pos + delta_w_neg;
       if(_D_lsm_c > LSM_CAL_MID*unit){
 	  if((_D_lsm_c < (LSM_CAL_MID+3)*unit) &&  temp_delta > 0)
 #ifdef ADDITIVE_STDP
-	      _D_lsm_weight += (rand()%temp1<(temp_delta*temp2*LAMBDA))?1:0;
+	      _D_lsm_weight += (rand()%temp1<(temp_delta*temp2*LAMBDA))?_Unit:0;
 #else
-              _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT))?1:0;
+              _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT))?_Unit:0;
 #endif 
       }else{
 	  if((_D_lsm_c > (LSM_CAL_MID-3)*unit) && temp_delta < 0)
 #ifdef ADDITIVE_STDP
-	      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*temp2*LAMBDA))?1:0;
+	      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*temp2*LAMBDA))?_Unit:0;
 #else
-              _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP))?1:0;
+              _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP))?_Unit:0;
 #endif
       }
 #else

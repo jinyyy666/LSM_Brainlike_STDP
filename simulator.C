@@ -3,6 +3,7 @@
 #include "neuron.h"
 #include "simulator.h"
 #include "network.h"
+#include "util.h"
 #include <sys/time.h>
 #include <assert.h>
 #include <iostream>
@@ -13,10 +14,6 @@
 using namespace std;
 double TSstrength;
 extern int file[500];
-//FILE * Fp;
-//FILE * Foutp;
-//std::fstream Fs;
-//std::ofstream Fouts;
 
 Simulator::Simulator(Network * network){
   _network = network;
@@ -37,8 +34,6 @@ void Simulator::SetStepSize(double stepSize){
 
 void Simulator::LSMRun(long tid){
 //_network->PrintAllNeuronName();
-  struct timeval val1, val2;
-  struct timezone zone;
   
   char filename[64];
   int info, count;
@@ -49,6 +44,8 @@ void Simulator::LSMRun(long tid){
   FILE * Foutp = NULL;
   networkmode_t networkmode;
   
+  Timer myTimer;
+  
   srand(0);
   _network->IndexSpeech();
   cout<<"Number of speeches: "<<_network->NumSpeech()<<endl;
@@ -56,13 +53,21 @@ void Simulator::LSMRun(long tid){
 #ifdef _WRITE_STAT
   for(int count = 0; count < _network->NumSpeech(); count++){
     // empty files
-    sprintf(filename,"outputs/spikepattern%d.dat\0",count);
-    Foutp = fopen(filename,"w");
-    assert(Foutp != NULL);
-    fprintf(Foutp,"%d\t%d\n",-1,-1);
-    fclose(Foutp);
+    sprintf(filename,"outputs/spikepattern%d.dat",count);
+    InitializeFile(filename);
   }
 #endif
+#endif
+
+#ifdef _VISUALIZE_READOUT_RESPONSE
+  if(tid == 0){
+    for(int count = 0; count < _network->NumSpeech(); count++){
+      sprintf(filename,"Readout_Response_Supv/train/readout_spikes_%d.dat",count);
+      InitializeFile(filename);
+      sprintf(filename,"Readout_Response_Supv/test/readout_spikes_%d.dat",count);
+      InitializeFile(filename);
+    }
+  }
 #endif
 
   // visualize the reservoir synapses before stdp training:
@@ -77,20 +82,22 @@ void Simulator::LSMRun(long tid){
   _network->WriteSynWeightsToFile("reservoir",filename);
 #endif
 
-#ifndef STDP_TRAINING
+#ifdef STDP_TRAINING
   if(tid == 0){
+    sprintf(filename, "i_weights_info.txt");
+    _network->WriteSynWeightsToFile("input", filename);
     sprintf(filename, "r_weights_info.txt");
     _network->WriteSynWeightsToFile("reservoir", filename);
+    sprintf(filename, "o_weights_info.txt");
+    _network->WriteSynWeightsToFile("readout", filename);
   }
-#endif
 
-#ifdef STDP_TRAINING
+  myTimer.Start();
 #ifdef STDP_TRAINING_RESERVOIR
   // train the reservoir using STDP rule:
   networkmode = TRAINRESERVOIR;
   _network->LSMSetNetworkMode(networkmode);
 
-  gettimeofday(&val1, &zone);
   // repeatedly training the reservoir for a certain amount of iterations:
   for(int i = 0; i < 25; ++i){
       _network->LSMReservoirTraining(networkmode);
@@ -101,8 +108,7 @@ void Simulator::LSMRun(long tid){
       _network->WriteSynWeightsToFile("reservoir",filename);
 #endif       
   }
-  gettimeofday(&val2, &zone);
-  cout<<"Total time spent in training the reservoir: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
+  myTimer.Report("training the reservoir");
 #endif
 
   // visualize the reservoir synapses after stdp training:
@@ -113,10 +119,9 @@ void Simulator::LSMRun(long tid){
   networkmode = TRAININPUT;
   _network->LSMSetNetworkMode(networkmode);
 
-  gettimeofday(&val1, &zone);
   // repeatedly training the input for a certain amount of iterations:
   for(int i = 0; i < 20; ++i){
-      _network->LSMInputTraining(networkmode);
+    _network->LSMUnsupervisedTraining(networkmode, tid);
 
 #if NUM_THREADS == 1
       // Write the weight back to file after training the input with STDP:
@@ -124,9 +129,10 @@ void Simulator::LSMRun(long tid){
       _network->WriteSynWeightsToFile("input",filename);
 #endif
   }
-  gettimeofday(&val2, &zone);
-  cout<<"Total time spent in training the input: "<<((val2.tv_sec - val1.tv_sec) + double(val2.tv_usec - val1.tv_usec)*1e-6)<<" seconds"<<endl;
+  myTimer.Report("training the input");
 #endif
+  myTimer.End("STDP training of input and reservoir");
+
 
   ////////////////////////////////////////////////////////////////////////
   // REMEMBER TO REMOVE THESE CODES!!
@@ -154,9 +160,9 @@ void Simulator::LSMRun(long tid){
 
   // Write the weight back to file after training the reservoir with STDP:
   if(tid == 0){
-    sprintf(filename, "r_weights_info.txt");
+    sprintf(filename, "r_weights_info_trained.txt");
     _network->WriteSynWeightsToFile("reservoir", filename);
-    sprintf(filename, "i_weights_info.txt");
+    sprintf(filename, "i_weights_info_trained.txt");
     _network->WriteSynWeightsToFile("input", filename);
   }
 
@@ -179,12 +185,10 @@ void Simulator::LSMRun(long tid){
   // produce transient state
   networkmode = TRANSIENTSTATE;
   _network->LSMSetNetworkMode(networkmode);
-
+  myTimer.Start();
 #ifdef _RES_FIRING_CHR
   vector<double> prob, avg_intvl;
   vector<int> max_intvl;
-  double prob_f = 0.0, avg_intvl_f = 0.0;
-  int max_intvl_f = 0;
 #endif
   count = 0;
   _network->LSMClearSignals();
@@ -219,7 +223,7 @@ void Simulator::LSMRun(long tid){
     _network->LSMClearSignals();
     info = _network->LoadNextSpeech(false, networkmode);
   }
-
+  myTimer.End("running transient");
   //////////////////////////////////////////////////////////////////////////////
   // REMEMBER TO REMOVE THESE CODES!
   //_network->LSMSumGatedNeurons();
@@ -233,26 +237,56 @@ void Simulator::LSMRun(long tid){
 #endif
 
 #ifdef _RES_FIRING_CHR
-  CollectPAStat(prob, avg_intvl, max_intvl, prob_f, avg_intvl_f, max_intvl_f);
-  cout<<"The average probability of a pre-synaptic event: "<<prob_f<<endl;
-  cout<<"The average interval between two pre-synaptic events: "<<avg_intvl_f<<endl;
-  cout<<"The max interval between two pre-synaptic events: "<<max_intvl_f<<endl;
+  CollectPAStat(prob, avg_intvl, max_intvl);
   return;
 #endif
   
+#if defined(STDP_TRAINING_READOUT) && defined(STDP_TRAINING)
+  // traing the readout using STDP rule first:
+  /****************************************************************
+	The current version suppose you have trained the reservoir
+  *****************************************************************/
+  networkmode = TRAINREADOUT;
+  _network->LSMSetNetworkMode(networkmode);
+#ifdef _VISUALIZE_READOUT_RESPONSE
+  if(tid == 0){
+    for(int i = 0; i < _network->NumSpeech(); i++){
+      sprintf(filename,"Readout_Response_Unsupv/readout_spikes_%d.dat",i);
+      InitializeFile(filename);
+    }
+  }
+#endif
+  myTimer.Start();
+  for(int i = 0; i < 2; ++i){
+      cout<<"\n************************"
+	  <<"\n* i = "<<i
+	  <<"\n************************"<<endl;
+      _network->LSMUnsupervisedTraining(networkmode, tid);
+#if NUM_THREADS == 1
+      // Write the weight back to file
+      sprintf(filename, "readout_weights_%d.txt", i);
+      _network->WriteSynWeightsToFile("readout", filename);
+#endif
+  }
+  if(tid == 0){
+    sprintf(filename, "o_weights_info_trained.txt");
+    _network->WriteSynWeightsToFile("readout", filename);
+  }
+  myTimer.End("training the readout");
+#endif
+  
   // train the readout layer
-  networkmode = READOUT;
+  myTimer.Start();
+  networkmode = READOUTSUPV; // choose the readout supervised algorithm here!
   _network->LSMSetNetworkMode(networkmode);
 #ifdef CV
 #if NUM_THREADS == 1
-  cout<<"aaaa"<<endl;
   for(int fff = 0; fff < NFOLD; ++fff){
     _network->Fold(fff);
     _network->LSMClearWeights();
     Tid = (int)tid;
     cout<<"Only one thread is running:Tid_"<<Tid<<endl;
 #else 
-    cout<<"bbbb"<<endl;
     Tid = (int)tid;
     cout<<"Tid:"<<Tid<<endl;
     _network->Fold(Tid);
@@ -263,17 +297,17 @@ void Simulator::LSMRun(long tid){
     // write the file array for the purpose of parallel writing protectation:
     file[info] = Tid;
     sprintf(filename,"outputs/spikepattern%d.dat",info);
-    
-    Foutp = fopen(filename,"w");
-    assert(Foutp != NULL);
-    fprintf(Foutp,"%d\t%d\n",-1,-1);
-    fclose(Foutp);
+    InitializeFile(filename);
+
     info = _network->LoadNextSpeechTestCV(networkmode);
   }
 #endif
 #endif
+  
   int correct = 0, wrong = 0, even = 0;
   for(int iii = 0; iii < NUM_ITERS; iii++){
+    _network->LSMSupervisedTraining(networkmode, tid, iii);
+    /*
     count = 0, correct = 0, wrong = 0, even = 0;
     _network->LSMClearSignals();
 #ifdef CV
@@ -288,7 +322,7 @@ void Simulator::LSMRun(long tid){
       count++;
       int time = 0;
       while(!_network->LSMEndOfSpeech(networkmode)){
-        _network->LSMNextTimeStep(++time,true,iii, 1, NULL,NULL);;
+        _network->LSMNextTimeStep(++time,true,iii, 1, NULL,NULL);
       }
       _network->LSMClearSignals();
 #ifdef CV
@@ -299,8 +333,6 @@ void Simulator::LSMRun(long tid){
     }
     //_network->SearchForNeuronGroup("output")->LSMPrintInputSyns();
 //  }
-
-    count = 0;
 #ifdef CV
     info = _network->LoadFirstSpeechTestCV(networkmode);
 #else
@@ -314,12 +346,11 @@ void Simulator::LSMRun(long tid){
       Foutp = fopen(filename,"a");
       assert(Foutp != NULL);
 #endif
-      count++;
-      int time = 0;
-      int end_time = _network->SpeechEndTime();
+      int time = 0,end_time = _network->SpeechEndTime();
       while(!_network->LSMEndOfSpeech(networkmode)){
         _network->LSMNextTimeStep(++time,false,1,end_time, Foutp,NULL);
       }
+      */
       /*
       if(file[info] != -1){
         if(file[info] != Tid){
@@ -329,7 +360,7 @@ void Simulator::LSMRun(long tid){
       }
       file[info] = Tid;
       */
-
+    /*
 #ifdef _WRITE_STAT
       assert(Foutp != NULL);
       fprintf(Foutp,"%d\t%d\n",-1,-1);
@@ -345,28 +376,24 @@ void Simulator::LSMRun(long tid){
 #endif
     }
     _network->LSMPushResults(correct, wrong, even, iii); // collect the result in network
-
 //    _network->SearchForNeuronGroup("output")->LSMPrintInputSyns();
+*/
   }
-#ifdef CV
-#if NUM_THREADS == 1
+    
+#if defined(CV) && NUM_THREADS == 1
 }
 #endif
+  myTimer.End("supervised training the readout"); 
+#ifdef _RES_EPEN_CHR
+  CollectEPENStat("reservoir");
+  CollectEPENStat("readout");
 #endif
-}
 
-//* judge the readout result:
-void Simulator::ReadoutJudge(int& correct, int& wrong, int& even){
-  int res = _network->LSMJudge();
-
-  if(res == 1) ++correct;
-  else if(res == -1) ++wrong;
-  else if(res == 0) ++even;
-  else{
-    cout<<"In Simulator::ReadoutJudge(int&, int&, int&)\n"
-        <<"Undefined return type: "<<res<<" returned by Network::LSMJudge()"
-        <<endl;
+  if(tid == 0){
+    sprintf(filename, "o_weights_info_trained_final.txt");
+    _network->WriteSynWeightsToFile("readout", filename);
   }
+
 }
 
 
@@ -400,18 +427,15 @@ void Simulator::PrintOutFreqs(const vector<vector<double> >& all_fs){
 /***************************************************************************** 
  * Collect the avg pre-synaptic event statistics of each neuron and compute avg
  * @param1-3 input vectors, each elem is the stat of each speech
- * @param4-6 return values
  ****************************************************************************/
 void Simulator::CollectPAStat(vector<double>& prob, 
 			      vector<double>& avg_intvl, 
-			      vector<int>& max_intvl, 
-			      double& prob_f, 
-			      double& avg_intvl_f, 
-			      int& max_intvl_f
+			      vector<int>& max_intvl
 			      )
 {
-  // initialize the return variables:
-  prob_f = 0.0, avg_intvl_f = 0.0, max_intvl_f = 0;
+  // initialize the aggregated stat variables:
+  double prob_f = 0.0, avg_intvl_f = 0.0;
+  int max_intvl_f = 0;
   cout<<prob.size()<<"\t"<<avg_intvl.size()<<"\t"<<max_intvl.size()<<endl;
 
   assert(prob.size()== avg_intvl.size() 
@@ -426,4 +450,26 @@ void Simulator::CollectPAStat(vector<double>& prob,
 
   prob_f = _network->NumSpeech() ? prob_f/(_network->NumSpeech()) : 0;
   avg_intvl_f = _network->NumSpeech() ? avg_intvl_f/(_network->NumSpeech()) : 0;
+  // print out information:
+  cout<<"The average probability of a pre-synaptic event: "<<prob_f<<endl;
+  cout<<"The average interval between two pre-synaptic events: "<<avg_intvl_f<<endl;
+  cout<<"The max interval between two pre-synaptic events: "<<max_intvl_f<<endl;
+}
+
+/*********************************************************************************
+ * Collect the max/min of four state variable for synaptic response, which is
+ * in the neuron class.
+ ********************************************************************************/
+
+void Simulator::CollectEPENStat(const char * type){
+  assert(type);
+  _network->CollectEPENStat(type);
+}
+
+
+void Simulator::InitializeFile(const char * filename){
+  FILE * Foutp = fopen(filename,"w");
+  assert(Foutp != NULL);
+  fprintf(Foutp,"%d\t%d\n",-1,-1);
+  fclose(Foutp);
 }

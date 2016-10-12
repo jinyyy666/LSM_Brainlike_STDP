@@ -15,12 +15,13 @@
 //#define _DEBUG_TRUNC
 //#define _DEBUG_SIMPLE_STDP
 //#define _DEBUG_AP_STDP
-//#define _DEBUG_INPUT_TRAINING
+//#define _DEBUG_UNSUPERV_TRAINING
 
 using namespace std;
 
 extern int COUNTER_LEARN;
 
+// for continuous model:
 Synapse::Synapse(Neuron * pre, Neuron * post, double lsm_weight, bool fixed, double lsm_weight_limit, bool excitatory, bool liquid):
 _pre(pre),
 _post(post),
@@ -43,6 +44,7 @@ _lsm_c(0),
 _lsm_weight_last(lsm_weight),
 _lsm_weight(lsm_weight),
 _lsm_weight_limit(fabs(lsm_weight_limit)),
+_Unit(1),
 _D_lsm_c(0),
 _D_lsm_weight(0),
 _D_lsm_weight_limit(0),
@@ -73,7 +75,7 @@ _D_y_i2_last(0)
   _init_lookup_table();
 }
 
-
+// for digital implementation model:
 Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int D_lsm_weight_limit, bool excitatory, bool liquid):
 _pre(pre),
 _post(post),
@@ -99,6 +101,7 @@ _lsm_weight_limit(0),
 _D_lsm_c(0),
 _D_lsm_weight(D_lsm_weight),
 _D_lsm_weight_limit(abs(D_lsm_weight_limit)),
+_Unit(1),
 _t_spike_pre(-1e8),
 _t_spike_post(-1e8),
 _t_last_pre(0),
@@ -125,31 +128,36 @@ _D_y_i2_last(0)
   assert(pre_name != NULL);
   if((_liquid == false)&&(pre_name[0] != 'i')){
 #if NUM_BIT_SYN > NBT_STD_SYN
-    _D_lsm_weight = (_D_lsm_weight<<(NUM_BIT_SYN-NBT_STD_SYN));
-    _D_lsm_weight_limit = (_D_lsm_weight_limit<<(NUM_BIT_SYN-NBT_STD_SYN));
+    _Unit = _Unit<<(NUM_BIT_SYN-NBT_STD_SYN);
+    _D_lsm_weight = _D_lsm_weight<<(NUM_BIT_SYN-NBT_STD_SYN);
+    _D_lsm_weight_limit = _D_lsm_weight_limit<<(NUM_BIT_SYN-NBT_STD_SYN);
 #elif NUM_BIT_SYN < NBT_STD_SYN
-    _D_lsm_weight = (_D_lsm_weight>>(NBT_STD_SYN-NUM_BIT_SYN));
-    _D_lsm_weight_limit = (_D_lsm_weight_limit>>(NBT_STD_SYN-NUM_BIT_SYN));
+    _Unit = _Unit>>(NBT_STD_SYN-NUM_BIT_SYN);
+    _D_lsm_weight = _D_lsm_weight>>(NBT_STD_SYN-NUM_BIT_SYN);
+    _D_lsm_weight_limit = _D_lsm_weight_limit>>(NBT_STD_SYN-NUM_BIT_SYN);
 #endif
   }
   else if(pre_name[0] == 'i'){
-    _D_lsm_weight = (_D_lsm_weight<<(NUM_BIT_SYN_R - NBT_STD_SYN_R));
+    _Unit = _Unit<<(NUM_BIT_SYN_R - NBT_STD_SYN_R);
+    _D_lsm_weight = _D_lsm_weight<<(NUM_BIT_SYN_R - NBT_STD_SYN_R);
     _D_lsm_weight = _D_lsm_weight/4;
-    _D_lsm_weight_limit = (_D_lsm_weight_limit<<(NUM_BIT_SYN_R - NBT_STD_SYN_R));
+    _D_lsm_weight_limit = _D_lsm_weight_limit<<(NUM_BIT_SYN_R - NBT_STD_SYN_R);
     _D_lsm_weight_limit = _D_lsm_weight_limit;
   }
   else{
      assert(_liquid == true);
 #if NUM_BIT_SYN_R > NBT_STD_SYN_R
-     _D_lsm_weight = (_D_lsm_weight<<(NUM_BIT_SYN_R-NBT_STD_SYN_R));
-     _D_lsm_weight_limit = (_D_lsm_weight_limit<<(NUM_BIT_SYN_R-NBT_STD_SYN_R));
+     _Unit = _Unit<<(NUM_BIT_SYN_R-NBT_STD_SYN_R);
+     _D_lsm_weight = _D_lsm_weight<<(NUM_BIT_SYN_R-NBT_STD_SYN_R);
+     _D_lsm_weight_limit = _D_lsm_weight_limit<<(NUM_BIT_SYN_R-NBT_STD_SYN_R);
 #else
-     _D_lsm_weight = (_D_lsm_weight>>(NBT_STD_SYN_R - NUM_BIT_SYN_R));
-     _D_lsm_weight_limit = (_D_lsm_weight_limit>>(NBT_STD_SYN_R - NUM_BIT_SYN_R));
+     _Unit = _Unit>>(NUM_BIT_SYN_R-NBT_STD_SYN_R);
+     _D_lsm_weight = _D_lsm_weight>>(NBT_STD_SYN_R - NUM_BIT_SYN_R);
+     _D_lsm_weight_limit = _D_lsm_weight_limit>>(NBT_STD_SYN_R - NUM_BIT_SYN_R);
 #endif
   }
   
-  cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_D_lsm_weight<<endl;
+  cout<<pre->Name()<<"\t"<<post->Name()<<"\tPreExcit: "<<excitatory<<"\tPostExcit: "<<post->IsExcitatory()<<"\t"<<_D_lsm_weight<<endl;
 
   // initialize the look-up table:
   _init_lookup_table();
@@ -566,7 +574,7 @@ void Synapse::LSMUpdate(int t){
 
 //* this function is the implementation of the STDP learning rule, please find more details in the paper:
 //* "Phenomenological models of synaptic plasticity based on spike timing" 
-void Synapse::LSMLiquidLearn(int t){
+void Synapse::LSMSTDPLearn(int t){
   // you need to make sure that this synapse is active!
   assert(_lsm_stdp_active == true);
   _lsm_stdp_active = false;
@@ -584,19 +592,18 @@ void Synapse::LSMLiquidLearn(int t){
     return; 
 
 
-#ifdef DIGITAL
-  // if the close to hareware implementation is considered,
-#ifdef _HARDWARE_CODE
-#ifdef _SIMPLE_STDP
+
+  // if the LUT approach of implementation is considered,
+#ifdef _LUT_HARDWARE_APPROACH
+#if defined(DIGITAL) && defined(_SIMPLE_STDP) 
   // if the simple hardware efficiency STDP rule is considered,
   // apply the simple approach:
-  LSMLiquidSimpleLearn(t);
+  LSMSTDPSimpleLearn(t);
 #else
   // apply the look-up table appoarch
-  LSMLiquidHarewareLearn(t);
+  LSMSTDPHardwareLearn(t);
 #endif
   return;
-#endif
 #endif
 
   /*
@@ -698,7 +705,7 @@ void Synapse::LSMLiquidLearn(int t){
 
 
   // 4. Check whether or not the weight is out of bound:
-  CheckReservoirWeightOutBound();
+  CheckPlasticWeightOutBound();
 
 
   // 5. Record the weight information if needed:
@@ -713,7 +720,7 @@ void Synapse::LSMLiquidLearn(int t){
 }
 
 //* implement the look-up table approach for simply hardware implementation
-void Synapse::LSMLiquidHarewareLearn(int t){
+void Synapse::LSMSTDPHardwareLearn(int t){
 #ifdef DIGITAL
   int delta_w_pos = 0, delta_w_neg = 0;
 #else
@@ -721,8 +728,12 @@ void Synapse::LSMLiquidHarewareLearn(int t){
 #endif
 
 #ifdef _DEBUG_AP_STDP
-  if(!strcmp(_pre->Name(), "input_0") && !strcmp(_post->Name(), "reservoir_5")){
+  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0")){
+#ifdef DIGITAL
       cout<<"The weight before : "<<_D_lsm_weight<<endl;
+#else
+      cout<<"The weight before : "<<_lsm_weight<<endl;
+#endif
       cout<<"Firing @"<<t<<"\t t_pre: "<<_t_spike_pre<<"\t t_post: "<<_t_spike_post<<endl;
   }
 #endif
@@ -774,17 +785,21 @@ void Synapse::LSMLiquidHarewareLearn(int t){
 #endif
 
 #ifdef _DEBUG_AP_STDP
-  if(!strcmp(_pre->Name(), "input_0") && !strcmp(_post->Name(), "reservoir_5"))
+  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0"))
+#ifdef DIGITAL
     cout<<"LTP: "<<delta_w_pos<<"\tLTD: "<<delta_w_neg<<"\tThe weight after : "<<_D_lsm_weight<<endl;
+#else
+    cout<<"LTP: "<<delta_w_pos<<"\tLTD: "<<delta_w_neg<<"\tThe weight after : " <<_lsm_weight<<endl;
+#endif
 #endif
 
-  CheckReservoirWeightOutBound();
+  CheckPlasticWeightOutBound();
   return;
 
 }
 
 //* implement the very simple hardware efficient STDP learning
- void Synapse::LSMLiquidSimpleLearn(int t){
+ void Synapse::LSMSTDPSimpleLearn(int t){
 #ifdef DIGITAL
   int delta_w_pos = 0, delta_w_neg = 0;
 #else
@@ -799,7 +814,7 @@ void Synapse::LSMLiquidHarewareLearn(int t){
   int tau_y = typeFlag ? 6 : 3;
 
 #ifdef _DEBUG_SIMPLE_STDP
-  if(!strcmp(_pre->Name(), "input_0") && !strcmp(_post->Name(), "reservoir_5")){
+  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0")){
       cout<<"The weight before : "<<_D_lsm_weight<<endl;
       cout<<"Firing @"<<t<<"\t t_pre: "<<_t_spike_pre<<"\t t_post: "<<_t_spike_post<<endl;
   }
@@ -810,9 +825,9 @@ void Synapse::LSMLiquidHarewareLearn(int t){
       size_t d = _t_spike_post - _t_spike_pre;
       // implement the simple STDP rule here:
       // delta_w == 0 ---> w += 2  delta_w == 1 or 2 ---> w += 1 otherwises delta_w = 0 
-      if(d == 0)  _D_lsm_weight += 1;
-      else if(d <= tau_x/2)  _D_lsm_weight += 3;
-      else if(d <= tau_x)  _D_lsm_weight += 1;
+      if(d == 0)  _D_lsm_weight += 1*_Unit;
+      else if(d <= tau_x/2)  _D_lsm_weight += 3*_Unit;
+      else if(d <= tau_x)  _D_lsm_weight += 1*_Unit;
   }
 
   if(t == _t_spike_pre){ // LTD:
@@ -824,53 +839,54 @@ void Synapse::LSMLiquidHarewareLearn(int t){
       // but all the input synapses are of excitatory type
       if(_t_spike_post != _t_spike_pre && d <= tau_y)
 	  if(d <= tau_y/3)
-	      _D_lsm_weight >= 0 ? _D_lsm_weight = 0 : _D_lsm_weight -= 3;
+	      _D_lsm_weight >= 0 ? _D_lsm_weight = 0 : _D_lsm_weight -= 3*_Unit;
           else if(d <= 2*tau_y/3)
-	      _D_lsm_weight >= 0 ? _D_lsm_weight = 1 : _D_lsm_weight -= 1;
+	      _D_lsm_weight >= 0 ? _D_lsm_weight = 1*_Unit : _D_lsm_weight -= 1*_Unit;
 	  else
-	    _D_lsm_weight >= 0 ? (_D_lsm_weight == 8 ? _D_lsm_weight = 2 :
-				  _D_lsm_weight == 0 ? 0 : _D_lsm_weight -= 1)
+	    _D_lsm_weight >= 0 ? (_D_lsm_weight == 8*_Unit ? _D_lsm_weight = 2*_Unit :
+				  _D_lsm_weight == 0 ? 0 : _D_lsm_weight -= 1*_Unit)
 	      : _D_lsm_weight;
   }
 #ifdef _DEBUG_SIMPLE_STDP
-  if(!strcmp(_pre->Name(), "input_0") && !strcmp(_post->Name(), "reservoir_5"))
+  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0"))
      cout<<"The weight after : "<<_D_lsm_weight<<endl;
 #endif
 
-  RemapReservoirWeight();
+  if(IsLiquidSyn()) // only remap the weights for reservoir synapse because of low resolution
+    RemapReservoirWeight();
 
 #ifdef _DEBUG_SIMPLE_STDP
-  if(!strcmp(_pre->Name(), "input_0") && !strcmp(_post->Name(), "reservoir_5"))
-      cout<<"Remapped weight to 2-bit: "<<_D_lsm_weight<<endl;
+  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0"))
+    cout<<"Remapped weight to 2-bit: "<<_D_lsm_weight<<endl;
 #endif
 
   return;
   
 }
 
-//* this function is to check whether or not the synaptic weights in the reservoir is out of bound:
+//* check the synaptic weights of the unsupervisedly trained one is out of bound:
 inline
-void Synapse::CheckReservoirWeightOutBound(){
+void Synapse::CheckPlasticWeightOutBound(){
   assert(_pre);
   char * pre_name = _pre->Name(); assert(pre_name);
 #ifdef DIGITAL
   // for excitatory synapses:
   if(_excitatory){
     if(_D_lsm_weight >= _D_lsm_weight_limit) _D_lsm_weight = _D_lsm_weight_limit;
-    if(_D_lsm_weight <0&& pre_name[0]!='i') _D_lsm_weight = 0; // no put 0 for input
+    if(_D_lsm_weight <0 && pre_name[0]!='i') _D_lsm_weight = 0; // no put 0 for input
   }
   else{
     if(_D_lsm_weight < -_D_lsm_weight_limit) _D_lsm_weight = -_D_lsm_weight_limit;
-    if(_D_lsm_weight > 0) _D_lsm_weight = 0;
+    if(_D_lsm_weight >0 && pre_name[0]!='i') _D_lsm_weight = 0; 
   }
 #else
   if(_excitatory){
     if(_lsm_weight >= _lsm_weight_limit) _lsm_weight = _lsm_weight_limit;
-    if(_lsm_weight < 0&&pre_name[0]!='i') _lsm_weight = 0; // no put 0 for input
+    if(_lsm_weight < 0&&pre_name[0]!='i') _lsm_weight = 0; // no put 0 for input 
   }
   else{
     if(_lsm_weight < -_lsm_weight_limit) _lsm_weight = -_lsm_weight_limit;
-    if(_lsm_weight > 0) _lsm_weight = 0;
+    if(_lsm_weight > 0 && pre_name[0]!='i') _lsm_weight = 0;
   }
 #endif
 }
@@ -893,11 +909,11 @@ void Synapse::RemapReservoirWeight(){
   // only consider for excitatory synapses:
   // I am doing the rounding here. I will round the 5/-5 to 8/-8.
   if(_excitatory){
-    if(_D_lsm_weight <= -5) _D_lsm_weight = -8;
-    else if(_D_lsm_weight <= -3) _D_lsm_weight = -2;
-    else if(_D_lsm_weight <= 2) _D_lsm_weight = _D_lsm_weight;
-    else if(_D_lsm_weight <  5) _D_lsm_weight = 2;
-    else _D_lsm_weight = 8;
+    if(_D_lsm_weight <= -5*_Unit) _D_lsm_weight = -8*_Unit;
+    else if(_D_lsm_weight <= -3*_Unit) _D_lsm_weight = -2*_Unit;
+    else if(_D_lsm_weight <= 2*_Unit) _D_lsm_weight = _D_lsm_weight;
+    else if(_D_lsm_weight <  5*_Unit) _D_lsm_weight = 2*_Unit;
+    else _D_lsm_weight = 8*_Unit;
   }
 }
 
@@ -972,18 +988,29 @@ void Synapse::LSMClearLearningSynWeights(){
     }
 }
 
-//** Activate the target synapses to be trained by STDP
+/******************************************************
+ * Activate the target synapses to be trained by STDP
+ * The synapses can be input, reservoir or readout
+ * @param2: synapse type indicator
+ ******************************************************/
 void Synapse::LSMActivateSTDPSyns(Network * network, const char * type){
   if(strcmp(type, "input") == 0)
     assert(_lsm_stdp_active == false && !IsReadoutSyn() && !IsLiquidSyn());
   else if(strcmp(type, "reservoir") == 0)
     assert(_lsm_stdp_active == false && !IsReadoutSyn() && !IsInputSyn());
-  else assert(0);
+  else if(strcmp(type, "readout") == 0)
+    assert(_lsm_stdp_active == false && !IsInputSyn() && !IsLiquidSyn());
+  else
+    assert(0);
 
-  /** only train the excitatory target synapses **/
-  if(_excitatory == true){
-#ifdef _DEBUG_INPUT_TRAINING
-    cout<<"Put synapse from "<<_pre->Name()<<" to "<<_post->Name()<<"for STDP training"<<endl;
+  /** only train the excitatory target synapses for reservoir synapses     **/
+  /** But for input synapses, since they are all excitatory, we dont care  **/
+  /** Currently, for readout synapses, I am training it regardless of type **/
+  /** Because the type of the readout synapses is independent of the pre-  **/
+  /** neuron under the current settings                                    **/
+  if(_excitatory == true){// || strcmp(type, "readout") == 0){
+#ifdef _DEBUG_UNSUPERV_TRAINING
+    cout<<"Put synapse from "<<_pre->Name()<<" to "<<_post->Name()<<" for STDP training"<<endl;
 #endif
     network->LSMAddSTDPActiveSyn(this);
   }

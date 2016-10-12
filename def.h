@@ -1,3 +1,4 @@
+
 #ifndef DEF_H
 #define DEF_H
 
@@ -9,12 +10,12 @@
 #define _DIGIT    0
 
 // this control variable is defined to direct compute the \delta_t 
-// for stdp rule update. this is what the hardware is going to do.
-#define _HARDWARE_CODE 
+// for stdp rule update. hardware is doing that 
+#define _LUT_HARDWARE_APPROACH
 
 // this control variable is to enable the simple STDP update rule
-// NEED TO ENABLE _HARDWARE_CODE first!
-#define _SIMPLE_STDP
+// NEED TO ENABLE _LUT_HARDWARE_APPROACH and DIGITAL first!
+//#define _SIMPLE_STDP
 // this control variable is defined to test my thought of separate
 // the reservoir into several parts and stimulate each part with 
 // speeches that are similar to each other under STDP training:
@@ -38,7 +39,7 @@
 /* FOR LIQUID STATE MACHINE */
 // the control parameter to enable STDP training, you only to enable this one
 // before enable the following two variables!!
-#define STDP_TRAINING
+//#define STDP_TRAINING
 
 // the control parameter to enable training the reservoir:
 //#define STDP_TRAINING_RESERVOIR
@@ -46,6 +47,22 @@
 // the control parameter to enable training the input to reservoir syns
 //#define STDP_TRAINING_INPUT
 
+// the control parameter to enable training the readout synapses in unsupervised way
+//#define STDP_TRAINING_READOUT
+
+// inject additional current to readout during the readout unsupvervised stage
+#define _READOUT_SUPERVISED_CURRENT
+// tune the teacher signal strength during the readout training to "activate v_mem"
+#define TS_STRENGTH_P 0.5
+#define TS_STRENGTH_N 0.5
+// intended teacher signal freq, one out of x time point to fire
+// but note that the calcium constraint is inposed during firing!
+#define TS_FREQ 2
+
+// default teacher signal strength used in readout training:
+#define DEFAULT_TS_STRENGTH_P 1
+#define DEFAULT_TS_STRENGTH_N 0.75
+#define DEFAULT_TS_FREQ 1
 // the control variable to enable adaptive power gating:
 //#define ADAPTIVE_POWER_GATING
 
@@ -97,17 +114,17 @@
 #define D_A_POS_I 64
 #define D_A_NEG_I 32
 
-#define A_POS_E 0.02 // define for the continuous case
-#define A_NEG_E 0.005
-#define A_POS_I 0.02
-#define A_NEG_I 0.005
+#define A_POS_E 0.04 // define for the continuous case
+#define A_NEG_E 0.022
+#define A_POS_I 0.04
+#define A_NEG_I 0.022
 
 // control parameter for pair-based pairing rule:
 #define PAIR_BASED 1
 //#define NEAREST_NEIGHBOR 1
 
 // control parameter for stochastic stdp, silimar to the abstract learning rule:
-#define STOCHASTIC_STDP
+//#define STOCHASTIC_STDP
 
 
 // contro parameter to study synaptic activity
@@ -128,8 +145,8 @@
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
 #define CLS 26
-#define NUM_THREADS 5
-#define NUM_ITERS 5
+#define NUM_THREADS 1
+#define NUM_ITERS 1
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -159,7 +176,7 @@
 #define _TOP_PERCENT 0.1
 
 #define LOST_RATE 0.0
-#define DIGITAL
+//#define DIGITAL
 //#define DIGITAL_SYN_ORGINAL 1
 #define LIQUID_SYN_MODIFICATION 1
 
@@ -167,20 +184,28 @@
 #define SYN_ORDER_1 0 
 #define SYN_ORDER_0 0 
 
-#define CV
+//#define CV
 #define NFOLD 5
 
 //* Control variable to enable the old way of readout by writing outputs/*.dat
 //#define _WRITE_STAT  
 
-//* This is the control variable to enable print pre-synaptic events
+//* Control variable to enable print pre-synaptic events
 //#define _RES_FIRING_CHR
 
-enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL,READOUTCHANNEL};
-enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,NORMALSTDP,NORMAL};
-enum networkmode_t {TRAINRESERVOIR,TRAININPUT,TRANSIENTSTATE,READOUT,VOID};
+//* Control variable to enable print max/min for 4 state variables of synaptic response
+//#define _RES_EPEN_CHR
 
-enum synapsetype_t {RESERVOIR_SYN, INPUT_SYN, READOUT_SYN, INVALID};
+//* visualize the readout response
+#define _VISUALIZE_READOUT_RESPONSE
+
+#define _DUMP_WAVEFORM
+
+enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL,READOUTCHANNEL}; // for allocate speech channels
+enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,NORMALSTDP,NORMALSTDPSUPV,NORMAL}; // for implement network stat.
+enum networkmode_t {TRAINRESERVOIR,TRAININPUT,TRAINREADOUT,TRANSIENTSTATE,READOUT,READOUTSUPV,VOID}; // different network mode
+
+enum synapsetype_t {RESERVOIR_SYN, INPUT_SYN, READOUT_SYN, INVALID}; // different synaptic type
 
 
 #endif
