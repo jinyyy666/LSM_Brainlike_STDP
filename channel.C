@@ -129,8 +129,7 @@ void Channel::Print(FILE * fp){
 
 void Channel::Print(ofstream& f_out){
     assert(f_out.is_open());
+    if(_spikeT.empty() == true) f_out<<"-99"<<endl;
     for(_iter_spikeT = _spikeT.begin(); _iter_spikeT != _spikeT.end(); _iter_spikeT++) 
-	f_out<<*_iter_spikeT<<"\t";
-    
-    f_out<<endl;
+	f_out<<*_iter_spikeT<<"\n";
 }

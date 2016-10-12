@@ -137,38 +137,34 @@ void Speech::PrintSpikes(int info){
   FILE * Fp_reservoir;
   char filename[64];
   sprintf(filename,"Input_Response/input_spikes_%d.dat",info);
-  // Fp_input = fopen(filename,"w");
   ofstream f_input(filename);
   assert(f_input.is_open());
-  // assert(Fp_input != NULL);
   for(int i = 0; i < _channels.size(); i++){ 
-      /*
-    fprintf(Fp_input,"%d\n",-1);
-    _channels[i]->Print(Fp_input);
-      */
+    f_input<<"-1"<<endl;
     _channels[i]->Print(f_input);
   }
+  f_input<<"-1"<<endl;
   f_input.close();
 
-  // fprintf(Fp_input,"%d\n",-1);
-  // fclose(Fp_input);
-
   sprintf(filename,"Reservoir_Response/reservoir_spikes_%d.dat",info);
-  // Fp_reservoir = fopen(filename,"w");
   ofstream f_reservoir(filename);
   assert(f_reservoir.is_open());
-  // assert(Fp_reservoir != NULL);
   for(int i = 0; i < _rChannels.size(); i++){
-      /*
-    fprintf(Fp_reservoir,"%d\n",-1);
-    _rChannels[i]->Print(Fp_reservoir);
-      */
+    f_reservoir<<"-1"<<endl;
     _rChannels[i]->Print(f_reservoir);
   }
+  f_reservoir<<"-1"<<endl;
   f_reservoir.close();
 
-  // fprintf(Fp_reservoir,"%d\n",-1);
-  // fclose(Fp_reservoir); 
+  sprintf(filename, "Readout_Response_Trans/readout_spikes_%d.dat", info);
+  ofstream f_readout(filename);
+  assert(f_readout.is_open());
+  for(int i = 0; i < _oChannels.size(); i++){
+    f_readout<<"-1"<<endl;
+    _oChannels[i]->Print(f_readout);
+  }
+  f_readout<<"-1"<<endl;
+  f_readout.close();
 }
 
 //* this function read each channel and output the firing frequency into a matrix
