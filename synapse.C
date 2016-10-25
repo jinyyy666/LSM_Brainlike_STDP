@@ -16,7 +16,7 @@
 //#define _DEBUG_SIMPLE_STDP
 //#define _DEBUG_AP_STDP
 //#define _DEBUG_UNSUPERV_TRAINING
-//#define _DEBUG_SUPV_STDP
+#define _DEBUG_SUPV_STDP
 
 using namespace std;
 
@@ -628,7 +628,7 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
 #else
       cout<<"The weight before : "<<_lsm_weight<<endl;
 #endif
-      cout<<"Firing @"<<t<<"\t t_pre: "<<_t_spike_pre<<"\t t_post: "<<_t_spike_post<<endl;
+      cout<<"Firing @"<<t<<"\t t_pre: "<<_t_spike_pre<<"\t t_post: "<<_t_spike_post<<" with TS: "<<_post->GetTeacherSignal()<<endl;
   }
 #endif
 
@@ -641,27 +641,66 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
     assert(delta_w_pos >= 0);
     delta_w_pos = -1*delta_w_pos; // penalize the wrong update
   }
-#ifdef STOCHASTIC_STDP
+
+#ifdef STOCHASTIC_STDP_SUPV
   // similar idea as ad-stdp and Yong's training
   _D_lsm_c = _post->DLSMGetCalciumPre();
   _lsm_c = _post->GetCalciumPre();
-  StochasticSTDP(delta_w_pos, delta_w_neg, iteration);
-#else 
-#ifdef  DIGITAL
-  _D_lsm_weight += delta_w_pos + delta_w_neg;
+
+#ifdef DIGITAL
+  int l1_norm = 0;
+  int weight_old = _D_lsm_weight;
+  int regular = 0;
 #else
-  _lsm_weight += delta_w_pos + delta_w_neg;
+  double l1_norm = 0;
+  double weight_old = _lsm_weight;
+  double regular = 0;
+#endif
+
+#ifdef _REGULARIZATION_STDP_SUPV
+#ifdef DIGITAL
+  l1_norm = _post->DLSMSumAbsInputWeights();
+  regular = l1_norm < WEIGHT_OMEGA ? 0 : GAMMA_REG*(l1_norm - WEIGHT_OMEGA)*_D_lsm_weight;
+#else
+  l1_norm = _post->LSMSumAbsInputWeights();
+  regular = l1_norm < WEIGHT_OMEGA ? 0 : GAMMA_REG*(l1_norm - WEIGHT_OMEGA)*_lsm_weight;
 #endif
 #endif
 
-#ifdef _DEBUG_SUPV_LEARN
+  StochasticSTDPSupv(delta_w_pos, delta_w_neg, l1_norm, iteration);
+
+#else 
+  // no stochastic case:
+#ifdef  DIGITAL
+  // digital case:
+#ifdef _REGULARIZATION_STDP_SUPV
+  int l1_norm = _post->DLSMSumAbsInputWeights();
+  _D_lsm_weight += delta_w_pos + delta_w_neg - (l1_norm < WEIGHT_OMEGA ? 0 : (l1_norm - WEIGHT_OMEGA));
+#else
+  _D_lsm_weight += delta_w_pos + delta_w_neg;
+#endif
+
+#else
+  // continuous case:
+#ifdef _REGULARIZATION_STDP_SUPV
+  double l1_norm  = _post->LSMSumAbsInputWeights();
+  _lsm_weight += delta_w_pos + delta_w_neg - (l1_norm < WEIGHT_OMEGA ? 0 : (l1_norm - WEIGHT_OMEGA));
+#else
+  _lsm_weight += delta_w_pos + delta_w_neg;
+#endif
+
+#endif
+#endif
+
+#ifdef _DEBUG_SUPV_STDP
   if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0"))
 #ifdef DIGITAL
-    cout<<(delta_w_pos + delta_w_neg >= 0 ? "Weight increase: " : "Weight decrease: ")<<delta_w_pos + delta_w_neg<<" Calicium of the post: "<<_post->DLSMGetCalciumPre()<<endl;
+    cout<<"Weight: "<<_D_lsm_weight<<(delta_w_pos + delta_w_neg >= 0 ? " Weight increase: " : " Weight decrease: ")<<delta_w_pos + delta_w_neg<<" Calicium of the post: "<<_post->DLSMGetCalciumPre()<<" Reg-term: "<<regular<<endl;
 #else
-    cout<<(delta_w_pos + delta_w_neg >= 0 ? "Weight increase: " : "Weight decrease: ")<<delta_w_pos + delta_w_neg<<" Calicium of the post: "<<_post->GetCalciumPre()<<endl;
+  cout<<"Weight: "<<_lsm_weight<<(delta_w_pos + delta_w_neg >= 0 ? " Weight increase: " : " Weight decrease: ")<<delta_w_pos + delta_w_neg<<" Calicium of the post: "<<_post->GetCalciumPre()<<" Reg-term: "<<regular<<endl;
 #endif
 #endif
+
   // check if weight out of bound
   CheckReadoutWeightOutBound();
 }

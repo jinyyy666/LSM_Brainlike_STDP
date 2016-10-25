@@ -53,11 +53,11 @@
 // inject additional current to readout during the readout unsupvervised stage
 #define _READOUT_SUPERVISED_CURRENT
 // tune the teacher signal strength during the readout training to "activate v_mem"
-#define TS_STRENGTH_P 0.5
-#define TS_STRENGTH_N 0.5
+#define TS_STRENGTH_P 1
+#define TS_STRENGTH_N 0 // give the negative class some firings so that the weight can be somehow depressed!
 // intended teacher signal freq, one out of x time point to fire
 // but note that the calcium constraint is inposed during firing!
-#define TS_FREQ 2
+#define TS_FREQ 1
 
 // default teacher signal strength used in readout training:
 #define DEFAULT_TS_STRENGTH_P 1
@@ -114,10 +114,14 @@
 #define D_A_POS_I 64
 #define D_A_NEG_I 32
 
-#define A_POS_E 0.04 // define for the continuous case
-#define A_NEG_E 0.022
-#define A_POS_I 0.04
-#define A_NEG_I 0.022
+#define A_POS_E 0.008 // define for the continuous case
+#define A_NEG_E 0.001
+#define A_POS_I 0.008
+#define A_NEG_I 0.001
+
+#define _REGULARIZATION_STDP_SUPV
+#define GAMMA_REG 0.001 // regularization parameter
+#define WEIGHT_OMEGA 350 // the targetted weight sums
 
 // control parameter for pair-based pairing rule:
 #define PAIR_BASED 1
@@ -125,7 +129,7 @@
 
 // control parameter for stochastic stdp, silimar to the abstract learning rule:
 //#define STOCHASTIC_STDP
-
+#define STOCHASTIC_STDP_SUPV
 
 // contro parameter to study synaptic activity
 //#define _PRINT_SYN_ACT

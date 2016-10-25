@@ -10,6 +10,7 @@
 #include <assert.h>
 #include "def.h"
 
+
 /** unit system defined for digital lsm **/
 extern const int one;
 extern const int unit;
@@ -334,7 +335,7 @@ public:
 
   // Update the reservoir weights using STDP in a stochastic way:
   template<class T>
-  void StochasticSTDP(const T delta_w_pos, const T delta_w_neg, int iteration = 1){
+  void StochasticSTDPSupv(const T delta_w_pos, const T delta_w_neg, const T l1_norm, int iteration = 1){
       int iter = iteration + 1;
       if(iteration <= 50) iter = 1;
       else if(iteration <= 100) iter = 2;
@@ -367,17 +368,56 @@ public:
       }
 #else
       T temp_delta = delta_w_pos + delta_w_neg;
+      double regulization = l1_norm < WEIGHT_OMEGA ? 0 : GAMMA_REG*(l1_norm - WEIGHT_OMEGA)*_lsm_weight;
       if(_lsm_c > LSM_CAL_MID){
 	  if(_lsm_c < (LSM_CAL_MID+3) && temp_delta > 0)
-	      _lsm_weight += temp_delta/iter;
+	      _lsm_weight += temp_delta/(1 + iter/ITER_SEARCH_CONV);
       }
       else{
 	  if(_lsm_c > (LSM_CAL_MID-3) && temp_delta < 0)
-	      _lsm_weight += temp_delta/iter;
+	      _lsm_weight += temp_delta/(1 + iter/ITER_SEARCH_CONV);
       }
+      _lsm_weight -= regulization;
 #endif
   }
   
+  // Update the reservoir weights using STDP (unsupvervised) in a stochastic way:
+  template<class T>
+  void StochasticSTDP(const T delta_w_pos, const T delta_w_neg){
+#ifdef DIGITAL
+      const int c_dec_digit = IsReadoutSyn() ? NUM_DEC_DIGIT_READOUT_MEM : NUM_DEC_DIGIT_RESERVOIR_MEM;
+      const int c_syn_bit_diff = IsReadoutSyn() ? NUM_BIT_SYN - NBT_STD_SYN : NUM_BIT_SYN_R - NBT_STD_SYN_R;
+      const int temp1 = one<<(c_dec_digit + 14);
+      const int temp2 = one<<(c_syn_bit_diff + 8);
+      T temp_delta = delta_w_pos + delta_w_neg;
+      if(_D_lsm_c > LSM_CAL_MID*unit){
+	  if((_D_lsm_c < (LSM_CAL_MID+3)*unit) &&  temp_delta > 0)
+#ifdef ADDITIVE_STDP
+	      _D_lsm_weight += (rand()%temp1<(temp_delta*temp2*LAMBDA))?_Unit:0;
+#else
+	      _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT))?_Unit:0;
+#endif 
+      }else{
+	  if((_D_lsm_c > (LSM_CAL_MID-3)*unit) && temp_delta < 0)
+#ifdef ADDITIVE_STDP
+	      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*temp2*LAMBDA))?_Unit:0;
+#else
+              _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP))?_Unit:0;
+#endif
+      }
+#else
+      T temp_delta = delta_w_pos + delta_w_neg;
+      if(_lsm_c > LSM_CAL_MID){
+	  if(_lsm_c < (LSM_CAL_MID+3) && temp_delta > 0)
+	      _lsm_weight += temp_delta;
+      }
+      else{
+	  if(_lsm_c > (LSM_CAL_MID-3) && temp_delta < 0)
+	      _lsm_weight += temp_delta;
+      }
+#endif
+  }
+
 
   // PrintToFile: Given a vector, print the information 
   //              in the vector to file:

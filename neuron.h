@@ -154,6 +154,8 @@ public:
   void HandleFiringActivity(bool isInput, int time, bool train);
 
   void LSMNextTimeStep(int t , FILE * Foutp, FILE * Fp, bool train, int end_time);
+  double LSMSumAbsInputWeights();
+  int  DLSMSumAbsInputWeights();
   void LSMSetChannel(Channel*,channelmode_t);
   void LSMRemoveChannel();
   void LSMSetNeuronMode(neuronmode_t neuronmode){_mode = neuronmode;}

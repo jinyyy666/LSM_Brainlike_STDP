@@ -909,6 +909,22 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
   }
 }
 
+double Neuron::LSMSumAbsInputWeights(){
+  double sum = 0;
+  for(list<Synapse*>::iterator it = _inputSyns.begin(); it != _inputSyns.end(); ++it){
+    sum += fabs((*it)->Weight());
+  }
+  return sum;
+}
+
+int Neuron::DLSMSumAbsInputWeights(){
+  int sum = 0;
+  for(list<Synapse*>::iterator it = _inputSyns.begin(); it != _inputSyns.end(); ++it){
+    sum += abs((*it)->DWeight());
+  }
+  return sum;
+}
+
 void Neuron::LSMSetChannel(Channel * channel, channelmode_t channelmode){
   _lsm_channel = channel;
   _t_next_spike = _lsm_channel->FirstSpikeT();
