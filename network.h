@@ -31,7 +31,7 @@ private:
   std::vector<Synapse*> _isynapses;
   std::list<Synapse*> _lsmActiveLearnSyns;
   std::list<Synapse*> _lsmActiveSyns;
-  std::list<Synapse*> _lsmActiveSTDPLearnSyns;
+  std::list<Synapse*> _lsmActiveSTDPLearnSyns; // for both unsupervised and supervised training 
 
   std::vector<int> _readout_correct; // sign : +1
   std::vector<int> _readout_wrong;   // sign: -1

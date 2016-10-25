@@ -16,6 +16,7 @@
 //#define _DEBUG_SIMPLE_STDP
 //#define _DEBUG_AP_STDP
 //#define _DEBUG_UNSUPERV_TRAINING
+//#define _DEBUG_SUPV_STDP
 
 using namespace std;
 
@@ -571,6 +572,100 @@ void Synapse::LSMUpdate(int t){
 
 }
 
+//* TODO simple STDP rule for readout supervised STDP learning
+void Synapse::LSMSTDPSupvSimpleLearn(int t){
+  return;
+}
+
+//* implementation of Supervised STDP
+//* only consider the implementation for LUT-liked manner for simpilicity
+void Synapse::LSMSTDPSupvLearn(int t, int iteration){
+#ifndef _LUT_HARDWARE_APPROACH
+  cout<<"Warning! You are using the supervised STDP training without enabling the LUT approach!"<<endl;
+  assert(0);
+#endif
+
+  assert(_lsm_stdp_active == true);
+  _lsm_stdp_active = false;
+
+#ifdef _DEBUG_SYN_LEARN
+  char * pre_name = _pre->Name();
+  char * post_name = _post->Name();
+  assert(pre_name[0] == 'r' && post_name[0] == 'o'); 
+#endif
+
+  
+  if(t < 0 || (t != _t_spike_pre && t != _t_spike_post))
+    return;
+  int delta_t = t == _t_spike_pre ? _t_spike_pre - _t_spike_post : _t_spike_post - _t_spike_pre; // LTD:LTP
+  assert(delta_t >= 0);
+  if(t == _t_spike_pre && delta_t >= _TABLE_LTD.size())  return;
+  if(t == _t_spike_post && delta_t >= _TABLE_LTP.size()) return;
+
+#if defined(DIGITAL) && defined(_SIMPLE_STDP) 
+  // if the simple hardware efficiency STDP rule is considered,
+  // apply the simple approach:
+  LSMSTDPSupvSimpleLearn(t);
+#else
+  // apply the look-up table appoarch
+  LSMSTDPSupvHardwareLearn(t, iteration);
+#endif
+
+}
+
+//* LUT approach of supervised STDP
+void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
+#ifdef DIGITAL
+  int delta_w_pos = 0, delta_w_neg = 0;
+#else
+  double delta_w_pos = 0, delta_w_neg = 0;
+#endif
+
+#ifdef _DEBUG_SUPV_STDP
+  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0")){
+#ifdef DIGITAL
+      cout<<"The weight before : "<<_D_lsm_weight<<endl;
+#else
+      cout<<"The weight before : "<<_lsm_weight<<endl;
+#endif
+      cout<<"Firing @"<<t<<"\t t_pre: "<<_t_spike_pre<<"\t t_post: "<<_t_spike_post<<endl;
+  }
+#endif
+
+  // Read the look-up table:
+  LSMReadLUT(t, delta_w_pos, delta_w_neg);
+
+  // Update the weight:
+  assert(_post && (_post->GetTeacherSignal() == 1 || _post->GetTeacherSignal() == -1));
+  if(_post->GetTeacherSignal() == -1){
+    assert(delta_w_pos >= 0);
+    delta_w_pos = -1*delta_w_pos; // penalize the wrong update
+  }
+#ifdef STOCHASTIC_STDP
+  // similar idea as ad-stdp and Yong's training
+  _D_lsm_c = _post->DLSMGetCalciumPre();
+  _lsm_c = _post->GetCalciumPre();
+  StochasticSTDP(delta_w_pos, delta_w_neg, iteration);
+#else 
+#ifdef  DIGITAL
+  _D_lsm_weight += delta_w_pos + delta_w_neg;
+#else
+  _lsm_weight += delta_w_pos + delta_w_neg;
+#endif
+#endif
+
+#ifdef _DEBUG_SUPV_LEARN
+  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0"))
+#ifdef DIGITAL
+    cout<<(delta_w_pos + delta_w_neg >= 0 ? "Weight increase: " : "Weight decrease: ")<<delta_w_pos + delta_w_neg<<" Calicium of the post: "<<_post->DLSMGetCalciumPre()<<endl;
+#else
+    cout<<(delta_w_pos + delta_w_neg >= 0 ? "Weight increase: " : "Weight decrease: ")<<delta_w_pos + delta_w_neg<<" Calicium of the post: "<<_post->GetCalciumPre()<<endl;
+#endif
+#endif
+  // check if weight out of bound
+  CheckReadoutWeightOutBound();
+}
+
 
 //* this function is the implementation of the STDP learning rule, please find more details in the paper:
 //* "Phenomenological models of synaptic plasticity based on spike timing" 
@@ -579,18 +674,10 @@ void Synapse::LSMSTDPLearn(int t){
   assert(_lsm_stdp_active == true);
   _lsm_stdp_active = false;
 
-#ifdef _DEBUG_SYN_LEARN
-  char * pre_name = _pre->Name();
-  char * post_name = _post->Name();
-  assert(pre_name[0] == 'r' && post_name[0] == 'r' ||
-	 pre_name[0] == 'i' && post_name[0] == 'r'); 
-#endif
-
   // Remember that the delay of deliverying the fired spike is 1
   //t--;
   if( t < 0 || (t != _t_spike_pre && t != _t_spike_post)) // || (_t_spike_pre == _t_spike_post))
     return; 
-
 
 
   // if the LUT approach of implementation is considered,
@@ -738,36 +825,8 @@ void Synapse::LSMSTDPHardwareLearn(int t){
   }
 #endif
 
-  if(t == _t_spike_post){  // LTP:
-      assert(_t_spike_pre <= _t_spike_post);
-      size_t ind = _t_spike_post - _t_spike_pre;
-      if(ind < _TABLE_LTP.size()) // look-up table:
-#ifdef DIGITAL
-#ifdef STOCHASTIC_STDP // I will consider the stochastic sdtp here for both all-pairing 
-	               // and nearest neighbor-pairing
-         delta_w_pos = (_TABLE_LTP[ind]);
-#else
-         delta_w_pos = (_TABLE_LTP[ind])>>(LAMBDA_BIT);
-#endif
-#else
-         delta_w_pos = _TABLE_LTP[ind];
-#endif
-  }
-
-  if(t == _t_spike_pre){ // LTD:
-      assert(_t_spike_post <= _t_spike_pre);
-      size_t ind = _t_spike_pre - _t_spike_post;
-      if(ind < _TABLE_LTD.size())
-#ifdef DIGITAL
-#ifdef STOCHASTIC_STDP
-	  delta_w_neg = (_TABLE_LTD[ind]);
-#else
-          delta_w_neg = (_TABLE_LTD[ind])>>(LAMBDA_BIT + ALPHA_BIT);
-#endif
-#else
-	  delta_w_neg = (_TABLE_LTD[ind]);
-#endif
-  }
+  // Read the look-up table (in-line function): 
+  LSMReadLUT(t, delta_w_pos, delta_w_neg);
 
   // Update the weight:
 #ifdef STOCHASTIC_STDP 
@@ -1007,8 +1066,8 @@ void Synapse::LSMActivateSTDPSyns(Network * network, const char * type){
   /** But for input synapses, since they are all excitatory, we dont care  **/
   /** Currently, for readout synapses, I am training it regardless of type **/
   /** Because the type of the readout synapses is independent of the pre-  **/
-  /** neuron under the current settings                                    **/
-  if(_excitatory == true){// || strcmp(type, "readout") == 0){
+  /** neuron under the current settings (supervised learning)              **/
+  if(_excitatory == true || (strcmp(type, "readout") == 0 && network->LSMGetNetworkMode() == READOUTSUPV)){
 #ifdef _DEBUG_UNSUPERV_TRAINING
     cout<<"Put synapse from "<<_pre->Name()<<" to "<<_post->Name()<<" for STDP training"<<endl;
 #endif

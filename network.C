@@ -303,7 +303,7 @@ void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int val
         factor = factor*2/99999-1;
       }else if(random == 0) factor = 0;
       else assert(0);
-      double weight = 0.4; //value*factor;
+      double weight = 0; //value*factor;
       if((!pre->IsExcitatory() && weight > 0) ||(pre->IsExcitatory() && weight < 0))  weight = -1*weight;
       //if(weight > 0)  weight = weight*0.5;
       LSMAddSynapse(pre,neuron,weight,fixed,weight_limit,liquid);
@@ -816,7 +816,7 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration,int end_time, FILE
       _lsmActiveLearnSyns.clear();
     }else if(_network_mode == READOUTSUPV){
       for(list<Synapse*>::iterator iter = _lsmActiveSTDPLearnSyns.begin(); iter != _lsmActiveSTDPLearnSyns.end(); iter++){
-	(*iter)->LSMSTDPLearn(t);
+	(*iter)->LSMSTDPSupvLearn(t, iteration);
       }
       _lsmActiveSTDPLearnSyns.clear();
     }

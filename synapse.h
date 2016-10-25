@@ -181,9 +181,13 @@ public:
 
   void ExpDecay(double& var, const int time_c){var -= var/time_c;}
   void LSMUpdate(int t);
+  void LSMReadLUT(int t);
   void LSMSTDPLearn(int t);
   void LSMSTDPHardwareLearn(int t);
   void LSMSTDPSimpleLearn(int t);
+  void LSMSTDPSupvLearn(int t, int iteration);
+  void LSMSTDPSupvSimpleLearn(int t);
+  void LSMSTDPSupvHardwareLearn(int t, int iteration);
   void PrintActivity(std::ofstream& f_out);
     
   void ExpDecay(int& var, const int time_c){
@@ -233,6 +237,42 @@ public:
 
 
   /** Definition for template functions: **/
+
+  //* read the look-up table and determine the delta
+  template<class T>
+  void LSMReadLUT(int t, T& delta_w_pos, T& delta_w_neg){
+
+    if(t == _t_spike_post){  // LTP:
+      assert(_t_spike_pre <= _t_spike_post);
+      size_t ind = _t_spike_post - _t_spike_pre;
+      if(ind < _TABLE_LTP.size()) // look-up table:
+#ifdef DIGITAL
+#ifdef STOCHASTIC_STDP // I will consider the stochastic sdtp here for both all-pairing 
+	               // and nearest neighbor-pairing
+         delta_w_pos = (_TABLE_LTP[ind]);
+#else
+         delta_w_pos = (_TABLE_LTP[ind])>>(LAMBDA_BIT);
+#endif
+#else
+         delta_w_pos = _TABLE_LTP[ind];
+#endif
+    }
+
+    if(t == _t_spike_pre){ // LTD:
+      assert(_t_spike_post <= _t_spike_pre);
+      size_t ind = _t_spike_pre - _t_spike_post;
+      if(ind < _TABLE_LTD.size())
+#ifdef DIGITAL
+#ifdef STOCHASTIC_STDP
+	  delta_w_neg = (_TABLE_LTD[ind]);
+#else
+          delta_w_neg = (_TABLE_LTD[ind])>>(LAMBDA_BIT + ALPHA_BIT);
+#endif
+#else
+	  delta_w_neg = (_TABLE_LTD[ind]);
+#endif
+    }
+}
 
   // Calculate the LTP:
   // Pot/Polarization will dirve weights to w_limit, 
@@ -292,10 +332,18 @@ public:
 #endif
   }
 
-
   // Update the reservoir weights using STDP in a stochastic way:
   template<class T>
-  void StochasticSTDP(const T delta_w_pos, const T delta_w_neg){
+  void StochasticSTDP(const T delta_w_pos, const T delta_w_neg, int iteration = 1){
+      int iter = iteration + 1;
+      if(iteration <= 50) iter = 1;
+      else if(iteration <= 100) iter = 2;
+      else if(iteration <= 150) iter = 4;
+      else if(iteration <= 200) iter = 8;
+      else if(iteration <= 250) iter = 16;
+      else if(iteration <= 300) iter = 32;
+      else iter = iteration/4; 
+
 #ifdef DIGITAL
       const int c_dec_digit = IsReadoutSyn() ? NUM_DEC_DIGIT_READOUT_MEM : NUM_DEC_DIGIT_RESERVOIR_MEM;
       const int c_syn_bit_diff = IsReadoutSyn() ? NUM_BIT_SYN - NBT_STD_SYN : NUM_BIT_SYN_R - NBT_STD_SYN_R;
@@ -305,27 +353,27 @@ public:
       if(_D_lsm_c > LSM_CAL_MID*unit){
 	  if((_D_lsm_c < (LSM_CAL_MID+3)*unit) &&  temp_delta > 0)
 #ifdef ADDITIVE_STDP
-	      _D_lsm_weight += (rand()%temp1<(temp_delta*temp2*LAMBDA))?_Unit:0;
+	      _D_lsm_weight += (rand()%temp1<(temp_delta*temp2*LAMBDA/iter))?_Unit:0;
 #else
-              _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT))?_Unit:0;
+	      _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT/iter))?_Unit:0;
 #endif 
       }else{
 	  if((_D_lsm_c > (LSM_CAL_MID-3)*unit) && temp_delta < 0)
 #ifdef ADDITIVE_STDP
-	      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*temp2*LAMBDA))?_Unit:0;
+	      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*temp2*LAMBDA/iter))?_Unit:0;
 #else
-              _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP))?_Unit:0;
+              _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP/iter))?_Unit:0;
 #endif
       }
 #else
       T temp_delta = delta_w_pos + delta_w_neg;
       if(_lsm_c > LSM_CAL_MID){
 	  if(_lsm_c < (LSM_CAL_MID+3) && temp_delta > 0)
-	      _lsm_weight += temp_delta;
+	      _lsm_weight += temp_delta/iter;
       }
       else{
-	  if(_lsm_c > (LSM_CAL_MID - 3) && temp_delta < 0)
-	      _lsm_weight += temp_delta;
+	  if(_lsm_c > (LSM_CAL_MID-3) && temp_delta < 0)
+	      _lsm_weight += temp_delta/iter;
       }
 #endif
   }
