@@ -285,7 +285,8 @@ void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int val
 #ifdef DIGITAL
       if(random == 2){
 	int D_weight = -8 + rand()%15;
-	if((!pre->IsExcitatory() && D_weight > 0) ||(pre->IsExcitatory() && D_weight < 0))  D_weight = -1*D_weight;
+	//if((!pre->IsExcitatory() && D_weight > 0) ||(pre->IsExcitatory() && D_weight < 0))  D_weight = -1*D_weight;
+	//D_weight = 0;
 	LSMAddSynapse(pre,neuron,D_weight,fixed,D_weight_limit,liquid);
       }
       else if(random == 0){
@@ -563,6 +564,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 	  assert(Foutp != NULL);
 	}
 #endif
+	cout<<"************* Speech : "<<info<<" ****************"<<endl;
 	while(!LSMEndOfSpeech(networkmode)){
 	  LSMNextTimeStep(++time, true, iteration, 1, Foutp, NULL); 
 	}
@@ -689,12 +691,7 @@ void Network::LSMUnsupervisedTraining(networkmode_t networkmode, int tid){
 	info = LoadNextSpeech(false, networkmode);
     }
     LSMClearSignals();
-    // 4. Reset the teacher signal strength if needed
-#ifdef _READOUT_SUPERVISED_CURRENT  // reset back to default for the TS signal strength
-    NeuronGroup * output = SearchForNeuronGroup("output");
-    assert(output);
-    output->LSMResetTeacherSignalStrength(); 
-#endif
+
 }
 
 
@@ -925,13 +922,13 @@ void Network::LoadSpeeches(Speech      * sp,
     // load the speech to the output layer and setup its channels
     output->LSMLoadSpeech(sp,&_lsm_readout,neuronmode_readout,READOUTCHANNEL);
 
-    // if train the readout 
+    // if train the readout -- supervised STDP is controlled here!
     if(train == true){
 	assert(output);
 	if(neuronmode_readout == NORMAL) // original Yong's rule
 	  output->LSMSetTeacherSignalStrength(DEFAULT_TS_STRENGTH_P, DEFAULT_TS_STRENGTH_N, DEFAULT_TS_FREQ);
-	else if(neuronmode_readout == NORMALSTDPSUPV) // supervised STDP 
-	  output->LSMSetTeacherSignalStrength(TS_STRENGTH_P, TS_STRENGTH_N, TS_FREQ);
+	else if(neuronmode_readout == NORMALSTDP) // supervised STDP 
+	  output->LSMSetTeacherSignalStrength(TS_STRENGTH_P_SUPV, TS_STRENGTH_N_SUPV, TS_FREQ_SUPV);
 	else	  assert(0);
 	output->LSMSetTeacherSignal(sp->Class());
     }
@@ -1052,7 +1049,7 @@ void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neur
   else if(networkmode == READOUTSUPV){
     neuronmode_input = DEACTIVATED;
     neuronmode_reservoir = READCHANNELSTDP;
-    neuronmode_readout = NORMALSTDPSUPV;
+    neuronmode_readout = NORMALSTDP;
   }else{
     cout<<"Unrecognized network mode!"<<endl;
     exit(EXIT_FAILURE);
@@ -1072,7 +1069,7 @@ int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup 
     _sp_iter = _speeches.begin();
     if(_sp_iter != _speeches.end()){
         LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer,neuronmode_input, neuronmode_reservoir, neuronmode_readout, train, ignore_reservoir);
-#ifdef _READOUT_SUPERVISED_CURRENT
+#ifdef _READOUT_HELPER_CURRENT
 	if(!train && networkmode == TRAINREADOUT && _lsm_output_layer){
 	  _lsm_output_layer->LSMSetTeacherSignal((*_sp_iter)->Class());
 	  _lsm_output_layer->LSMSetTeacherSignalStrength(TS_STRENGTH_P, TS_STRENGTH_N, TS_FREQ);
@@ -1135,7 +1132,7 @@ int Network::LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup *
     _sp_iter++;
     if(_sp_iter != _speeches.end()){
       LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout, train, ignore_reservoir);
-#ifdef _READOUT_SUPERVISED_CURRENT
+#ifdef _READOUT_HELPER_CURRENT
       if(!train && networkmode==TRAINREADOUT && _lsm_output_layer) 
 	_lsm_output_layer->LSMSetTeacherSignal((*_sp_iter)->Class());
 #endif
@@ -1665,11 +1662,12 @@ void Network::RemoveZeroWeights(const char * type){
     }
   }
   else if(syn_type == READOUT_SYN){
-    if(!_lsm_output_layer){
-      cout<<"In Network::RemoveZeroWeights(), found that you did not load the readout layer!!"<<endl;
-      assert(_lsm_output_layer);
+    NeuronGroup * output = SearchForNeuronGroup("output");
+    if(!output){
+      cout<<"In Network::RemoveZeroWeights(), no 'output' layer is found!!"<<endl;
+      assert(output);
     }
-    _lsm_output_layer->RemoveZeroSyns(syn_type);
+    output->RemoveZeroSyns(syn_type);
   }
   else{
     assert(0); // your code shoule never go here.

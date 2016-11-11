@@ -18,7 +18,7 @@
 
 //#define _DEBUG_NEURON
 //#define _DEBUG_VARBASE
-//#define _DEBUG_RM_ZERO_W
+#define _DEBUG_RM_ZERO_W
 //#define _DEBUG_INPUT_TRAINING
 
 // NOTE: The time constants have been changed to 2*original settings 
@@ -532,7 +532,7 @@ inline void Neuron::SetPostNeuronSpikeT(int time){
 	 && (*iter)->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false)
 	(*iter)->LSMActivateSTDPSyns(_network, "reservoir");
     }
-    else if((_mode == NORMALSTDP || _mode == NORMALSTDPSUPV) && betweenLayer){
+    else if((_mode == NORMALSTDP) && betweenLayer){
       // this synapse is in between two layers (input-reservoir or reservoir-readout)
       (*iter)->SetPostSpikeT(time);
       // push the synapse into STDP learning list
@@ -611,9 +611,8 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
 	  // ignore the reservoir->reservoir synapses
 	  if((*iter)->PostNeuron()->LSMCheckNeuronMode(READCHANNELSTDP))  continue;
 	  // TRAINREADOUT(reservoir->READCHANNELSTDP, readout->NORMALSTDP) train readout unsupervisedly
-	  // READOUTSUPV(reservoir->READCHANNELSTDP, readout->NORMALSTDPSUPV) 
+	  // READOUTSUPV(reservoir->READCHANNELSTDP, readout->NORMALSTDP) train supervisedly 
 	  assert((*iter)->PostNeuron()->LSMCheckNeuronMode(NORMALSTDP) == true|| 
-		 (*iter)->PostNeuron()->LSMCheckNeuronMode(NORMALSTDPSUPV) == true ||
 		(*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == true);
 
 	  if((*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false){
@@ -762,6 +761,8 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
   bool flag = false;
 #endif
   for(iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++){
+    // need to get rid of the deactivated synapse !
+    if((*iter)->DisableStatus())  continue;  
 
 #ifdef DIGITAL
     (*iter)->DLSMStaticCurrent(&pos, &value);
@@ -865,7 +866,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
     cout<<_name<<" firing @: "<<t<<endl;
 #endif
 
-    if(_mode == STDP || _mode == NORMALSTDP || _mode == NORMALSTDPSUPV){
+    if(_mode == STDP || _mode == NORMALSTDP){
       // keep track of the t_spike_post for the _inputSyns and activate this syn:
       SetPostNeuronSpikeT(t);
     }
@@ -884,7 +885,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
     _lsm_ref = LSM_T_REFRAC;
 
 #ifdef _VISUALIZE_READOUT_RESPONSE
-    if((_mode == NORMAL || _mode == NORMALSTDP || _mode == NORMALSTDPSUPV) && Foutp != NULL && _name[0] == 'o')
+    if((_mode == NORMAL || _mode == NORMALSTDP) && Foutp != NULL && _name[0] == 'o')
       fprintf(Foutp, "%d\t%d\n", atoi(_name+7), t);
 #endif
 #ifdef  _WRITE_STAT
@@ -1108,10 +1109,11 @@ void Neuron::RMZeroSyns(synapsetype_t syn_t, const char * t){
     if(flag){
 #ifdef _DEBUG_RM_ZERO_W
       if(!f)
-	cout<<"The synapse from "<<(*iter)->PreNeuron()->Name()<<" to "<<_name<<" has benn removed!"<<endl;
+	cout<<"The synapse from "<<(*iter)->PreNeuron()->Name()<<" to "<<_name<<" has been removed!"<<endl;
       else
-	cout<<"The synapse from "<<_name<<" to "<<(*iter)->PostNeuron()->Name()<<" has benn removed!"<<endl;
+	cout<<"The synapse from "<<_name<<" to "<<(*iter)->PostNeuron()->Name()<<" has been removed!"<<endl;
 #endif
+      (*iter)->DisableStatus(true); 
       iter = syns.erase(iter);
     }
     else
@@ -1641,15 +1643,6 @@ void NeuronGroup::LSMSetTeacherSignalStrength(const double pos, const double neg
     _neurons[i]->SetTeacherSignalStrength(pos, true);
     _neurons[i]->SetTeacherSignalStrength(neg, false); 
     _neurons[i]->SetTeacherSignalFreq(freq);
-  }
-}
-
-//* set teacher signal's strength and frequency
-void NeuronGroup::LSMResetTeacherSignalStrength(){
-  for(int i = 0; i < _neurons.size(); i++){
-    _neurons[i]->SetTeacherSignalStrength(DEFAULT_TS_STRENGTH_P, true);
-    _neurons[i]->SetTeacherSignalStrength(DEFAULT_TS_STRENGTH_N, false); 
-    _neurons[i]->SetTeacherSignalFreq(DEFAULT_TS_FREQ);
   }
 }
 

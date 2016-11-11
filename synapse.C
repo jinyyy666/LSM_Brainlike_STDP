@@ -14,9 +14,9 @@
 //#define _DEBUG_LOOKUP_TABLE
 //#define _DEBUG_TRUNC
 //#define _DEBUG_SIMPLE_STDP
-//#define _DEBUG_AP_STDP
+#define _DEBUG_AP_STDP
 //#define _DEBUG_UNSUPERV_TRAINING
-#define _DEBUG_SUPV_STDP
+//#define _DEBUG_SUPV_STDP
 
 using namespace std;
 
@@ -73,7 +73,8 @@ _D_y_i2_last(0)
   cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
 
   // initialize the look-up table:
-  _init_lookup_table();
+  _init_lookup_table(false);
+  _init_lookup_table(true);
 }
 
 // for digital implementation model:
@@ -161,46 +162,75 @@ _D_y_i2_last(0)
   cout<<pre->Name()<<"\t"<<post->Name()<<"\tPreExcit: "<<excitatory<<"\tPostExcit: "<<post->IsExcitatory()<<"\t"<<_D_lsm_weight<<endl;
 
   // initialize the look-up table:
-  _init_lookup_table();
+  _init_lookup_table(false);
+  _init_lookup_table(true);
+  
 }
 
 
-void Synapse::_init_lookup_table(){
+void Synapse::_init_lookup_table(bool isSupv){
 #ifdef _DEBUG_LOOKUP_TABLE
-  cout<<"\nPrinting look-up table for LTP: "<<endl;
+  if(isSupv)
+    cout<<"\nPrinting look-up table for LTP (SUPV): "<<endl;    
+  else
+    cout<<"\nPrinting look-up table for LTP: "<<endl;
+#endif
+    // try to differentiate the synapses
+    // typeFlag = true -> E-E  if false -> E-I (or I-E / I-I)
+    const int c_tau_x_e = isSupv ? TAU_X_TRACE_E_S : TAU_X_TRACE_E;
+    const int c_tau_y1_e = isSupv ? TAU_Y1_TRACE_E_S : TAU_Y1_TRACE_E;
+    const int c_tau_y2_e = isSupv ? TAU_Y2_TRACE_E_S : TAU_Y2_TRACE_E;
+    const int c_tau_x_i = isSupv ? TAU_X_TRACE_I_S : TAU_X_TRACE_I;
+    const int c_tau_y1_i = isSupv ? TAU_Y1_TRACE_I_S : TAU_Y1_TRACE_I;
+    const int c_tau_y2_i = isSupv ? TAU_Y2_TRACE_I_S : TAU_Y2_TRACE_I;
+
+    const double c_a_pos_e = isSupv ? A_POS_E_S : A_POS_E;
+    const double c_a_neg_e = isSupv ? A_NEG_E_S : A_NEG_E;
+    const double c_a_pos_i = isSupv ? A_POS_I_S : A_POS_I;
+    const double c_a_neg_i = isSupv ? A_NEG_I_S : A_NEG_I;
+
+    const int c_digital_a_pos_e = isSupv ? D_A_POS_E_S : D_A_POS_E;
+    const int c_digital_a_neg_e = isSupv ? D_A_NEG_E_S : D_A_NEG_E;
+    const int c_digital_a_pos_i = isSupv ? D_A_POS_I_S : D_A_POS_I;
+    const int c_digital_a_neg_i = isSupv ? D_A_NEG_I_S : D_A_NEG_I;
+    
+    bool typeFlag = _pre->IsExcitatory()&&_post->IsExcitatory() ? true : false;
+    int tau_x_trace = typeFlag ? c_tau_x_e : c_tau_x_i;
+    int tau_y_trace = typeFlag ? c_tau_y1_e : c_tau_y1_i;
+
+    int a_pos = typeFlag ? c_digital_a_pos_e : c_digital_a_pos_i;
+    int a_neg = typeFlag ? c_digital_a_neg_e : c_digital_a_neg_i;
+
+    double double_a_pos = typeFlag ? c_a_pos_e : c_a_pos_i;
+    double double_a_neg = typeFlag ? c_a_neg_e : c_a_neg_i;
+#ifdef DIGITAL
+    vector<int> & table_ltp = isSupv ? _TABLE_LTP_S : _TABLE_LTP;
+    vector<int> & table_ltd = isSupv ? _TABLE_LTD_S : _TABLE_LTD;
+#else
+    vector<double> & table_ltp = isSupv ? _TABLE_LTP_S : _TABLE_LTP;
+    vector<double> & table_ltd = isSupv ? _TABLE_LTD_S : _TABLE_LTD;
 #endif
 
-    // try to differentiate the synapses
-    // use a boolean value to indicate the synapse type:
-    // typeFlag = true -> E-E  if false -> E-I (or I-E / I-I which I don't care)
-    bool typeFlag = _pre->IsExcitatory()&&_post->IsExcitatory() ? true : false;
-    int tau_x_trace = typeFlag ? TAU_X_TRACE_E : TAU_X_TRACE_I;
-    int tau_y_trace = typeFlag ? TAU_Y1_TRACE_E : TAU_Y1_TRACE_I;
-    int a_pos = typeFlag ? D_A_POS_E : D_A_POS_I;
-    int a_neg = typeFlag ? D_A_NEG_E : D_A_NEG_I;
-    double double_a_pos = typeFlag ? A_POS_E : A_POS_I;
-    double double_a_neg = typeFlag ? A_NEG_E : A_NEG_I;
-
-  for(int i = 0; i < 3*tau_x_trace; ++i){
+    for(int i = 0; i < 3*tau_x_trace; ++i){
 #ifdef DIGITAL
       if(i == 0)
-	  _TABLE_LTP.push_back(UNIT_DELTA*a_pos);
+	  table_ltp.push_back(UNIT_DELTA*a_pos);
       else{
-	  _TABLE_LTP[i-1]/tau_x_trace == 0 && _TABLE_LTP[i-1] > 0 ?
-	  _TABLE_LTP.push_back( _TABLE_LTP[i-1] - 1) : 
-	  _TABLE_LTP.push_back( _TABLE_LTP[i-1] - _TABLE_LTP[i-1]/tau_x_trace);
+	  table_ltp[i-1]/tau_x_trace == 0 && table_ltp[i-1] > 0 ?
+	  table_ltp.push_back( table_ltp[i-1] - 1) : 
+	  table_ltp.push_back( table_ltp[i-1] - table_ltp[i-1]/tau_x_trace);
       }
 #else
       if(i == 0)
-	  _TABLE_LTP.push_back(double_a_pos);
+	  table_ltp.push_back(double_a_pos);
       else
-	  _TABLE_LTP.push_back(_TABLE_LTP[i-1] - _TABLE_LTP[i-1]/tau_x_trace);
+	  table_ltp.push_back(table_ltp[i-1] - table_ltp[i-1]/tau_x_trace);
 #endif
 
 #ifdef _DEBUG_LOOKUP_TABLE 
-      cout<<_TABLE_LTP[i]<<"\t";
+      cout<<table_ltp[i]<<"\t";
 #endif
-  }
+    }
 
 #ifdef _DEBUG_LOOKUP_TABLE
   cout<<"\nPrinting look-up table for LTD: "<<endl;
@@ -209,20 +239,20 @@ void Synapse::_init_lookup_table(){
   for(int i = 0; i < 3*tau_y_trace; ++i){
 #ifdef DIGITAL
       if(i == 0)
-	  _TABLE_LTD.push_back(-1*UNIT_DELTA*a_neg);
+	  table_ltd.push_back(-1*UNIT_DELTA*a_neg);
       else{
-	  _TABLE_LTD[i-1]/tau_y_trace == 0 && _TABLE_LTD[i-1] < 0 ? 
-	  _TABLE_LTD.push_back( _TABLE_LTD[i-1] + 1) :
-	  _TABLE_LTD.push_back( _TABLE_LTD[i-1] - _TABLE_LTD[i-1]/tau_y_trace);
+	  table_ltd[i-1]/tau_y_trace == 0 && table_ltd[i-1] < 0 ? 
+	  table_ltd.push_back(table_ltd[i-1] + 1) :
+	  table_ltd.push_back(table_ltd[i-1] - table_ltd[i-1]/tau_y_trace);
       }
 #else
       if(i == 0)
-	  _TABLE_LTD.push_back(-1*double_a_neg);
+	  table_ltd.push_back(-1*double_a_neg);
       else
-	  _TABLE_LTD.push_back(_TABLE_LTD[i-1] - _TABLE_LTD[i-1]/tau_y_trace);
+	  table_ltd.push_back(table_ltd[i-1] - table_ltd[i-1]/tau_y_trace);
 #endif		
 #ifdef _DEBUG_LOOKUP_TABLE 
-      cout<<_TABLE_LTD[i]<<"\t";
+      cout<<table_ltd[i]<<"\t";
 #endif
   }
 #ifdef _DEBUG_LOOKUP_TABLE 
@@ -231,16 +261,16 @@ void Synapse::_init_lookup_table(){
 
       /* // close to exp version:
 #ifdef DIGITAL
-      _TABLE_LTP[i] = (int)UNIT_DELTA*D_A_POS_E*exp(-1.0*i/TAU_X_TRACE_E);
+      table_ltp[i] = (int)UNIT_DELTA*D_A_POS_E*exp(-1.0*i/TAU_X_TRACE_E);
 #else
-      _TABLE_LTP[i] = A_POS_E*exp(-1.0*i/TAU_X_TRACE_E);
+      table_ltp[i] = A_POS_E*exp(-1.0*i/TAU_X_TRACE_E);
 #endif
   }
   for(int i = 0; i < 3*TAU_Y1_TRACE_E; ++i){
 #ifdef DIGITAL
-      _TABLE_LTD[i] = (int)-1*UNIT_DELTA*D_A_NEG_E*exp(-1.0*i/TAU_Y1_TRACE_E);
+      table_ltd[i] = (int)-1*UNIT_DELTA*D_A_NEG_E*exp(-1.0*i/TAU_Y1_TRACE_E);
 #else
-      _TABLE_LTD[i] = -1*A_NEG_E*exp(-1.0*i/TAU_Y1_TRACE_E);
+      table_ltd[i] = -1*A_NEG_E*exp(-1.0*i/TAU_Y1_TRACE_E);
 #endif	
   }
       */
@@ -284,7 +314,8 @@ bool Synapse::IsInputSyn(){
 bool Synapse::IsValid(){
     assert(_pre && _post); 
     return !(_pre->LSMCheckNeuronMode(DEACTIVATED) ||
-	     _post->LSMCheckNeuronMode(DEACTIVATED));
+	     _post->LSMCheckNeuronMode(DEACTIVATED) ||
+	     _disable);
 }
 
 
@@ -599,8 +630,8 @@ void Synapse::LSMSTDPSupvLearn(int t, int iteration){
     return;
   int delta_t = t == _t_spike_pre ? _t_spike_pre - _t_spike_post : _t_spike_post - _t_spike_pre; // LTD:LTP
   assert(delta_t >= 0);
-  if(t == _t_spike_pre && delta_t >= _TABLE_LTD.size())  return;
-  if(t == _t_spike_post && delta_t >= _TABLE_LTP.size()) return;
+  if(t == _t_spike_pre && delta_t >= _TABLE_LTD_S.size())  return;
+  if(t == _t_spike_post && delta_t >= _TABLE_LTP_S.size()) return;
 
 #if defined(DIGITAL) && defined(_SIMPLE_STDP) 
   // if the simple hardware efficiency STDP rule is considered,
@@ -632,8 +663,8 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
   }
 #endif
 
-  // Read the look-up table:
-  LSMReadLUT(t, delta_w_pos, delta_w_neg);
+  // Read the look-up table @param4: isSupv?
+  LSMReadLUT(t, delta_w_pos, delta_w_neg, true);
 
   // Update the weight:
   assert(_post && (_post->GetTeacherSignal() == 1 || _post->GetTeacherSignal() == -1));
@@ -659,8 +690,10 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
 
 #ifdef _REGULARIZATION_STDP_SUPV
 #ifdef DIGITAL
+  assert(NUM_BIT_SYN >= NBT_STD_SYN);
+  const int c_weight_omega = WEIGHT_OMEGA*_Unit;
   l1_norm = _post->DLSMSumAbsInputWeights();
-  regular = l1_norm < WEIGHT_OMEGA ? 0 : GAMMA_REG*(l1_norm - WEIGHT_OMEGA)*_D_lsm_weight;
+  regular = l1_norm < c_weight_omega ? 0 : ((l1_norm - c_weight_omega)*_D_lsm_weight)/(_Unit*_Unit);
 #else
   l1_norm = _post->LSMSumAbsInputWeights();
   regular = l1_norm < WEIGHT_OMEGA ? 0 : GAMMA_REG*(l1_norm - WEIGHT_OMEGA)*_lsm_weight;
@@ -865,7 +898,7 @@ void Synapse::LSMSTDPHardwareLearn(int t){
 #endif
 
   // Read the look-up table (in-line function): 
-  LSMReadLUT(t, delta_w_pos, delta_w_neg);
+  LSMReadLUT(t, delta_w_pos, delta_w_neg, false);
 
   // Update the weight:
 #ifdef STOCHASTIC_STDP 

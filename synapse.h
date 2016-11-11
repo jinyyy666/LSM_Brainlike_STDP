@@ -102,14 +102,19 @@ private:
 
 // look-up table for LTD and LTP, 
 #ifdef DIGITAL
-    // look up table for STDP curve:
+  // look up table for unsupervised STDP curve:
   std::vector<int> _TABLE_LTP;
   std::vector<int> _TABLE_LTD;
+  // look up table for unsupervised STDP curve:
+  std::vector<int> _TABLE_LTP_S;
+  std::vector<int> _TABLE_LTD_S;
 #else
   std::vector<double> _TABLE_LTP;
   std::vector<double> _TABLE_LTD;
+  std::vector<double> _TABLE_LTP_S;
+  std::vector<double> _TABLE_LTD_S;
 #endif
-    void _init_lookup_table();
+    void _init_lookup_table(bool isSupv);
 public:
   Synapse(Neuron*,Neuron*,double,bool,double,bool,bool); // only for non-digital liquid state machine
   Synapse(Neuron*,Neuron*,int,bool,int,bool,bool); // only for digital liquid state machine (including initializing synapse in liquid)
@@ -182,7 +187,6 @@ public:
 
   void ExpDecay(double& var, const int time_c){var -= var/time_c;}
   void LSMUpdate(int t);
-  void LSMReadLUT(int t);
   void LSMSTDPLearn(int t);
   void LSMSTDPHardwareLearn(int t);
   void LSMSTDPSimpleLearn(int t);
@@ -241,36 +245,45 @@ public:
 
   //* read the look-up table and determine the delta
   template<class T>
-  void LSMReadLUT(int t, T& delta_w_pos, T& delta_w_neg){
+  void LSMReadLUT(int t, T& delta_w_pos, T& delta_w_neg, bool isSupv){
+#ifdef DIGITAL
+    std::vector<int> & table_ltp = isSupv ? _TABLE_LTP_S : _TABLE_LTP;
+    std::vector<int> & table_ltd = isSupv ? _TABLE_LTD_S : _TABLE_LTD;
+#else
+    std::vector<double> & table_ltp = isSupv ? _TABLE_LTP_S : _TABLE_LTP;
+    std::vector<double> & table_ltd = isSupv ? _TABLE_LTD_S : _TABLE_LTD;
+#endif
+
 
     if(t == _t_spike_post){  // LTP:
       assert(_t_spike_pre <= _t_spike_post);
       size_t ind = _t_spike_post - _t_spike_pre;
-      if(ind < _TABLE_LTP.size()) // look-up table:
+      if(ind < table_ltp.size()) // look-up table:
 #ifdef DIGITAL
-#ifdef STOCHASTIC_STDP // I will consider the stochastic sdtp here for both all-pairing 
-	               // and nearest neighbor-pairing
-         delta_w_pos = (_TABLE_LTP[ind]);
+#if defined(STOCHASTIC_STDP) || defined(STOCHASTIC_STDP_SUPV)
+	// I will consider the stochastic sdtp here for both all-pairing 
+	// and nearest neighbor-pairing
+         delta_w_pos = (table_ltp[ind]);
 #else
-         delta_w_pos = (_TABLE_LTP[ind])>>(LAMBDA_BIT);
+         delta_w_pos = (table_ltp[ind])>>(LAMBDA_BIT);
 #endif
 #else
-         delta_w_pos = _TABLE_LTP[ind];
+         delta_w_pos = table_ltp[ind];
 #endif
     }
 
     if(t == _t_spike_pre){ // LTD:
       assert(_t_spike_post <= _t_spike_pre);
       size_t ind = _t_spike_pre - _t_spike_post;
-      if(ind < _TABLE_LTD.size())
+      if(ind < table_ltd.size())
 #ifdef DIGITAL
-#ifdef STOCHASTIC_STDP
-	  delta_w_neg = (_TABLE_LTD[ind]);
+#if defined(STOCHASTIC_STDP) || defined(STOCHASTIC_STDP_SUPV)
+	  delta_w_neg = (table_ltd[ind]);
 #else
-          delta_w_neg = (_TABLE_LTD[ind])>>(LAMBDA_BIT + ALPHA_BIT);
+          delta_w_neg = (table_ltd[ind])>>(LAMBDA_BIT + ALPHA_BIT);
 #endif
 #else
-	  delta_w_neg = (_TABLE_LTD[ind]);
+	  delta_w_neg = (table_ltd[ind]);
 #endif
     }
 }
@@ -349,23 +362,27 @@ public:
       const int c_dec_digit = IsReadoutSyn() ? NUM_DEC_DIGIT_READOUT_MEM : NUM_DEC_DIGIT_RESERVOIR_MEM;
       const int c_syn_bit_diff = IsReadoutSyn() ? NUM_BIT_SYN - NBT_STD_SYN : NUM_BIT_SYN_R - NBT_STD_SYN_R;
       const int temp1 = one<<(c_dec_digit + 14);
-      const int temp2 = one<<(c_syn_bit_diff + 8);
+      const int temp2 = one<<(c_syn_bit_diff + 14); // learning rate can also be tuned here!
       T temp_delta = delta_w_pos + delta_w_neg;
+      const int c_weight_omega = WEIGHT_OMEGA<<(c_syn_bit_diff);
+      int regulization = l1_norm < c_weight_omega ? 0 : ((l1_norm - c_weight_omega)*_D_lsm_weight)/(1<<c_syn_bit_diff); // left shift cause overflow, so I use div here!
+
       if(_D_lsm_c > LSM_CAL_MID*unit){
 	  if((_D_lsm_c < (LSM_CAL_MID+3)*unit) &&  temp_delta > 0)
 #ifdef ADDITIVE_STDP
-	      _D_lsm_weight += (rand()%temp1<(temp_delta*temp2*LAMBDA/iter))?_Unit:0;
+	      _D_lsm_weight += (rand()%temp1<(temp_delta*temp2*LAMBDA/iter))? 1 : 0;
 #else
-	      _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT/iter))?_Unit:0;
+	      _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT/iter))? 1 : 0;
 #endif 
       }else{
 	  if((_D_lsm_c > (LSM_CAL_MID-3)*unit) && temp_delta < 0)
 #ifdef ADDITIVE_STDP
-	      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*temp2*LAMBDA/iter))?_Unit:0;
+	      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*temp2*LAMBDA/iter))? 1 : 0;
 #else
-              _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP/iter))?_Unit:0;
+              _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP/iter))? 1 : 0;
 #endif
       }
+      _D_lsm_weight -= regulization;
 #else
       T temp_delta = delta_w_pos + delta_w_neg;
       double regulization = l1_norm < WEIGHT_OMEGA ? 0 : GAMMA_REG*(l1_norm - WEIGHT_OMEGA)*_lsm_weight;
@@ -393,16 +410,16 @@ public:
       if(_D_lsm_c > LSM_CAL_MID*unit){
 	  if((_D_lsm_c < (LSM_CAL_MID+3)*unit) &&  temp_delta > 0)
 #ifdef ADDITIVE_STDP
-	      _D_lsm_weight += (rand()%temp1<(temp_delta*temp2*LAMBDA))?_Unit:0;
+	      _D_lsm_weight += (rand()%temp1<(temp_delta*temp2*LAMBDA))? 1 : 0;
 #else
-	      _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT))?_Unit:0;
+	      _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT))? 1 : 0;
 #endif 
       }else{
 	  if((_D_lsm_c > (LSM_CAL_MID-3)*unit) && temp_delta < 0)
 #ifdef ADDITIVE_STDP
-	      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*temp2*LAMBDA))?_Unit:0;
+	      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*temp2*LAMBDA))? 1 : 0;
 #else
-              _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP))?_Unit:0;
+              _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP))? 1 : 0;
 #endif
       }
 #else

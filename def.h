@@ -39,7 +39,7 @@
 /* FOR LIQUID STATE MACHINE */
 // the control parameter to enable STDP training, you only to enable this one
 // before enable the following two variables!!
-//#define STDP_TRAINING
+#define STDP_TRAINING
 
 // the control parameter to enable training the reservoir:
 //#define STDP_TRAINING_RESERVOIR
@@ -48,16 +48,24 @@
 //#define STDP_TRAINING_INPUT
 
 // the control parameter to enable training the readout synapses in unsupervised way
-//#define STDP_TRAINING_READOUT
+#define STDP_TRAINING_READOUT
 
 // inject additional current to readout during the readout unsupvervised stage
-#define _READOUT_SUPERVISED_CURRENT
+#define _READOUT_HELPER_CURRENT
 // tune the teacher signal strength during the readout training to "activate v_mem"
-#define TS_STRENGTH_P 1
-#define TS_STRENGTH_N 0 // give the negative class some firings so that the weight can be somehow depressed!
+#define TS_STRENGTH_P 0
+#define TS_STRENGTH_N 0 
+// intended teacher signal freq, one out of x time point to fire
+#define TS_FREQ 1
+
+/***********************************
+// teacher signal strength used in STDP supervised training:
+***********************************/
+#define TS_STRENGTH_P_SUPV 1
+#define TS_STRENGTH_N_SUPV 0 // give the negative class some firings so that the weight can be somehow depressed!
 // intended teacher signal freq, one out of x time point to fire
 // but note that the calcium constraint is inposed during firing!
-#define TS_FREQ 1
+#define TS_FREQ_SUPV 1
 
 // default teacher signal strength used in readout training:
 #define DEFAULT_TS_STRENGTH_P 1
@@ -68,7 +76,7 @@
 
 // the in/out degree criterior for gating one node:
 #define INDEG_LIMIT  1
-#define OUTDEG_LIMIT  1
+#define OUTDEG_LIMIT 1
 
 // damping factor for long-time potientation (under triplet case):
 // this value should be small (around 0.01) for multiplicative update!
@@ -85,7 +93,6 @@
 // parameter for LTP under nearest-neighbor pairing rule:
 #define NN_BIT_P 0
 #define NN_BIT_N 0
-
 
 // asymmetry parameter for LTD:
 #define ALPHA 1 // for multiplicative : 0.6
@@ -105,7 +112,6 @@
 // time constant for trace x:
 #define TAU_X_TRACE_I  2 //8 for multiplicative
 
-
 // control parameter for additive STDP rule:
 #define ADDITIVE_STDP
 // assume that A is different for E-E and E-I
@@ -119,16 +125,39 @@
 #define A_POS_I 0.008
 #define A_NEG_I 0.001
 
+/************************************
+// for supervised STDP:
+************************************/
+#define TAU_Y1_TRACE_E_S 8
+#define TAU_Y2_TRACE_E_S 16
+// time constant for trace x:
+#define TAU_X_TRACE_E_S  4 //8 for multiplicative
+
+#define TAU_Y1_TRACE_I_S 4
+#define TAU_Y2_TRACE_I_S 16
+// time constant for trace x:
+#define TAU_X_TRACE_I_S  2 //8 for multiplicative
+
+#define D_A_POS_E_S 96 // those two A's are defined for digital
+#define D_A_NEG_E_S 32 // the negative "-" already contains in the code
+#define D_A_POS_I_S 64
+#define D_A_NEG_I_S 32
+
+#define A_POS_E_S 0.008 // define for the continuous case
+#define A_NEG_E_S 0.001
+#define A_POS_I_S 0.008
+#define A_NEG_I_S 0.001
+
 #define _REGULARIZATION_STDP_SUPV
 #define GAMMA_REG 0.001 // regularization parameter
-#define WEIGHT_OMEGA 350 // the targetted weight sums
+#define WEIGHT_OMEGA 250 // the targetted weight sums
 
 // control parameter for pair-based pairing rule:
 #define PAIR_BASED 1
 //#define NEAREST_NEIGHBOR 1
 
 // control parameter for stochastic stdp, silimar to the abstract learning rule:
-//#define STOCHASTIC_STDP
+#define STOCHASTIC_STDP
 #define STOCHASTIC_STDP_SUPV
 
 // contro parameter to study synaptic activity
@@ -180,7 +209,7 @@
 #define _TOP_PERCENT 0.1
 
 #define LOST_RATE 0.0
-//#define DIGITAL
+#define DIGITAL
 //#define DIGITAL_SYN_ORGINAL 1
 #define LIQUID_SYN_MODIFICATION 1
 
@@ -201,9 +230,9 @@
 //#define _RES_EPEN_CHR
 
 //* visualize the readout response
-#define _VISUALIZE_READOUT_RESPONSE
+//#define _VISUALIZE_READOUT_RESPONSE
 
-#define _DUMP_WAVEFORM
+//#define _DUMP_WAVEFORM
 
 enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL,READOUTCHANNEL}; // for allocate speech channels
 enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,NORMALSTDP,NORMALSTDPSUPV,NORMAL}; // for implement network stat.

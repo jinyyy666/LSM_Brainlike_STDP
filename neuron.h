@@ -232,7 +232,6 @@ public:
   void LSMRemoveSpeech();
   void LSMSetTeacherSignal(int);
   void LSMSetTeacherSignalStrength(const double pos, const double neg, int freq);
-  void LSMResetTeacherSignalStrength();
   void LSMRemoveTeacherSignal(int);
   void LSMPrintInputSyns();
   
