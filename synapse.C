@@ -673,11 +673,6 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
     delta_w_pos = -1*delta_w_pos; // penalize the wrong update
   }
 
-#ifdef STOCHASTIC_STDP_SUPV
-  // similar idea as ad-stdp and Yong's training
-  _D_lsm_c = _post->DLSMGetCalciumPre();
-  _lsm_c = _post->GetCalciumPre();
-
 #ifdef DIGITAL
   int l1_norm = 0;
   int weight_old = _D_lsm_weight;
@@ -687,6 +682,11 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
   double weight_old = _lsm_weight;
   double regular = 0;
 #endif
+
+#ifdef STOCHASTIC_STDP_SUPV
+  // similar idea as ad-stdp and Yong's training
+  _D_lsm_c = _post->DLSMGetCalciumPre();
+  _lsm_c = _post->GetCalciumPre();
 
 #ifdef _REGULARIZATION_STDP_SUPV
 #ifdef DIGITAL

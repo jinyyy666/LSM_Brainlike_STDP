@@ -136,8 +136,8 @@ void Simulator::LSMRun(long tid){
 
   ////////////////////////////////////////////////////////////////////////
   // REMEMBER TO REMOVE THESE CODES!!
-  //sprintf(filename, "r_weights_info_best.txt");
-  //_network->LoadSynWeightsFromFile("reservoir", filename);
+  //sprintf(filename, "o_weights_info_trained_final.txt");
+  //_network->LoadSynWeightsFromFile("readout", filename);
   ////////////////////////////////////////////////////////////////////////
 
 
@@ -257,7 +257,7 @@ void Simulator::LSMRun(long tid){
   }
 #endif
   myTimer.Start();
-  for(int i = 0; i < 2; ++i){
+  for(int i = 0; i < 20; ++i){
       cout<<"\n************************"
 	  <<"\n* i = "<<i
 	  <<"\n************************"<<endl;
@@ -269,9 +269,10 @@ void Simulator::LSMRun(long tid){
 #endif
   }
   if(tid == 0){
-    sprintf(filename, "o_weights_info_trained.txt");
-    _network->WriteSynWeightsToFile("readout", filename);
+      sprintf(filename, "o_weights_info_trained.txt");
+      _network->WriteSynWeightsToFile("readout", filename);
   }
+  _network->RemoveZeroWeights("readout");
   myTimer.End("training the readout");
 #endif
   
