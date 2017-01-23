@@ -12,6 +12,7 @@
 //#define _DEBUG_SYN_UPDATE
 //#define _DEBUG_SYN_LEARN
 //#define _DEBUG_LOOKUP_TABLE
+//#define _DEBUG_REWARD_TABLE
 //#define _DEBUG_TRUNC
 //#define _DEBUG_SIMPLE_STDP
 #define _DEBUG_AP_STDP
@@ -69,8 +70,10 @@ _D_y_i2_last(0)
 
   if(lsm_weight > 0) _lsm_tau2 = LSM_T_SYNE;
   else _lsm_tau2 = LSM_T_SYNI;
-  
-  cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
+  char * name = pre->Name();
+  if(name[0] == 'i')  _excitatory = _lsm_weight >= 0;
+ 
+  cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<_excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
 
   // initialize the look-up table:
   _init_lookup_table(false);
@@ -124,10 +127,12 @@ _D_y_i2_last(0)
 
   if(D_lsm_weight > 0) _lsm_tau2 = LSM_T_SYNE;
   else _lsm_tau2 = LSM_T_SYNI;
-
+ 
   char * pre_name;
   pre_name = pre->Name();
   assert(pre_name != NULL);
+  if(pre_name[0] == 'i')  _excitatory = _D_lsm_weight >= 0;
+
   if((_liquid == false)&&(pre_name[0] != 'i')){
 #if NUM_BIT_SYN > NBT_STD_SYN
     _Unit = _Unit<<(NUM_BIT_SYN-NBT_STD_SYN);
@@ -159,7 +164,7 @@ _D_y_i2_last(0)
 #endif
   }
   
-  cout<<pre->Name()<<"\t"<<post->Name()<<"\tPreExcit: "<<excitatory<<"\tPostExcit: "<<post->IsExcitatory()<<"\t"<<_D_lsm_weight<<endl;
+  cout<<pre->Name()<<"\t"<<post->Name()<<"\tPreExcit: "<<_excitatory<<"\tPostExcit: "<<post->IsExcitatory()<<"\t"<<_D_lsm_weight<<endl;
 
   // initialize the look-up table:
   _init_lookup_table(false);
@@ -193,6 +198,12 @@ void Synapse::_init_lookup_table(bool isSupv){
     const int c_digital_a_neg_e = isSupv ? D_A_NEG_E_S : D_A_NEG_E;
     const int c_digital_a_pos_i = isSupv ? D_A_POS_I_S : D_A_POS_I;
     const int c_digital_a_neg_i = isSupv ? D_A_NEG_I_S : D_A_NEG_I;
+
+    // time consts for the reward modulated rule
+    const int c_tau_syn_pos_e = _pre->GetTauEP();
+    const int c_tau_syn_neg_e = _pre->GetTauEN();
+    const int c_tau_syn_pos_i = _pre->GetTauIP();
+    const int c_tau_syn_neg_i = _pre->GetTauIN();
     
     bool typeFlag = _pre->IsExcitatory()&&_post->IsExcitatory() ? true : false;
     int tau_x_trace = typeFlag ? c_tau_x_e : c_tau_x_i;
@@ -203,12 +214,18 @@ void Synapse::_init_lookup_table(bool isSupv){
 
     double double_a_pos = typeFlag ? c_a_pos_e : c_a_pos_i;
     double double_a_neg = typeFlag ? c_a_neg_e : c_a_neg_i;
+
+    int tau_reward_pos = _pre->IsExcitatory() ? c_tau_syn_pos_e : c_tau_syn_pos_i;
+    int tau_reward_neg = _pre->IsExcitatory() ? c_tau_syn_neg_e : c_tau_syn_neg_i;
+
 #ifdef DIGITAL
     vector<int> & table_ltp = isSupv ? _TABLE_LTP_S : _TABLE_LTP;
     vector<int> & table_ltd = isSupv ? _TABLE_LTD_S : _TABLE_LTD;
+    vector<int> & table_reward = _TABLE_REWARD;
 #else
     vector<double> & table_ltp = isSupv ? _TABLE_LTP_S : _TABLE_LTP;
     vector<double> & table_ltd = isSupv ? _TABLE_LTD_S : _TABLE_LTD;
+    vector<double> & table_reward = _TABLE_REWARD;
 #endif
 
     for(int i = 0; i < 3*tau_x_trace; ++i){
@@ -258,22 +275,39 @@ void Synapse::_init_lookup_table(bool isSupv){
 #ifdef _DEBUG_LOOKUP_TABLE 
   cout<<endl;
 #endif
-
-      /* // close to exp version:
+  int size = !table_reward.empty() ? 0 : 
+    (tau_reward_pos > tau_reward_neg ? tau_reward_pos : tau_reward_neg);
+  int ds_pos = 0, ds_neg = 0;
+  double s_pos = 0, s_neg = 0;
+  for(int i = 0; i < 3*size; ++i){
 #ifdef DIGITAL
-      table_ltp[i] = (int)UNIT_DELTA*D_A_POS_E*exp(-1.0*i/TAU_X_TRACE_E);
+      if(i == 0){
+	  ds_pos = IsLiquidSyn() ? 1 : 1<<(NBT_STD_SYN+3); // note for reservoir syns here!!
+	  ds_neg = IsLiquidSyn() ? 1 : 1<<(NBT_STD_SYN+3);
+      }
+      else{
+	  ds_pos = ds_pos <= 0 ? 0 : ds_pos - ds_pos/tau_reward_pos;
+	  ds_neg = ds_neg <= 0 ? 0 : ds_neg - ds_neg/tau_reward_neg;
+      }
+      table_reward.push_back((ds_pos - ds_neg)/(tau_reward_pos - tau_reward_neg));
 #else
-      table_ltp[i] = A_POS_E*exp(-1.0*i/TAU_X_TRACE_E);
+      if(i == 0){
+	  s_pos = 1;
+	  s_neg = 1;
+      }
+      else{
+	  s_pos = s_pos <= 0 ? 0 : s_pos - s_pos/tau_reward_pos;
+	  s_neg = s_neg <= 0 ? 0 : s_neg - s_neg/tau_reward_neg;
+      }
+      table_reward.push_back((s_pos - s_neg)/(tau_reward_pos - tau_reward_neg)); 
+#endif      
+#ifdef _DEBUG_REWARD_TABLE
+      cout<<table_reward[i]<<"\t";
 #endif
   }
-  for(int i = 0; i < 3*TAU_Y1_TRACE_E; ++i){
-#ifdef DIGITAL
-      table_ltd[i] = (int)-1*UNIT_DELTA*D_A_NEG_E*exp(-1.0*i/TAU_Y1_TRACE_E);
-#else
-      table_ltd[i] = -1*A_NEG_E*exp(-1.0*i/TAU_Y1_TRACE_E);
-#endif	
-  }
-      */
+#ifdef _DEBUG_REWARD_TABLE
+  cout<<endl;
+#endif
 }
 
 /*
@@ -663,8 +697,14 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
   }
 #endif
 
-  // Read the look-up table @param4: isSupv?
+#ifdef _REWARD_MODULATE
+  if(t == _t_spike_pre)  return;
+  // Read the reward modulated rule @param4: isSupv?
+  LSMReadRewardLUT(t, delta_w_pos, delta_w_neg, true);
+#else
+  // Read the look-up table for the supervised STDP @param4: isSupv?
   LSMReadLUT(t, delta_w_pos, delta_w_neg, true);
+#endif
 
   // Update the weight:
   assert(_post && (_post->GetTeacherSignal() == 1 || _post->GetTeacherSignal() == -1));

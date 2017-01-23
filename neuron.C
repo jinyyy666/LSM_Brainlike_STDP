@@ -418,7 +418,6 @@ inline void Neuron::DAccumulateSynapticResponse(const int pos, int value, const 
       _D_lsm_state_IN += value;
   }
 #else 
-  if(pos > 0){
   if(c_num_dec_digit_mem > c_num_bit_syn - c_nbt_std_syn)
       _D_lsm_state_EP += pos > 0 ? value : -1*value;    
   else _D_lsm_state_EP += pos > 0 ? value : -1*value;
@@ -461,7 +460,8 @@ inline double Neuron::NOrderSynapticResponse(){
 #ifdef DIGITAL
   assert(0);
 #endif
-
+  //if(strcmp(_name, "reservoir_0") == 0)
+  //cout<<_lsm_state_EP<<"\t"<<_lsm_state_EN<<"\t"<<_lsm_state_IP<<"\t"<<_lsm_state_IN<<endl;
 #ifdef SYN_ORDER_2
   return (_lsm_state_EP-_lsm_state_EN)/(_lsm_tau_EP-_lsm_tau_EN)+(_lsm_state_IP-_lsm_state_IN)/(_lsm_tau_IP-_lsm_tau_IN);
 #elif SYN_ORDER_1
@@ -477,6 +477,8 @@ inline int Neuron::DNOrderSynapticResponse(){
 #ifndef DIGITAL
   assert(0);
 #endif
+  //if(strcmp(_name, "reservoir_11") == 0)
+  //cout<<_D_lsm_state_EP<<"\t"<<_D_lsm_state_EN<<"\t"<<_D_lsm_state_IP<<"\t"<<_D_lsm_state_IN<<endl;
 
 #ifdef SYN_ORDER_2
   return (_D_lsm_state_EP-_D_lsm_state_EN)/(_D_lsm_tau_EP-_D_lsm_tau_EN)+(_D_lsm_state_IP-_D_lsm_state_IN)/(_D_lsm_tau_IP-_D_lsm_tau_IN);

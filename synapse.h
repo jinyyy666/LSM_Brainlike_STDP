@@ -108,11 +108,14 @@ private:
   // look up table for unsupervised STDP curve:
   std::vector<int> _TABLE_LTP_S;
   std::vector<int> _TABLE_LTD_S;
+  // look up table for reward modulated rule
+  std::vector<int> _TABLE_REWARD;
 #else
   std::vector<double> _TABLE_LTP;
   std::vector<double> _TABLE_LTD;
   std::vector<double> _TABLE_LTP_S;
   std::vector<double> _TABLE_LTD_S;
+  std::vector<double> _TABLE_REWARD;
 #endif
     void _init_lookup_table(bool isSupv);
 public:
@@ -242,8 +245,23 @@ public:
 
 
   /** Definition for template functions: **/
+  // * read the look-up table for the second order SRM based new rule
+  template<class T>
+  void LSMReadRewardLUT(int t, T& delta_w_pos, T& delta_w_neg, bool isSupv){
+#ifdef DIGITAL
+    std::vector<int> & table = _TABLE_REWARD;
+#else
+    std::vector<double> & table = _TABLE_REWARD;
+#endif   
 
-  //* read the look-up table and determine the delta
+    assert(t == _t_spike_post && _t_spike_post >= _t_spike_pre);
+    size_t ind = _t_spike_post - _t_spike_pre;
+    if(ind < table.size()){  
+      delta_w_pos = 0.004*table[ind]; // remember to change here!!
+    }
+  }
+
+  //* read the look-up table and determine the delta for the STDP
   template<class T>
   void LSMReadLUT(int t, T& delta_w_pos, T& delta_w_neg, bool isSupv){
 #ifdef DIGITAL
@@ -253,7 +271,6 @@ public:
     std::vector<double> & table_ltp = isSupv ? _TABLE_LTP_S : _TABLE_LTP;
     std::vector<double> & table_ltd = isSupv ? _TABLE_LTD_S : _TABLE_LTD;
 #endif
-
 
     if(t == _t_spike_post){  // LTP:
       assert(_t_spike_pre <= _t_spike_post);

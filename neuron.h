@@ -104,6 +104,13 @@ public:
   int GetIPMin(){return _IP_min;};
   int GetINMin(){return _IN_min;};
   int GetPreActiveMax(){return _pre_fire_max;}
+
+  // return the tau for EP/EN/IP/IN
+  int GetTauEP(){return _lsm_tau_EP;}
+  int GetTauEN(){return _lsm_tau_EN;}
+  int GetTauIP(){return _lsm_tau_IP;}
+  int GetTauIN(){return _lsm_tau_IN;}
+
   // record the firing frequency
   void FireFreq(double f){_fire_freq.push_back(f);}
   double FireFreq(){return _fire_freq.empty() ? 0 : _fire_freq.back();}
