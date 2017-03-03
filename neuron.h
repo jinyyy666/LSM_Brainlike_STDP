@@ -56,7 +56,7 @@ private:
   const double _lsm_tau_IP;
   const double _lsm_tau_IN;
   const double _lsm_tau_FO;
-  const double _lsm_v_thresh;
+  double _lsm_v_thresh;
   double _ts_strength_p; // for both continuous and digital model
   double _ts_strength_n;
   int _ts_freq;
@@ -128,6 +128,7 @@ public:
 
   void SetIndexInGroup(int index){_indexInGroup = index;}
   int IndexInGroup(){return _indexInGroup;}
+  void SetVth(double vth);
   void SetTeacherSignal(int signal);
   void SetTeacherSignalStrength(double val, bool isPos){isPos? _ts_strength_p = val : _ts_strength_n = val;}
   void SetTeacherSignalFreq(int freq){_ts_freq = freq;}
@@ -237,6 +238,7 @@ public:
   int Judge(int cls);
   void DumpWaveFormGroup(std::ofstream & f_out);
   void LSMRemoveSpeech();
+  void LSMTuneVth(int index);
   void LSMSetTeacherSignal(int);
   void LSMSetTeacherSignalStrength(const double pos, const double neg, int freq);
   void LSMRemoveTeacherSignal(int);

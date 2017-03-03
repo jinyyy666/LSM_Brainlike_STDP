@@ -48,7 +48,7 @@
 //#define STDP_TRAINING_INPUT
 
 // the control parameter to enable training the readout synapses in unsupervised way
-#define STDP_TRAINING_READOUT
+//#define STDP_TRAINING_READOUT
 
 // inject additional current to readout during the readout unsupvervised stage
 #define _READOUT_HELPER_CURRENT
@@ -62,9 +62,12 @@
 // teacher signal strength used in STDP supervised training:
 ***********************************/
 #define TS_STRENGTH_P_SUPV 1
-#define TS_STRENGTH_N_SUPV 0 // give the negative class some firings so that the weight can be somehow depressed!
+#define TS_STRENGTH_N_SUPV 0 
+// give the negative class some firings so that the weight can be somehow depressed!
 // intended teacher signal freq, one out of x time point to fire
 // but note that the calcium constraint is inposed during firing!
+// For the depressive STDP, this term should be zero.
+// For the reward STDP, should be -0.1 for continuous case and 0 for digital case
 #define TS_FREQ_SUPV 1
 
 // default teacher signal strength used in readout training:
@@ -77,6 +80,23 @@
 // the in/out degree criterior for gating one node:
 #define INDEG_LIMIT  1
 #define OUTDEG_LIMIT 1
+
+/*******************************************
+// the new rule(SRM based/reward modulated)
+*******************************************/
+#define _REWARD_MODULATE
+#define VMEM_DAMPING_FACTOR 1
+
+#define TAU_REWARD_POS_E 4
+#define TAU_REWARD_NEG_E 8
+#define TAU_REWARD_POS_I 4
+#define TAU_REWARD_NEG_I 2
+
+#define A_REWARD_POS 0.2
+#define A_REWARD_NEG 0.2
+
+#define D_A_REWARD_POS 144
+#define D_A_REWARD_NEG 144
 
 // damping factor for long-time potientation (under triplet case):
 // this value should be small (around 0.01) for multiplicative update!
@@ -148,7 +168,7 @@
 #define A_POS_I_S 0.008
 #define A_NEG_I_S 0.001
 
-#define _REGULARIZATION_STDP_SUPV
+//#define _REGULARIZATION_STDP_SUPV
 #define GAMMA_REG 0.001 // regularization parameter
 #define WEIGHT_OMEGA 250 // the targetted weight sums
 

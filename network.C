@@ -284,7 +284,12 @@ void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int val
     for(neuron = post->First(); neuron != NULL; neuron = post->Next()){
 #ifdef DIGITAL
       if(random == 2){
+	/* 
+	int D_weight = 1;
+        if(!(pre->IsExcitatory()) D_weight = -8 + rand()%9; // best for depressive STDP
+	*/
 	int D_weight = -8 + rand()%15;
+	
 	//if((!pre->IsExcitatory() && D_weight > 0) ||(pre->IsExcitatory() && D_weight < 0))  D_weight = -1*D_weight;
 	//D_weight = 0;
 	LSMAddSynapse(pre,neuron,D_weight,fixed,D_weight_limit,liquid);
@@ -564,10 +569,13 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 	  assert(Foutp != NULL);
 	}
 #endif
+#ifdef _SHOW_SPEECH_ORDER
 	cout<<"************* Speech : "<<info<<" ****************"<<endl;
+#endif
 	while(!LSMEndOfSpeech(networkmode)){
 	  LSMNextTimeStep(++time, true, iteration, 1, Foutp, NULL); 
 	}
+	//assert(0); // do it for temp debugging
 #ifdef _VISUALIZE_READOUT_RESPONSE
 	if(tid == 0){
 	  assert(Foutp != NULL);
@@ -808,7 +816,7 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration,int end_time, FILE
   if(train == true) {
     if(_network_mode == READOUT){
       for(list<Synapse*>::iterator iter = _lsmActiveLearnSyns.begin(); iter != _lsmActiveLearnSyns.end(); iter++){
-	(*iter)->LSMLearn(iteration);
+	(*iter)->LSMLearn(t, iteration);
       }
       _lsmActiveLearnSyns.clear();
     }else if(_network_mode == READOUTSUPV){
@@ -927,8 +935,12 @@ void Network::LoadSpeeches(Speech      * sp,
 	assert(output);
 	if(neuronmode_readout == NORMAL) // original Yong's rule
 	  output->LSMSetTeacherSignalStrength(DEFAULT_TS_STRENGTH_P, DEFAULT_TS_STRENGTH_N, DEFAULT_TS_FREQ);
-	else if(neuronmode_readout == NORMALSTDP) // supervised STDP 
+	else if(neuronmode_readout == NORMALSTDP){ // supervised STDP 
 	  output->LSMSetTeacherSignalStrength(TS_STRENGTH_P_SUPV, TS_STRENGTH_N_SUPV, TS_FREQ_SUPV);
+#ifdef _REWARD_MODULATE 
+	  output->LSMTuneVth(sp->Class()); // tune the Vth for undesired neurons
+#endif
+	}
 	else	  assert(0);
 	output->LSMSetTeacherSignal(sp->Class());
     }

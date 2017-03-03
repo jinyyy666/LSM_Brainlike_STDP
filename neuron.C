@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <climits>
 
-//#define _DEBUG_NEURON
+#define _DEBUG_NEURON
 //#define _DEBUG_VARBASE
 #define _DEBUG_RM_ZERO_W
 //#define _DEBUG_INPUT_TRAINING
@@ -188,6 +188,11 @@ void Neuron::LSMPrintInputSyns(){
   fclose(fp);
 }
 
+inline void Neuron::SetVth(double vth){
+  _lsm_v_thresh = vth;
+  _D_lsm_v_thresh = _Unit*vth;
+}
+
 inline void Neuron::SetTeacherSignal(int signal){
   assert((signal >= -1) && (signal <= 1));
   _teacherSignal = signal;
@@ -316,6 +321,7 @@ void Neuron::LSMClear(){
   _lsm_state_EN = 0;
   _lsm_state_IP = 0;
   _lsm_state_IN = 0;
+  _lsm_v_thresh = LSM_V_THRESH;
 
   _t_next_spike = -1;
   _teacherSignal = 0;
@@ -328,6 +334,7 @@ void Neuron::LSMClear(){
   _D_lsm_state_EN = 0;
   _D_lsm_state_IP = 0;
   _D_lsm_state_IN = 0;
+  _D_lsm_v_thresh = _Unit*LSM_V_THRESH;
 }
 
 //* function wrapper for ExpDecay:
@@ -750,7 +757,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
 #endif  
 
 #ifdef _DEBUG_NEURON
-  vector<pair<string, int> > pre_names;
+  vector<pair<string, double> > pre_names;
 #endif
 #ifdef _RES_EPEN_CHR
   int fire_cnt = 0;
@@ -833,9 +840,9 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
 
 
 #ifdef _DEBUG_NEURON
-  if(strcmp(_name,"reservoir_0")==0){ 
+  if(strcmp(_name,"output_0")==0 && _mode == NORMALSTDP){
       cout<<"@time: "<<t<<endl;
-      for(vector<pair<string, int> >::iterator it = pre_names.begin(); it != pre_names.end(); ++it){
+      for(vector<pair<string, double> >::iterator it = pre_names.begin(); it != pre_names.end(); ++it){
 	  cout<<it->first<<" fires with weight "<<it->second<<endl;
       } 
       pre_names.clear();
@@ -843,6 +850,8 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
       cout<<_D_lsm_v_mem<<"\t"<<temp<<"\t"<<_D_lsm_state_EP<<"\t"<<_D_lsm_state_EN<<"\t"<<_D_lsm_state_IP<<"\t"<<_D_lsm_state_IN<<endl;
 #else
       cout<<_lsm_v_mem<<"\t"<<temp<<"\t"<<_lsm_state_EP<<"\t"<<_lsm_state_EN<<"\t"<<_lsm_state_IP<<"\t"<<_lsm_state_IN<<endl;
+      cout<<"Calicum level: "<< _lsm_calcium_pre<<endl;
+      cout<<"Vth: "<<_lsm_v_thresh<<"\t"<<_D_lsm_v_thresh<<endl;
 #endif
   }
 #endif
@@ -1631,6 +1640,14 @@ void NeuronGroup::DumpWaveFormGroup(ofstream & f_out){
 
 void NeuronGroup::LSMRemoveSpeech(){
   for(int i = 0; i < _neurons.size(); i++) _neurons[i]->LSMRemoveChannel();
+}
+
+// decrease the vth to enable more firings for the undesired neurons under reward based
+// which might be helpful for depression
+void NeuronGroup::LSMTuneVth(int index){
+  assert((index >= 0)&&(index <_neurons.size()));
+  for(int i = 0; i < _neurons.size(); i++) _neurons[i]->SetVth(VMEM_DAMPING_FACTOR*LSM_V_THRESH);
+  _neurons[index]->SetVth(LSM_V_THRESH);
 }
 
 void NeuronGroup::LSMSetTeacherSignal(int index){

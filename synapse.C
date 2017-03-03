@@ -14,10 +14,12 @@
 //#define _DEBUG_LOOKUP_TABLE
 //#define _DEBUG_REWARD_TABLE
 //#define _DEBUG_TRUNC
+//#define _DEBUG_YONG_RULE
 //#define _DEBUG_SIMPLE_STDP
 #define _DEBUG_AP_STDP
 //#define _DEBUG_UNSUPERV_TRAINING
-//#define _DEBUG_SUPV_STDP
+#define _DEBUG_SUPV_STDP
+
 
 using namespace std;
 
@@ -71,7 +73,8 @@ _D_y_i2_last(0)
   if(lsm_weight > 0) _lsm_tau2 = LSM_T_SYNE;
   else _lsm_tau2 = LSM_T_SYNI;
   char * name = pre->Name();
-  if(name[0] == 'i')  _excitatory = _lsm_weight >= 0;
+  // be careful, this might hamper the performance : (
+  // if(name[0] == 'i')  _excitatory = _lsm_weight >= 0; 
  
   cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<_excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
 
@@ -131,7 +134,8 @@ _D_y_i2_last(0)
   char * pre_name;
   pre_name = pre->Name();
   assert(pre_name != NULL);
-  if(pre_name[0] == 'i')  _excitatory = _D_lsm_weight >= 0;
+  // be careful.. that might hamper the performance : ( 
+  // if(pre_name[0] == 'i')  _excitatory = _D_lsm_weight >= 0; 
 
   if((_liquid == false)&&(pre_name[0] != 'i')){
 #if NUM_BIT_SYN > NBT_STD_SYN
@@ -200,10 +204,16 @@ void Synapse::_init_lookup_table(bool isSupv){
     const int c_digital_a_neg_i = isSupv ? D_A_NEG_I_S : D_A_NEG_I;
 
     // time consts for the reward modulated rule
-    const int c_tau_syn_pos_e = _pre->GetTauEP();
-    const int c_tau_syn_neg_e = _pre->GetTauEN();
-    const int c_tau_syn_pos_i = _pre->GetTauIP();
-    const int c_tau_syn_neg_i = _pre->GetTauIN();
+    /*
+    const int c_tau_syn_pos_e = _pre->GetTauEP()/2;
+    const int c_tau_syn_neg_e = _pre->GetTauEN()/2;
+    const int c_tau_syn_pos_i = _pre->GetTauIP()/2;
+    const int c_tau_syn_neg_i = _pre->GetTauIN()/2;
+    */
+    const int c_tau_syn_pos_e = TAU_REWARD_POS_E;
+    const int c_tau_syn_neg_e = TAU_REWARD_NEG_E;
+    const int c_tau_syn_pos_i = TAU_REWARD_POS_I;
+    const int c_tau_syn_neg_i = TAU_REWARD_NEG_I;
     
     bool typeFlag = _pre->IsExcitatory()&&_post->IsExcitatory() ? true : false;
     int tau_x_trace = typeFlag ? c_tau_x_e : c_tau_x_i;
@@ -282,8 +292,8 @@ void Synapse::_init_lookup_table(bool isSupv){
   for(int i = 0; i < 3*size; ++i){
 #ifdef DIGITAL
       if(i == 0){
-	  ds_pos = IsLiquidSyn() ? 1 : 1<<(NBT_STD_SYN+3); // note for reservoir syns here!!
-	  ds_neg = IsLiquidSyn() ? 1 : 1<<(NBT_STD_SYN+3);
+	  ds_pos = IsLiquidSyn() ? 1 : D_A_REWARD_POS; // note for reservoir syns here!!
+	  ds_neg = IsLiquidSyn() ? 1 : D_A_REWARD_NEG;
       }
       else{
 	  ds_pos = ds_pos <= 0 ? 0 : ds_pos - ds_pos/tau_reward_pos;
@@ -292,8 +302,8 @@ void Synapse::_init_lookup_table(bool isSupv){
       table_reward.push_back((ds_pos - ds_neg)/(tau_reward_pos - tau_reward_neg));
 #else
       if(i == 0){
-	  s_pos = 1;
-	  s_neg = 1;
+	  s_pos = A_REWARD_POS;
+	  s_neg = A_REWARD_NEG;
       }
       else{
 	  s_pos = s_pos <= 0 ? 0 : s_pos - s_pos/tau_reward_pos;
@@ -354,10 +364,10 @@ bool Synapse::IsValid(){
 
 
 
-void Synapse::LSMLearn(int iteration){
+void Synapse::LSMLearn(int t, int iteration){
   assert((_fixed==false)&&(_lsm_active==true));
   _lsm_active = false;
-#ifdef DIGITAL
+
   int iter = iteration + 1;
 
   if(iteration <= 50) iter = 1;
@@ -368,8 +378,23 @@ void Synapse::LSMLearn(int iteration){
   else if(iteration <= 300) iter = 32;
   else iter = iteration/4; 
 
+#ifdef _DEBUG_YONG_RULE
+  //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0")){
+  if(!strcmp(_post->Name(), "output_0")){
+      cout<<"Synapse from "<<_pre->Name()<<"\tto\t"<<_post->Name()<<endl;
+#ifdef DIGITAL
+      cout<<"The weight before : "<<_D_lsm_weight<<endl;
+#else
+      cout<<"The weight before : "<<_lsm_weight<<endl;
+#endif
+      cout<<"Firing @"<<t<<"\t t_pre: "<<_t_spike_pre<<"\t t_post: "<<_t_spike_post<<" with TS: "<<_post->GetTeacherSignal()<<endl;
+  }
+#endif
+
+#ifdef DIGITAL
   const int temp1 = one<<18;
   const int temp2 = one<<(18+NUM_BIT_SYN-NBT_STD_SYN);
+  int weight_old = _D_lsm_weight;
 
   _D_lsm_c = _post->DLSMGetCalciumPre();
   if(_D_lsm_c > LSM_CAL_MID*unit){
@@ -381,10 +406,8 @@ void Synapse::LSMLearn(int iteration){
       _D_lsm_weight -= (rand()%temp1<(LSM_DELTA_DEP*temp2/(iter)))?1:0;
     }
   }
-
-  // modify the weight if it is out of bound: 
-  CheckReadoutWeightOutBound();
 #else
+  double weight_old = _lsm_weight;
   _lsm_c = _post->GetCalciumPre();
   if(_lsm_c > LSM_CAL_MID){
   if((_lsm_c < LSM_CAL_MID+3)){ // &&(_post->LSMGetVMemPre() > LSM_V_THRESH*0.2)){
@@ -395,10 +418,19 @@ void Synapse::LSMLearn(int iteration){
       _lsm_weight -= LSM_DELTA_DEP/( 1+ iteration/ITER_SEARCH_CONV);
     }
   }
+#endif
+
+#ifdef _DEBUG_YONG_RULE
+  //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0"))
+  if(!strcmp(_post->Name(), "output_0"))
+#ifdef DIGITAL
+    cout<<"After Weight: "<<_D_lsm_weight<<(_D_lsm_weight >= weight_old ? " Weight increase: " : " Weight decrease: ")<<_D_lsm_weight - weight_old<<" Calicium of the post: "<<_post->DLSMGetCalciumPre()<<endl;
+#else
+    cout<<"After Weight: "<<_lsm_weight<<(_lsm_weight >= weight_old ? " Weight increase: " : " Weight decrease: ")<<_lsm_weight - weight_old<<" Calicium of the post: "<<_post->GetCalciumPre()<<endl;
+#endif
+#endif
 
   CheckReadoutWeightOutBound();
-//if(_lsm_c > 0) cout<<_lsm_c<<"\t"<<_pre->Name()<<"\t"<<_post->Name()<<"\t"<<_lsm_weight<<endl;
-#endif
 }
 
 //* Truncate the intermediate weights by setting the synaptic weight to zero.
@@ -664,8 +696,22 @@ void Synapse::LSMSTDPSupvLearn(int t, int iteration){
     return;
   int delta_t = t == _t_spike_pre ? _t_spike_pre - _t_spike_post : _t_spike_post - _t_spike_pre; // LTD:LTP
   assert(delta_t >= 0);
+
+#if defined(_REWARD_MODULATE) && defined(_DEBUG_SUPV_STDP)
+  if((t == _t_spike_post|| t == _t_spike_pre) 
+     && !strcmp(_post->Name(), "output_0") 
+     && delta_t >= _TABLE_REWARD.size()){
+    //cout<<"Ignore synapse from "<<_pre->Name()<<"\tto\t"<<_post->Name()<<endl;
+  }
+#endif
+
+#ifdef _REWARD_MODULATE
+  if(t == _t_spike_pre && delta_t >= _TABLE_REWARD.size())  return;
+  if(t == _t_spike_post && delta_t >= _TABLE_REWARD.size()) return;
+#else
   if(t == _t_spike_pre && delta_t >= _TABLE_LTD_S.size())  return;
   if(t == _t_spike_post && delta_t >= _TABLE_LTP_S.size()) return;
+#endif
 
 #if defined(DIGITAL) && defined(_SIMPLE_STDP) 
   // if the simple hardware efficiency STDP rule is considered,
@@ -687,7 +733,9 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
 #endif
 
 #ifdef _DEBUG_SUPV_STDP
-  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0")){
+  //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0")){
+  if(!strcmp(_post->Name(), "output_0")){
+      cout<<"Synapse from "<<_pre->Name()<<"\tto\t"<<_post->Name()<<endl;
 #ifdef DIGITAL
       cout<<"The weight before : "<<_D_lsm_weight<<endl;
 #else
@@ -698,7 +746,7 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
 #endif
 
 #ifdef _REWARD_MODULATE
-  if(t == _t_spike_pre)  return;
+  if(t == _t_spike_pre && _t_spike_pre != _t_spike_post)  return;
   // Read the reward modulated rule @param4: isSupv?
   LSMReadRewardLUT(t, delta_w_pos, delta_w_neg, true);
 #else
@@ -766,7 +814,8 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
 #endif
 
 #ifdef _DEBUG_SUPV_STDP
-  if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0"))
+  //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0"))
+  if(!strcmp(_post->Name(), "output_0"))
 #ifdef DIGITAL
     cout<<"Weight: "<<_D_lsm_weight<<(delta_w_pos + delta_w_neg >= 0 ? " Weight increase: " : " Weight decrease: ")<<delta_w_pos + delta_w_neg<<" Calicium of the post: "<<_post->DLSMGetCalciumPre()<<" Reg-term: "<<regular<<endl;
 #else
@@ -786,9 +835,7 @@ void Synapse::LSMSTDPLearn(int t){
   assert(_lsm_stdp_active == true);
   _lsm_stdp_active = false;
 
-  // Remember that the delay of deliverying the fired spike is 1
-  //t--;
-  if( t < 0 || (t != _t_spike_pre && t != _t_spike_post)) // || (_t_spike_pre == _t_spike_post))
+  if( t < 0 || (t != _t_spike_pre && t != _t_spike_post)) 
     return; 
 
 
@@ -805,10 +852,6 @@ void Synapse::LSMSTDPLearn(int t){
   return;
 #endif
 
-  /*
-  if(_t_spike_pre == _t_spike_post)
-    cout<<"Time: "<<t<<"\t"<<_pre->Name()<<"\t"<<_post->Name()<<endl;
-  */
   
   // F_pos/F_neg is the STDP function for LTP and LTD:
   // LAMBDA is the learning rate here
@@ -994,6 +1037,10 @@ void Synapse::LSMSTDPHardwareLearn(int t){
   if(t == _t_spike_post){  // LTP:
       assert(_t_spike_pre <= _t_spike_post);
       size_t d = _t_spike_post - _t_spike_pre;
+      if(d == 0){ // special case, match with previous one!
+	assert(_t_last_pre != 0 && _t_last_pre < _t_spike_post);
+	d = _t_spike_post - _t_last_pre;
+      }
       // implement the simple STDP rule here:
       // delta_w == 0 ---> w += 2  delta_w == 1 or 2 ---> w += 1 otherwises delta_w = 0 
       if(d == 0)  _D_lsm_weight += 1*_Unit;
@@ -1004,6 +1051,10 @@ void Synapse::LSMSTDPHardwareLearn(int t){
   if(t == _t_spike_pre){ // LTD:
       assert(_t_spike_post <= _t_spike_pre);
       size_t d = _t_spike_pre - _t_spike_post;
+      if(d == 0){ // special case, match with previous one!
+	assert(_t_last_post != 0 && _t_last_post < _t_spike_pre);
+	d = _t_spike_pre - _t_last_post;
+      }
       // implement the simple STDP rule here:
       // there are two cases you can try: 1. reset w = 0; 2. decrease w by 1
       // the modification for the training input synapses where the weight can be < 0
@@ -1173,6 +1224,8 @@ void Synapse::LSMActivateSTDPSyns(Network * network, const char * type){
     assert(_lsm_stdp_active == false && !IsInputSyn() && !IsLiquidSyn());
   else
     assert(0);
+
+  if(_t_spike_pre == -1e8 || _t_spike_post == -1e8)  return;
 
   /** only train the excitatory target synapses for reservoir synapses     **/
   /** But for input synapses, since they are all excitatory, we dont care  **/

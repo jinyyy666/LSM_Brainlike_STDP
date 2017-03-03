@@ -174,7 +174,7 @@ public:
   double LSMFirstOrderCurrent();
   void LSMClear();
   void LSMClearLearningSynWeights();
-  void LSMLearn(int iteration);
+  void LSMLearn(int t, int iteration);
   void LSMActivate(Network * network, bool stdp_flag, bool train);
   void LSMActivateSTDPSyns(Network * network, const char * type);
   void LSMDeactivate(){ _lsm_active = false;}
@@ -208,6 +208,11 @@ public:
   }
 
   void SetPreSpikeT(int t){
+    // a fix for the corner case of STDP 
+    // There might be a time when _t_pre = _t_post, which is not meant to be!
+    // You are suppose to map the post spike of the prev pre spike! 
+    // So I keep track of the prev pre spike!
+    _t_last_pre = _t_spike_pre;
     _t_spike_pre = t; 
 #ifdef _PRINT_SYN_ACT
     _t_pre_collection.push_back(t);
@@ -215,6 +220,7 @@ public:
   }
 
   void SetPostSpikeT(int t){
+    _t_last_post = _t_spike_post;  // similar here!
     _t_spike_post = t;
 #ifdef _PRINT_SYN_ACT
     _t_post_collection.push_back(t);
@@ -254,10 +260,17 @@ public:
     std::vector<double> & table = _TABLE_REWARD;
 #endif   
 
-    assert(t == _t_spike_post && _t_spike_post >= _t_spike_pre);
-    size_t ind = _t_spike_post - _t_spike_pre;
-    if(ind < table.size()){  
-      delta_w_pos = 0.004*table[ind]; // remember to change here!!
+    //assert(t == _t_spike_post && _t_spike_post >= _t_spike_pre);
+    size_t ind = _t_spike_post >= _t_spike_pre? _t_spike_post - _t_spike_pre : _t_spike_pre - _t_spike_post;
+    if(_t_spike_pre == _t_spike_post){// special case, only do pre-before-post match
+      assert(_t_last_pre != 0 && _t_spike_post > _t_last_pre);
+      ind = _t_spike_post - _t_last_pre;
+    }
+    if(t == _t_spike_post && ind < table.size()){  
+      delta_w_pos = table[ind]; 
+    }
+    if(t == _t_spike_pre && t != _t_spike_post && ind < table.size()){
+      delta_w_neg = table[ind];
     }
   }
 
@@ -275,6 +288,11 @@ public:
     if(t == _t_spike_post){  // LTP:
       assert(_t_spike_pre <= _t_spike_post);
       size_t ind = _t_spike_post - _t_spike_pre;
+      if(_t_spike_pre == _t_spike_post){  // match last_pre - before - post
+	  assert(_t_last_pre != 0 && _t_spike_post > _t_last_pre);
+	  ind = _t_spike_post - _t_last_pre;
+      }
+
       if(ind < table_ltp.size()) // look-up table:
 #ifdef DIGITAL
 #if defined(STOCHASTIC_STDP) || defined(STOCHASTIC_STDP_SUPV)
@@ -292,6 +310,10 @@ public:
     if(t == _t_spike_pre){ // LTD:
       assert(_t_spike_post <= _t_spike_pre);
       size_t ind = _t_spike_pre - _t_spike_post;
+      if(_t_spike_pre == _t_spike_post){
+	  assert(_t_last_post != 0 && _t_spike_pre > _t_last_post);
+	  ind = _t_spike_pre - _t_last_post;
+      }
       if(ind < table_ltd.size())
 #ifdef DIGITAL
 #if defined(STOCHASTIC_STDP) || defined(STOCHASTIC_STDP_SUPV)
