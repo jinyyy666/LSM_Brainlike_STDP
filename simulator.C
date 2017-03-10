@@ -236,11 +236,18 @@ void Simulator::LSMRun(long tid){
   _network->VarBasedSparsify("readout");
 #endif
 
+#ifdef _CORBASED_SPARSE
+  // merge the firing of two neurons based on the correlations
+  cout<<"Begin correlation based readout sparsification"<<endl;
+  _network->CorBasedSparsify();
+#endif
+
 #ifdef _RES_FIRING_CHR
   CollectPAStat(prob, avg_intvl, max_intvl);
   return;
 #endif
-  
+ 
+
 #if defined(STDP_TRAINING_READOUT) && defined(STDP_TRAINING)
   // traing the readout using STDP rule first:
   /****************************************************************

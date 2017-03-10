@@ -6,6 +6,7 @@
 #include <map>
 #include <set>
 #include "def.h"
+#include "util.h"
 #include <cstdio>
 #include <fstream>
 
@@ -24,6 +25,7 @@ private:
   std::list<Synapse*> _inputSyns; 
   std::vector<double> _fire_freq;
   std::vector<bool> _presyn_act;
+  std::map<Neuron*, int> _correlation;
 #ifdef DIGITAL
   std::vector<int> _vmems;
 #else
@@ -36,6 +38,7 @@ private:
   Network * _network;
   int _ind;
   int _f_count; // counter for firing activity
+  bool _fired;
 
   // collect ep/en/ip/in stat for resolution
   int _EP_max, _EP_min, _EN_max, _EN_min, _IP_max, _IP_min, _IN_max, _IN_min;
@@ -94,6 +97,8 @@ public:
   void AddPreSyn(Synapse*);
 
   void LSMPrintInputSyns();
+  void LSMPrintInputSyns(std::ofstream& f_out);
+
   // return EP/EN/IP/IN max/min
   int GetEPMax(){return _EP_max;};
   int GetENMax(){return _EN_max;};
@@ -118,6 +123,8 @@ public:
   // record the firing count:
   int FireCount(){return _f_count;}
   void FireCount(int count){_f_count = count;}
+
+  bool Fired(){return _fired;}
 
   template <typename T> void GetWaveForm(std::vector<T>& v){v = _vmems;}
   // set the neuron index under the separated reservoir cases:
@@ -168,8 +175,15 @@ public:
   void LSMRemoveChannel();
   void LSMSetNeuronMode(neuronmode_t neuronmode){_mode = neuronmode;}
   bool LSMCheckNeuronMode(neuronmode_t neuronmode){return _mode == neuronmode;}
+
   void CollectPreSynAct(double& p_n, double& avg_i_n, int& max_i_n);
   double ComputeVariance();
+
+  void ComputeCorrelation();
+  void CollectCorrelation(int& sum, int& cnt, int num_sample);
+  void GroupCorrelated(UnionFind &uf, int pre_ind, int nsamples);
+  void MergeNeuron(Neuron * target); // merge the this into target neuron
+
   void ResizeSyn();
   void LSMPrintOutputSyns(FILE*);
   void LSMPrintLiquidSyns(FILE*);
@@ -235,6 +249,9 @@ public:
   void ScatterFreq(std::vector<double>& fs, std::size_t & bias, std::size_t & cnt);
   void CollectVariance(std::multimap<double, Neuron*>& my_map);
   void CollectPreSynAct(double & p_r, double & avg_i_r, int & max_i_r);
+  void ComputeCorrelation();
+  void MergeCorrelatedNeurons(int num_sample);
+
   int Judge(int cls);
   void DumpWaveFormGroup(std::ofstream & f_out);
   void LSMRemoveSpeech();
@@ -243,7 +260,8 @@ public:
   void LSMSetTeacherSignalStrength(const double pos, const double neg, int freq);
   void LSMRemoveTeacherSignal(int);
   void LSMPrintInputSyns();
-  
+  void LSMPrintInputSyns(std::ofstream& f_out);
+
   void DestroyResConn();
   void PrintResSyn(std::ofstream& f_out);
   void RemoveZeroSyns(synapsetype_t syn_type);

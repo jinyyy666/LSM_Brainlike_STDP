@@ -161,6 +161,8 @@ public:
 
   Neuron * PreNeuron();
   Neuron * PostNeuron();
+  void SetPreNeuron(Neuron * pre);
+  void SetPostNeuron(Neuron * post);
 
   void LSMPrint(FILE*);
   void LSMPrintSyns(FILE*);

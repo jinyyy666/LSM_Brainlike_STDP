@@ -4,6 +4,7 @@
 #include "network.h"
 #include "simulator.h"
 #include "readout.h"
+#include "util.h"
 #include <sys/time.h>
 #include <iostream>
 #include <math.h>
@@ -68,6 +69,12 @@ int main(int argc, char * argv[]){
   int i;
   void * status;
   long t;
+
+#ifdef _UNIT_TEST
+  UnitTest test;
+  test.testUnionFind();
+  return 0;
+#endif
   
   gettimeofday(&val1,&zone);
 //  srand(time(NULL));

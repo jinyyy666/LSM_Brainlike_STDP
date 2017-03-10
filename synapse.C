@@ -18,7 +18,7 @@
 //#define _DEBUG_SIMPLE_STDP
 #define _DEBUG_AP_STDP
 //#define _DEBUG_UNSUPERV_TRAINING
-#define _DEBUG_SUPV_STDP
+//#define _DEBUG_SUPV_STDP
 
 
 using namespace std;
@@ -332,6 +332,16 @@ void Synapse::SetPostSpikeT(double t){
 //  _t_last_post = _t_spike_post;
   _t_spike_post = t;
 }*/
+
+void Synapse::SetPreNeuron(Neuron * pre){
+  assert(pre);
+  _pre = pre;
+}
+
+void Synapse::SetPostNeuron(Neuron * post){
+  assert(post);
+  _post = post;
+}
 
 bool Synapse::IsReadoutSyn(){
   char * name_post = _post->Name();

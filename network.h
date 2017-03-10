@@ -158,6 +158,7 @@ public:
   // print the spiking frequency into the file:
   void SpeechSpikeFreq(const char * type, std::ofstream & f_out, std::ofstream & f_label);
   void VarBasedSparsify(const char * type);
+  void CorBasedSparsify();
   
   // supporting functions:
   // the push/view readout results:

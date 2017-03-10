@@ -16,8 +16,9 @@
 #include <algorithm>
 #include <climits>
 
-#define _DEBUG_NEURON
+//#define _DEBUG_NEURON
 //#define _DEBUG_VARBASE
+//#define _DEBUG_CORBASE
 #define _DEBUG_RM_ZERO_W
 //#define _DEBUG_INPUT_TRAINING
 
@@ -91,6 +92,7 @@ _ind(-1)
   _indexInGroup = -1;
   _del = false;
   _f_count = 0;
+  _fired = false;
 }
 
 //FOR INPUT AND OUTPUT
@@ -150,6 +152,7 @@ _ind(-1)
   _indexInGroup = -1;
   _del = false;
   _f_count = 0;
+  _fired = false;
 }
 
 Neuron::~Neuron(){
@@ -186,6 +189,16 @@ void Neuron::LSMPrintInputSyns(){
     if(counter2 == 15) break;
   }
   fclose(fp);
+}
+
+void Neuron::LSMPrintInputSyns(ofstream& f_out){
+  for(list<Synapse*>::iterator iter = _inputSyns.begin(); iter != _inputSyns.end(); iter++){
+#ifdef DIGITAL
+    f_out<<(*iter)->PreNeuron()->Name()<<"\t"<<(*iter)->PostNeuron()->Name()<<"\t"<<(*iter)->DWeight()<<endl;
+#else
+    f_out<<(*iter)->PreNeuron()->Name()<<"\t"<<(*iter)->PostNeuron()->Name()<<"\t"<<(*iter)->Weight()<<endl;
+#endif
+  }
 }
 
 inline void Neuron::SetVth(double vth){
@@ -309,6 +322,7 @@ bool Neuron::IsHubChild(const char * name){
 
 void Neuron::LSMClear(){
   _f_count = 0;
+  _fired = false;
   _vmems.clear();
 
   _lsm_ref = 0;
@@ -561,7 +575,7 @@ inline void Neuron::SetPostNeuronSpikeT(int time){
  *  @para2: simulation time; @para3: in supervised training or not
  **********************************************************************************/      
 inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
-
+  
   for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++){
     // need to get rid of the deactivated neuron !
     if((*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == true)  continue;
@@ -685,6 +699,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
     /** Hand the firing behavior here for both input neurons and reservoir neurons */
     /** @param1: is the neuron only used to output spike? **/
     HandleFiringActivity(true, t, train);
+    _fired = true;
 
     _t_next_spike = _lsm_channel->NextSpikeT();
     if(_t_next_spike == -1) {
@@ -860,8 +875,11 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
     _lsm_ref--;
     _lsm_v_mem = LSM_V_REST;
     _D_lsm_v_mem = LSM_V_REST*_Unit;
+    _fired = false;
     return;
   }
+
+  _fired = false;
 
 #ifdef DIGITAL
   if(_D_lsm_v_mem > _D_lsm_v_thresh){  
@@ -886,6 +904,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
     // 2. keep track of the t_spike_pre for the corresponding syns
     // 3. @para1: whether or not the current neuron is only used as a dummy input
     HandleFiringActivity(false, t, train);
+    _fired = true;
 
 #ifdef DIGITAL
     _D_lsm_v_mem = LSM_V_RESET*_Unit;
@@ -940,7 +959,8 @@ int Neuron::DLSMSumAbsInputWeights(){
 void Neuron::LSMSetChannel(Channel * channel, channelmode_t channelmode){
   _lsm_channel = channel;
   _t_next_spike = _lsm_channel->FirstSpikeT();
-  if(_t_next_spike == -1) _network->LSMChannelDecrement(channelmode);
+  if(_t_next_spike == -1 || _mode == DEACTIVATED) _network->LSMChannelDecrement(channelmode);
+  
 }
 
 void Neuron::LSMRemoveChannel(){
@@ -984,6 +1004,84 @@ double Neuron::ComputeVariance(){
   for(size_t i = 0; i < _fire_freq.size(); ++i) var += (_fire_freq[i] - avg)*(_fire_freq[i] - avg);
   
   return  _fire_freq.empty() ? 0 : var/_fire_freq.size();
+}
+
+// compute the correlation between neurons at each time step!
+// only the paired neurons are considered
+void Neuron::ComputeCorrelation(){
+  for(list<Synapse*>::iterator it = _outputSyns.begin(); it != _outputSyns.end(); ++it){
+    assert(*it);
+    if((*it)->IsReadoutSyn()) continue;
+    Neuron * post = (*it)->PostNeuron();
+    assert(post);
+    char * name = post->Name();
+    assert(name && name[0] == 'r');
+
+    if(_correlation.find(post) == _correlation.end())  _correlation[post] = 0;
+    _correlation[post] += (post->Fired() != _fired); // distance ++ is not correlated
+  }
+}
+
+// sum the correlations for all neuron pairs (i.e., synapses)
+void Neuron::CollectCorrelation(int& sum, int & cnt, int num_sample){
+  for(auto & p : _correlation){
+    char * name = p.first->Name(); 
+    if(strcmp(_name, name) == 0)  continue; // ignore the self connections 
+    sum += p.second;
+    cnt++;
+    p.second = p.second/num_sample;
+#ifdef _DEBUG_CORBASE
+    assert(name && name[0] == 'r');
+    cout<<"Correlation between "<<_name<<" and "<<p.first->Name()<<" : "<<p.second<<endl;
+#endif
+  }
+}
+
+// group the correlated neurons using union find
+void Neuron::GroupCorrelated(UnionFind & uf, int pre_ind, int thresh){
+  uf.add(pre_ind);
+  for(auto & p : _correlation){
+    int post_ind = p.first->IndexInGroup();
+    int correlation = p.second;
+    uf.add(post_ind);
+    // merge the two neurons if the correlation < thresh, ignore the self-loop
+    if(correlation < thresh && post_ind != _indexInGroup){
+#ifdef _DEBUG_CORBASE
+  cout<<"Correlation between "<<_name<<" and "<<p.first->Name()<<": "<<correlation
+      <<" < "<<thresh<<"\tUnion them together!"<<endl;
+#endif
+      uf.unite(pre_ind, post_ind);
+    }
+  }
+}
+
+// Merge two correlated neurons (this--> the target)
+// only support for reservoir now:
+void Neuron::MergeNeuron(Neuron * target){
+  assert(target);
+#ifdef _DEBUG_CORBASE
+  cout<<"Start to merge "<<_name<<" into "<<target->Name()<<endl;
+#endif
+  
+  // 1. Set the pre field of outputs to target neuron
+  // merge the modified synapse to the target output field
+  // Do not need to change the corresponding input because there is only one synapse!!
+  for(list<Synapse*>::iterator it = _outputSyns.begin(); it != _outputSyns.end(); ++it){
+#ifdef _DEBUG_CORBASE
+    cout<<"Merge "<<(*it)->PreNeuron()->Name()<<" -> "<<(*it)->PostNeuron()->Name()<<endl;
+#endif
+    (*it)->SetPreNeuron(target);
+    target->AddPostSyn((*it));
+#ifdef _DEBUG_CORBASE
+    cout<<"Into "<<(*it)->PreNeuron()->Name()<<" -> "<<(*it)->PostNeuron()->Name()<<endl;
+#endif
+  }
+  
+  _outputSyns.clear();
+  
+  // 2. Deactivate the this neuron
+  this->LSMSetNeuronMode(DEACTIVATED);
+
 }
 
 /* Remove/Resize the outputs synapse */
@@ -1602,6 +1700,51 @@ void NeuronGroup::CollectVariance(multimap<double, Neuron*>& my_map){
     avg_i_r = _neurons.empty() ? 0 : avg_i_r/((double)_neurons.size());
 }
 
+//* Compute the correlation among neurons:
+void NeuronGroup::ComputeCorrelation(){
+  for(size_t i = 0; i < _neurons.size(); ++i){
+    assert(_neurons[i]);
+    _neurons[i]->ComputeCorrelation();
+  }
+}
+
+//* merge the correlated neurons using union find, only support for reservoir:
+//* @param1: the sample size
+void NeuronGroup::MergeCorrelatedNeurons(int num_sample){
+  // Step 0. Find the average correlation:
+  int sum = 0, cnt = 0;
+  for(size_t i = 0; i < _neurons.size(); ++i){
+    _neurons[i]->CollectCorrelation(sum, cnt, num_sample);
+  }  
+
+  int avg = sum/(cnt*num_sample);
+  int thresh = avg*_LEVEL_PERCENT;
+
+  cout<<"The average correlation: "<<avg
+      <<"\nThe thresh for correlating: "<<thresh<<endl;
+
+  // Step 1. Use UnionFind to form groups
+  UnionFind uf(_neurons.size());
+  for(size_t i = 0; i < _neurons.size(); ++i){
+    _neurons[i]->GroupCorrelated(uf, i, thresh);
+  }
+
+  // Step 2. For group size > 1, merge the output synapses of the grouped neurons
+  // to their roots.
+  vector<int> sizes = uf.getSizeVec(); // group size
+  cnt = 0;
+  for(size_t i = 0; i < _neurons.size(); ++i){
+    int root = uf.root(i);
+    assert(root < _neurons.size());
+    if(root != i){
+      
+      _neurons[i]->MergeNeuron(_neurons[root]); // merge i into the root
+      cnt++;
+    }
+  }
+  cout<<"Correlation based sparsification: "<<cnt<<" neurons are grouped"<<endl;
+}
+
 //* judge the results of the readout layer after each speech is presented:
 int NeuronGroup::Judge(int cls){
   vector<pair<int, int> > f_pairs;
@@ -1676,6 +1819,11 @@ void NeuronGroup::LSMPrintInputSyns(){
   for(vector<Neuron*>::iterator iter = _neurons.begin(); iter != _neurons.end(); iter++) (*iter)->LSMPrintInputSyns();
 }
 
+void NeuronGroup::LSMPrintInputSyns(ofstream & f_out){
+  for(size_t i = 0; i < _neurons.size(); ++i){
+    _neurons[i]->LSMPrintInputSyns(f_out);
+  }
+}
 
 //* This function is to delete all the reservoir synapses in this neurongroup
  void NeuronGroup::DestroyResConn(){

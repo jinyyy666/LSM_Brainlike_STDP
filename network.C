@@ -16,7 +16,8 @@
 
 //#define _DEBUG_NETWORK_SEPARATE
 //#define _DEBUG_VARBASE
-#define _SHOW_SPEECH_ORDER
+//#define _DEBUG_CORBASE
+//#define _SHOW_SPEECH_ORDER
 
 using namespace std;
 
@@ -826,7 +827,15 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration,int end_time, FILE
       _lsmActiveSTDPLearnSyns.clear();
     }
   }
-  
+
+#ifdef _CORBASED_SPARSE
+  if(_network_mode == TRANSIENTSTATE){
+    for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+      assert(*it);
+      (*it)->ComputeCorrelation();
+    }
+  }
+#endif
 }
 
 
@@ -1489,6 +1498,26 @@ void Network::VarBasedSparsify(const char * type){
 	++cnt;
     }
 }
+
+// Correlation-based sparsification, only applied to the reservoir!
+void Network::CorBasedSparsify(){
+  // only support for reservoir now
+  for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it)
+    (*it)->MergeCorrelatedNeurons(_speeches.size());
+
+
+#ifdef _DEBUG_CORBASE
+  NeuronGroup * output = SearchForNeuronGroup("output");
+  ofstream f_out("readout_input_connections.txt");
+  assert(f_out.is_open());
+  output->LSMPrintInputSyns(f_out);
+  f_out.close();
+
+  LSMPrintAllLiquidSyns(0);
+#endif
+
+}    
+
 
 
 void Network::LSMChannelDecrement(channelmode_t channelmode){

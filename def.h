@@ -198,8 +198,8 @@
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
 #define CLS 26
-#define NUM_THREADS 1
-#define NUM_ITERS 1
+#define NUM_THREADS 500
+#define NUM_ITERS 5
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -222,11 +222,21 @@
 
 #define NUM_DEC_DIGIT_RESERVOIR_MEM 0  // Number of bits represent 'one' for V_mem in the Liquid
 #define NUM_DEC_DIGIT_READOUT_MEM 0   // Number of bits represent 'one' for V_mem in the readout
-	
-// The control variable to enable the var-based sparsification
+
+/*****************************
+// Var-based Sparsification
+*****************************/	
+
 //#define _VARBASED_SPARSE		
-// The percentage of neurons being sparsification under var-based rule 
-#define _TOP_PERCENT 0.1
+#define _TOP_PERCENT 0.1 // % of neuron being sparsified
+
+/*****************************
+// Correlation-base Sparsify
+// Done in the network level
+*****************************/
+
+//#define _CORBASED_SPARSE
+#define _LEVEL_PERCENT 0.1 // level % of average variance will be considered correlated
 
 #define LOST_RATE 0.0
 #define DIGITAL
@@ -253,6 +263,8 @@
 //#define _VISUALIZE_READOUT_RESPONSE
 
 //#define _DUMP_WAVEFORM
+
+//#define _UNIT_TEST
 
 enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL,READOUTCHANNEL}; // for allocate speech channels
 enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,NORMALSTDP,NORMALSTDPSUPV,NORMAL}; // for implement network stat.
