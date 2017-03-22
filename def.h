@@ -5,6 +5,8 @@
 #define _IMAGE    0
 #define _MNIST    0
 #define _TRAFFIC   0
+#define _CITYSCAPE 0
+
 #define _SPEECH    1
 #define _LETTER    1
 #define _DIGIT    0

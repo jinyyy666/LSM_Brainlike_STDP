@@ -89,26 +89,14 @@ void Readout::SetRefer(int flag){ // To set the reference array according the ap
 		// }
 	}
 		// refer = {0, 1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 2, 20, 21, 22, 23, 24, 25, 3, 4, 5, 6, 7, 8, 9};
-	else if(flag == 1 || flag == 2){
-		for (int i = 0; i < 10; ++i)
+	else{
+		for (int i = 0; i < CLS; ++i)
 		{
 			refer.push_back(i);
 		}
 		//	refer = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-	}
-	else if(flag == 3){
-	        for (int i = 0; i < 15; ++i)
-		{
-			refer.push_back(i);
-		}
-	}
-	else{
-	        cout<<"Unallowed parameter passed into Readout::SetRefer(int flag)!"
-	        <<" this parameter is "<<flag
-	        <<" but it should be 0, 1, 2, 3!!"
-		<<endl;
-	      
-	}
+	}     
+	
  
 }
 	
@@ -167,6 +155,8 @@ void Readout::Multireadout(){ // The main part of this code.
 	SetRefer(2);
 #elif _TRAFFIC == 1
 	SetRefer(3);
+#elif _CITYSCAPE == 1
+	SetRefer(4);
 #else
 	assert(0);
 #endif
@@ -328,7 +318,7 @@ void Readout::Multireadout(){ // The main part of this code.
 		cout<<"Performance at 100th iteration = "<<double(rates[99])*100/double(num_of_speeches)<<'%'<<endl;
 	if(num_iteration >= 200)
 		cout<<"Performance at 200th iteration = "<<double(rates[199])*100/double(num_of_speeches)<<'%'<<endl;
-	if(num_of_speeches >= 300)
+	if(num_iteration >= 300)
 		cout<<"Performance at 300th iteration = "<<double(rates[299])*100/double(num_of_speeches)<<'%'<<endl;		
 
 	f_rate.close();

@@ -191,7 +191,7 @@ public:
   void DisableOutputSyn(synapsetype_t syn_t);
   std::list<Synapse*> * LSMDisconnectNeuron();
   void LSMDeleteInputSynapse(char* pre_name);
-  void RMZeroSyns(synapsetype_t syn_t, const char * t);
+  int RMZeroSyns(synapsetype_t syn_t, const char * t);
   void DeleteSyn(const char * t, const char s);
   void PrintSyn(std::ofstream& f_out, const char * t, const char s);
 

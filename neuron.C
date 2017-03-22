@@ -19,7 +19,7 @@
 //#define _DEBUG_NEURON
 //#define _DEBUG_VARBASE
 //#define _DEBUG_CORBASE
-#define _DEBUG_RM_ZERO_W
+//#define _DEBUG_RM_ZERO_W
 //#define _DEBUG_INPUT_TRAINING
 
 // NOTE: The time constants have been changed to 2*original settings 
@@ -422,7 +422,7 @@ inline void Neuron::AccumulateSynapticResponse(const int pos, double value){
 
    /** Digital version of collecting the synaptic response **/
 /** Here I am considering if the synapse is the reservoir syn **/
-/** For the digital system, I want w*2^(dec) =  w/(w_max^(n-1)-1)*2^(y) **/
+/** For the digital system, I want w*2^(dec) =  w/(2^(n-1)-1)*2^(y) **/
 /** That is how I transfer the weight in the discrete case **/
 inline void Neuron::DAccumulateSynapticResponse(const int pos, int value, const int c_num_dec_digit_mem, const int c_nbt_std_syn, const int c_num_bit_syn){
 #ifndef DIGITAL
@@ -1202,8 +1202,9 @@ void Neuron::LSMDeleteInputSynapse(char * pre_name){
 
 // erase the ptr of the synapses whose weight is zero with the given type
 // @param1: synapsetype_t , @param2: "in" or "out" synapses
-void Neuron::RMZeroSyns(synapsetype_t syn_t, const char * t){
+int Neuron::RMZeroSyns(synapsetype_t syn_t, const char * t){
   bool f;
+  int cnt = 0;
   if(strcmp(t, "in") == 0)  f = false;
   else if(strcmp(t, "out") == 0)  f = true;
   else assert(0);
@@ -1224,10 +1225,12 @@ void Neuron::RMZeroSyns(synapsetype_t syn_t, const char * t){
 #endif
       (*iter)->DisableStatus(true); 
       iter = syns.erase(iter);
+      cnt++;
     }
     else
       iter++;	       
   }
+  return cnt;
 }
 
 
@@ -1844,9 +1847,11 @@ void NeuronGroup::LSMPrintInputSyns(ofstream & f_out){
 
 //* Remove the outcoming synapses with weight zeros for each neuron
  void NeuronGroup::RemoveZeroSyns(synapsetype_t syn_type){
+   int cnt = 0;
    for(size_t i = 0; i < _neurons.size(); ++i){
      assert(_neurons[i]);
-     _neurons[i]->RMZeroSyns(syn_type, "in");
-     _neurons[i]->RMZeroSyns(syn_type, "out");
+     cnt += _neurons[i]->RMZeroSyns(syn_type, "in");
+     cnt += _neurons[i]->RMZeroSyns(syn_type, "out");
    }
+   cout<<"The number of zero-out synapses: "<<cnt/2<<endl;
 }

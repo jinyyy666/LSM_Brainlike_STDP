@@ -89,6 +89,8 @@ int main(int argc, char * argv[]){
     parser.Parse("netlist/netlist_MNIST.txt"); // For mnist
 #elif _TRAFFIC == 1
     parser.Parse("netlist/netlist_TrafficSign.txt"); // For traffic sign
+#elif _CITYSCAPE == 1
+    parser.Parse("netlist/netlist_CityScape.txt"); // For cityscape
 #else
     assert(0);
 #endif
@@ -156,6 +158,8 @@ int main(int argc, char * argv[]){
   Readout readout_module(500); // 500 for MNIST
 #elif _TRAFFIC == 1
   Readout readout_module(300); // 300 for traffic sign
+#elif _CITYSCAPE == 1
+  Readout readout_module(1080); // 1080 for the city scape dataset
 #else
   assert(0);
 #endif
