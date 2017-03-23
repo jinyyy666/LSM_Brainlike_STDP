@@ -200,8 +200,8 @@
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
 #define CLS 26
-#define NUM_THREADS 500
-#define NUM_ITERS 5
+#define NUM_THREADS 5
+#define NUM_ITERS 500
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
