@@ -310,7 +310,7 @@ void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int val
         factor = factor*2/99999-1;
       }else if(random == 0) factor = 0;
       else assert(0);
-      double weight = 0; //value*factor;
+      double weight = value*factor;
       if((!pre->IsExcitatory() && weight > 0) ||(pre->IsExcitatory() && weight < 0))  weight = -1*weight;
       //if(weight > 0)  weight = weight*0.5;
       LSMAddSynapse(pre,neuron,weight,fixed,weight_limit,liquid);
@@ -576,7 +576,6 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 	while(!LSMEndOfSpeech(networkmode)){
 	  LSMNextTimeStep(++time, true, iteration, 1, Foutp, NULL); 
 	}
-	//assert(0); // do it for temp debugging
 #ifdef _VISUALIZE_READOUT_RESPONSE
 	if(tid == 0){
 	  assert(Foutp != NULL);
@@ -589,6 +588,11 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 	  DumpWaveForm("Waveform/train", info);
 	}
 #endif
+
+#ifdef _REWARD_MODULATE_GLOBAL
+	BackPropError();
+#endif
+
 	LSMClearSignals();
 
 #ifdef CV
@@ -758,6 +762,10 @@ void Network::LSMReservoirTraining(networkmode_t networkmode){
 //* next simulation step; the last parameter should be the ptr to reservoir or NULL.
 void Network::LSMNextTimeStep(int t, bool train,int iteration,int end_time, FILE * Foutp, FILE * Fp, NeuronGroup * reservoir){
   _lsm_t = t;
+
+#if defined(_REWARD_MODULATE_GLOBAL) || defined(_REWARD_MODULATE_2ND_RESP)
+  for(vector<Synapse*>::iterator iter = _rosynapses.begin(); iter != _rosynapses.end(); ++iter) (*iter)->LSMRespDecay(t);
+#endif
 
   for(list<Synapse*>::iterator iter = _lsmActiveSyns.begin(); iter != _lsmActiveSyns.end(); iter++) (*iter)->LSMNextTimeStep();
   _lsmActiveSyns.clear();
@@ -1518,13 +1526,23 @@ void Network::CorBasedSparsify(){
 
 }    
 
-
-
 void Network::LSMChannelDecrement(channelmode_t channelmode){
   if(channelmode == INPUTCHANNEL) _lsm_input--;
   else if(channelmode == RESERVOIRCHANNEL) _lsm_reservoir--;
   else if(channelmode == READOUTCHANNEL) _lsm_readout--;
   else assert(0); // you code should never go here!
+}
+
+//* calculate the error: # spike/max{spike}, and prop it back to modify the weights
+void Network::BackPropError(){
+  assert(_lsm_output_layer);
+#ifdef CV
+  assert(*_cv_train_sp_iter);
+  _lsm_output_layer->BpError((*_cv_train_sp_iter)->Class());
+#else
+  assert(*_sp_iter);
+  _lsm_output_layer->BpError((*_sp_iter)->Class());
+#endif
 }
 
 //* judge the readout result:

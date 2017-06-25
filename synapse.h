@@ -8,6 +8,7 @@
 #include <fstream>
 #include <vector>
 #include <assert.h>
+#include <utility>
 #include "def.h"
 
 
@@ -53,6 +54,11 @@ private:
   double _lsm_state2;
   double _lsm_state;
 
+  int _D_lsm_tau1;
+  int _D_lsm_tau2;
+  int _D_lsm_state1;
+  int _D_lsm_state2;
+
   int _lsm_spike;
   int _D_lsm_spike;
 
@@ -84,6 +90,13 @@ private:
   int _D_y_i1; 
   int _D_y_i2; 
   int _D_y_i2_last; 
+
+  // post-synaptic neuron firing times and the input current
+#ifdef DIGITAL
+  std::vector<std::pair<int, int> > _firing_stamp; // time, xk
+#else
+  std::vector<std::pair<int, double> > _firing_stamp;
+#endif
 
   /* ONLY FOR PRINT PURPOSE */
   /* keep track of the weights and firing activity */
@@ -133,6 +146,9 @@ public:
   //* Set the _lsm_active of the synapse.  
   void SetActiveStatus(bool status){_lsm_active = status;}
 
+  //* Check if the firing time is within the learning window
+  bool WithinSTDPTable(int time);
+
   //* Determine whether or not the synapse is the readout synapse:
   bool IsReadoutSyn();
   //* Determine whether or not the synapse is the input synapse:
@@ -170,8 +186,16 @@ public:
   bool Fixed();
 /* ONLY FOR LIQUID STATE MACHINE */
   void LSMPreSpike(int); // argument can only be 0 or 1
+  //* conduct the exp decay for the two state vars for 2nd response
+  void LSMRespDecay(int time);
   void LSMNextTimeStep();
-  double LSMCurrent();
+  //* keep track of the post synaptic firing times and the corresponding input response
+  void LSMFiringStamp(int time);
+  //* back prop the error wrt each syn
+  void LSMBpSynError(double error, double vth);
+
+  //* the second order response (no w.r.t to weight)
+  double LSMSecondOrderResp();
 
   double LSMFirstOrderCurrent();
   void LSMClear();
@@ -198,6 +222,7 @@ public:
   void LSMSTDPSupvLearn(int t, int iteration);
   void LSMSTDPSupvSimpleLearn(int t);
   void LSMSTDPSupvHardwareLearn(int t, int iteration);
+
   void PrintActivity(std::ofstream& f_out);
     
   void ExpDecay(int& var, const int time_c){
@@ -251,8 +276,6 @@ public:
     _D_lsm_spike = 0;
   }
 
-
-  /** Definition for template functions: **/
   // * read the look-up table for the second order SRM based new rule
   template<class T>
   void LSMReadRewardLUT(int t, T& delta_w_pos, T& delta_w_neg, bool isSupv){

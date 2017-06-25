@@ -87,7 +87,6 @@ private:
   const int _D_lsm_v_readout_max;
   const int _D_lsm_v_readout_min;
   const int _Unit;
-
 public:
   Neuron(char*, Network*);
   Neuron(char*, bool, Network*); // only for liquid state machine
@@ -183,6 +182,8 @@ public:
   void CollectCorrelation(int& sum, int& cnt, int num_sample);
   void GroupCorrelated(UnionFind &uf, int pre_ind, int nsamples);
   void MergeNeuron(Neuron * target); // merge the this into target neuron
+  //* Bp the error for each neuron
+  void BpError(double error);
 
   void ResizeSyn();
   void LSMPrintOutputSyns(FILE*);
@@ -253,6 +254,8 @@ public:
   void MergeCorrelatedNeurons(int num_sample);
 
   int Judge(int cls);
+  void BpError(int cls);
+
   void DumpWaveFormGroup(std::ofstream & f_out);
   void LSMRemoveSpeech();
   void LSMTuneVth(int index);

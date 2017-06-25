@@ -64,7 +64,7 @@
 // teacher signal strength used in STDP supervised training:
 ***********************************/
 #define TS_STRENGTH_P_SUPV 1
-#define TS_STRENGTH_N_SUPV 0 
+#define TS_STRENGTH_N_SUPV 0
 // give the negative class some firings so that the weight can be somehow depressed!
 // intended teacher signal freq, one out of x time point to fire
 // but note that the calcium constraint is inposed during firing!
@@ -87,6 +87,8 @@
 // the new rule(SRM based/reward modulated)
 *******************************************/
 #define _REWARD_MODULATE
+//#define _REWARD_MODULATE_GLOBAL // a global way 1) update at last 2) Discount reward 3) No TS
+#define _REWARD_MODULATE_2ND_RESP // use the entire 2nd resp as reward modification
 #define VMEM_DAMPING_FACTOR 1
 
 #define TAU_REWARD_POS_E 4

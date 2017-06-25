@@ -37,7 +37,7 @@ _lsm_active(false),
 _lsm_stdp_active(false),
 _mem_pos(0),
 _mem_neg(0),
-_lsm_tau1(4),
+_lsm_tau1(4*2),
 _lsm_state1(0),
 _lsm_state2(0),
 _lsm_state(0),
@@ -52,6 +52,9 @@ _Unit(1),
 _D_lsm_c(0),
 _D_lsm_weight(0),
 _D_lsm_weight_limit(0),
+_D_lsm_tau1(4*2),
+_D_lsm_state1(0),
+_D_lsm_state2(0),
 _t_spike_pre(-1e8),
 _t_spike_post(-1e8),
 _t_last_pre(0),
@@ -70,8 +73,8 @@ _D_y_i2_last(0)
 #endif
   assert(pre && post);
 
-  if(lsm_weight > 0) _lsm_tau2 = LSM_T_SYNE;
-  else _lsm_tau2 = LSM_T_SYNI;
+  _lsm_tau2 = _excitatory ? LSM_T_SYNE*2 : LSM_T_SYNI*2;
+  _D_lsm_tau2 = _excitatory ? LSM_T_SYNE*2 : LSM_T_SYNI*2;
   char * name = pre->Name();
   // be careful, this might hamper the performance : (
   // if(name[0] == 'i')  _excitatory = _lsm_weight >= 0; 
@@ -109,6 +112,9 @@ _lsm_weight_limit(0),
 _D_lsm_c(0),
 _D_lsm_weight(D_lsm_weight),
 _D_lsm_weight_limit(abs(D_lsm_weight_limit)),
+_D_lsm_tau1(4*2),
+_D_lsm_state1(0),
+_D_lsm_state2(0),
 _Unit(1),
 _t_spike_pre(-1e8),
 _t_spike_post(-1e8),
@@ -128,9 +134,9 @@ _D_y_i2_last(0)
 #endif
   assert(pre && post);
 
-  if(D_lsm_weight > 0) _lsm_tau2 = LSM_T_SYNE;
-  else _lsm_tau2 = LSM_T_SYNI;
- 
+  _lsm_tau2 = _excitatory ? LSM_T_SYNE*2 : LSM_T_SYNI*2;
+  _D_lsm_tau2 = _excitatory ? LSM_T_SYNE*2 : LSM_T_SYNI*2;
+
   char * pre_name;
   pre_name = pre->Name();
   assert(pre_name != NULL);
@@ -320,6 +326,24 @@ void Synapse::_init_lookup_table(bool isSupv){
 #endif
 }
 
+// Check need to perform the update or not
+bool Synapse::WithinSTDPTable(int time){
+  if(time < 0 || (time != _t_spike_pre && time != _t_spike_post))
+    return false;
+  int delta_t = time == _t_spike_pre ? _t_spike_pre - _t_spike_post : _t_spike_post - _t_spike_pre; // LTD:LTP
+  assert(delta_t >= 0);
+
+#ifdef _REWARD_MODULATE
+  if(time == _t_spike_pre && delta_t >= _TABLE_REWARD.size())  return false;
+  if(time == _t_spike_post && delta_t >= _TABLE_REWARD.size()) return false;
+#else
+  if(time == _t_spike_pre && delta_t >= _TABLE_LTD_S.size())  return false;
+  if(time == _t_spike_post && delta_t >= _TABLE_LTP_S.size()) return false;
+#endif
+  return true;
+}
+
+
 /*
 void Synapse::SetPreSpikeT(double t){
 //  _mem_pos = _mem_pos*exp((_t_spike_pre - t)/160) + 1.5;
@@ -420,11 +444,11 @@ void Synapse::LSMLearn(int t, int iteration){
   double weight_old = _lsm_weight;
   _lsm_c = _post->GetCalciumPre();
   if(_lsm_c > LSM_CAL_MID){
-  if((_lsm_c < LSM_CAL_MID+3)){ // &&(_post->LSMGetVMemPre() > LSM_V_THRESH*0.2)){
+    if((_lsm_c < LSM_CAL_MID+3)){ // &&(_post->LSMGetVMemPre() > LSM_V_THRESH*0.2)){
       _lsm_weight += LSM_DELTA_POT/( 1 + iteration/ITER_SEARCH_CONV);
     }
   }else{
-  if((_lsm_c > LSM_CAL_MID-3)){ //&&(_post->LSMGetVMemPre() < LSM_V_THRESH*0.2)){
+    if((_lsm_c > LSM_CAL_MID-3)){ //&&(_post->LSMGetVMemPre() < LSM_V_THRESH*0.2)){
       _lsm_weight -= LSM_DELTA_DEP/( 1+ iteration/ITER_SEARCH_CONV);
     }
   }
@@ -523,19 +547,63 @@ void Synapse::LSMPreSpike(int delay){
   }
 }
 
-double Synapse::LSMCurrent(){
+//* keep track of the firing timing of the synapses and do the weight update at the end
+void Synapse::LSMFiringStamp(int time){
+  assert(time >= 0);
+  double resp = LSMSecondOrderResp();
+  //if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
+  // cout<<"Current: "<<resp<<" @"<<time<<endl;
+#ifdef DIGITAL
+  _D_lsm_c = _post->DLSMGetCalciumPre();
+  //if(_D_lsm_c > (LSM_CAL_MID - 3)*unit && _D_lsm_c < (LSM_CAL_MID + 3))
+  _firing_stamp.push_back(make_pair(time, int(resp) ) );
+#else
+  _lsm_c = _post->GetCalciumPre();
+  //if(_lsm_c > LSM_CAL_MID - 3 && _lsm_c < LSM_CAL_MID + 3)  
+  _firing_stamp.push_back(make_pair(time, double(resp) ) );
+#endif
+}
+
+//* back prop the error w.r.t each synapse:
+void Synapse::LSMBpSynError(double error, double vth){
 #ifdef DIGITAL
   assert(0);
 #endif
-  return (_lsm_state1-_lsm_state2)/(_lsm_tau1-_lsm_tau2)*_lsm_weight;
+  double size = _firing_stamp.size();
+  for(auto & p : _firing_stamp){
+    //if(strcmp("reservoir_0", this->PreNeuron()->Name()) == 0 &&
+       //strcmp("output_0", this->PostNeuron()->Name()) == 0)
+      //cout<<"Weight update: "<< error * (1.0/(size * vth)) * p.second<<" the current: "<<p.second<<"\ttime:"<<p.first<<endl;
+    _lsm_weight -= error * (1.0/(50 * vth)) * p.second;
+  }
+  CheckReadoutWeightOutBound();
 }
 
+double Synapse::LSMSecondOrderResp(){
+#ifdef DIGITAL
+    return (_D_lsm_state1 - _D_lsm_state2)/(_D_lsm_tau1 - _D_lsm_tau2);
+#endif
+    return (_lsm_state1-_lsm_state2)/(_lsm_tau1-_lsm_tau2);
+}
 
 double Synapse::LSMFirstOrderCurrent(){
 #ifdef DIGITAL
   assert(0);
 #endif
   return _lsm_state*_lsm_weight;
+}
+
+//* two 2nd state variable decay
+void Synapse::LSMRespDecay(int time){
+#ifdef DIGITAL
+  ExpDecay(_D_lsm_state1, _D_lsm_tau1);
+  ExpDecay(_D_lsm_state2, _D_lsm_tau2);
+#else
+  ExpDecay(_lsm_state1, _lsm_tau1);
+  ExpDecay(_lsm_state2, _lsm_tau2);
+#endif
+  //if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
+  //cout<<"Response for r_0 -> o_0 : "<<LSMSecondOrderResp()<<" @ "<<time<<endl;
 }
 
 //* this function is used to simulate the fired spike:
@@ -546,12 +614,16 @@ void Synapse::LSMNextTimeStep(){
     if(_lsm_delay == 0){
 #ifdef DIGITAL
       _D_lsm_spike = 1;
+      _D_lsm_state1 += _D_lsm_weight;
+      _D_lsm_state2 += _D_lsm_weight;
 #else
       _lsm_spike = 1;
+      _lsm_state1 += 1;
+      _lsm_state2 += 1;     
 #endif
     }
   }
-
+  
 }
 
 //* this function is used to update the trace x and trace y for STDP:
@@ -757,8 +829,22 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
 
 #ifdef _REWARD_MODULATE
   if(t == _t_spike_pre && _t_spike_pre != _t_spike_post)  return;
+
+#ifdef _REWARD_MODULATE_2ND_RESP
+  double resp = LSMSecondOrderResp();
+  resp *= 0.005;
+
+#ifdef _DEBUG_SUPV_REWARD
+  if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
+   cout<<"Current: "<<resp<<" @"<<time<<endl;
+#endif
+
+  if(resp >= 0)  delta_w_pos = resp;
+  else delta_w_neg = resp;
+#else
   // Read the reward modulated rule @param4: isSupv?
   LSMReadRewardLUT(t, delta_w_pos, delta_w_neg, true);
+#endif
 #else
   // Read the look-up table for the supervised STDP @param4: isSupv?
   LSMReadLUT(t, delta_w_pos, delta_w_neg, true);
@@ -1158,6 +1244,9 @@ void Synapse::LSMClear(){
 
   _lsm_state1 = 0;
   _lsm_state2 = 0;
+  _D_lsm_state1 = 0;
+  _D_lsm_state2 = 0;
+  _firing_stamp.clear();
   _lsm_state = 0;
   _lsm_spike = 0;
   _D_lsm_spike = 0;

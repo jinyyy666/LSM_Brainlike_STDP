@@ -551,20 +551,36 @@ inline void Neuron::SetPostNeuronSpikeT(int time){
       // this synapse is in reservoir and we are training reservoir synaspes
       (*iter)->SetPostSpikeT(time);
       // push the synapse into STDP learning list
+#ifdef _REWARD_MODULATE_GLOBAL
       if((*iter)->GetActiveSTDPStatus() == false 
 	 && (*iter)->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false)
-	(*iter)->LSMActivateSTDPSyns(_network, "reservoir");
+	(*iter)->LSMFiringStamp(time); // the current from the syn and post fire timing
+#else
+      if((*iter)->GetActiveSTDPStatus() == false 
+	 && (*iter)->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false
+	 && (*iter)->WithinSTDPTable(time) )
+	(*iter)->LSMActivateSTDPSyns(_network, "reservoir");	
+#endif
+      
     }
     else if((_mode == NORMALSTDP) && betweenLayer){
       // this synapse is in between two layers (input-reservoir or reservoir-readout)
       (*iter)->SetPostSpikeT(time);
       // push the synapse into STDP learning list
+#ifdef _REWARD_MODULATE_GLOBAL
       if((*iter)->GetActiveSTDPStatus() == false 
-	 && (*iter)->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false)
+	 && (*iter)->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false )
+	if((*iter)->IsInputSyn())  (*iter)->LSMFiringStamp(time);
+	else if((*iter)->IsReadoutSyn())  (*iter)->LSMFiringStamp(time);	
+#else
+      if((*iter)->GetActiveSTDPStatus() == false 
+	 && (*iter)->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false
+	 && (*iter)->WithinSTDPTable(time) )
 	if((*iter)->IsInputSyn())  (*iter)->LSMActivateSTDPSyns(_network, "input");
 	else if((*iter)->IsReadoutSyn())  (*iter)->LSMActivateSTDPSyns(_network, "readout");
+#endif
+      
     }
-    
   }
 }
 
@@ -643,8 +659,10 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
 	    (*iter)->LSMActivate(_network, true, train);
 	    
 	    // add the synapse for STDP training
+#if !defined(_REWARD_MODULATE_GLOBAL) &&  !defined(_REWARD_MODULATE)
 	    if((*iter)->GetActiveSTDPStatus() == false)
 	      (*iter)->LSMActivateSTDPSyns(_network, "readout");
+#endif
 	  }
 	}
         else{
@@ -866,7 +884,6 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
 #else
       cout<<_lsm_v_mem<<"\t"<<temp<<"\t"<<_lsm_state_EP<<"\t"<<_lsm_state_EN<<"\t"<<_lsm_state_IP<<"\t"<<_lsm_state_IN<<endl;
       cout<<"Calicum level: "<< _lsm_calcium_pre<<endl;
-      cout<<"Vth: "<<_lsm_v_thresh<<"\t"<<_D_lsm_v_thresh<<endl;
 #endif
   }
 #endif
@@ -921,14 +938,14 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
 #ifdef  _WRITE_STAT
     if((_name[0]=='r')&&(_name[9]=='_')){
       if(Fp != NULL) fprintf(Fp,"%d\t%d\n",atoi(_name+10),t);
-    }else if(Foutp != NULL) 
+    }else if(Foutp != NULL)
       fprintf(Foutp,"%d\t%d\n",atoi(_name+7),t); 
-#else
+#endif
     if(_name[0] == 'o'){
       if(t <= end_time/2) _f_count += 1;
       else  ++_f_count;
     }
-#endif
+
     if(_mode == WRITECHANNEL){
       if(_lsm_channel == NULL){
 	cout<<"Failure to assign a channel ptr to the neuron: "<<_name<<endl;
@@ -994,6 +1011,7 @@ void Neuron::CollectPreSynAct(double& p_n, double& avg_i_n, int& max_i_n){
   // clear the presynaptic neuron activity vector after visiting it!
   _presyn_act.clear();
 }
+
 
 //* compute the variance of the firing freq:
 double Neuron::ComputeVariance(){
@@ -1082,6 +1100,18 @@ void Neuron::MergeNeuron(Neuron * target){
   // 2. Deactivate the this neuron
   this->LSMSetNeuronMode(DEACTIVATED);
 
+}
+
+//* Back prop the final error back
+void Neuron::BpError(double error){
+  for(auto it = _inputSyns.begin(); it != _inputSyns.end(); ++it){
+    assert((*it));
+#ifdef DIGITAL
+    (*it)->LSMBpSynError(error, _D_lsm_v_thresh);
+#else
+    (*it)->LSMBpSynError(error, _lsm_v_thresh);
+#endif
+  }
 }
 
 /* Remove/Resize the outputs synapse */
@@ -1766,6 +1796,31 @@ int NeuronGroup::Judge(int cls){
   if(res == cls && f_pairs[0].first > f_pairs[1].first)  return 1; // correct case
   else if(res == cls && f_pairs[0].first == f_pairs[1].first)  return 0; // even case
   else return -1;  // wrong case
+}
+
+//* compute and backprop the error in terms of the spike count/time-discounted reward
+void NeuronGroup::BpError(int cls){
+  int max_count = -1;
+  for(int i = 0; i < _neurons.size(); ++i){  
+    assert(_neurons[i]);
+    max_count = max(_neurons[i]->FireCount(), max_count);
+  }
+  
+  double error = 0;
+  double sum_error = 0;
+  for(int i = 0; i < _neurons.size(); ++i){
+    int f_cnt = _neurons[i]->FireCount();
+    if(max_count != 0)
+      error = (i == cls) ? (f_cnt == max_count ? 0 : double(f_cnt)/max_count - 2): 
+	//_neurons[i]->FireCount()/double(max_count);
+	max(_neurons[i]->FireCount()/double(max_count) - 0.2, 0.0);
+    else
+      error = (i == cls) ? - 1: 0;
+    sum_error += error*error;
+    cout<<"The backprop error for neuron "<<i<<" : "<<error<<" with fc: "<<_neurons[i]->FireCount()<<endl;
+    _neurons[i]->BpError(error);
+  }
+  cout<<"Current accumulative error: "<<sum_error/2<<endl;
 }
 
 void NeuronGroup::DumpWaveFormGroup(ofstream & f_out){
