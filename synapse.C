@@ -19,6 +19,7 @@
 #define _DEBUG_AP_STDP
 //#define _DEBUG_UNSUPERV_TRAINING
 //#define _DEBUG_SUPV_STDP
+//#define _DEBUG_UPDATE_AT_LAST
 
 
 using namespace std;
@@ -391,11 +392,10 @@ bool Synapse::IsInputSyn(){
 
 bool Synapse::IsValid(){
     assert(_pre && _post); 
-    return !(_pre->LSMCheckNeuronMode(DEACTIVATED) ||
+return !(_pre->LSMCheckNeuronMode(DEACTIVATED) ||
 	     _post->LSMCheckNeuronMode(DEACTIVATED) ||
 	     _disable);
 }
-
 
 
 void Synapse::LSMLearn(int t, int iteration){
@@ -433,11 +433,11 @@ void Synapse::LSMLearn(int t, int iteration){
   _D_lsm_c = _post->DLSMGetCalciumPre();
   if(_D_lsm_c > LSM_CAL_MID*unit){
     if((_D_lsm_c < (LSM_CAL_MID+3)*unit)){
-      _D_lsm_weight += (rand()%temp1<(LSM_DELTA_POT*temp2/(iter)))?1:0;
+      _D_lsm_weight += (rand()%temp1) < (LSM_DELTA_POT*temp2/iter) ? 1 : 0;
     }
   }else{
     if((_D_lsm_c > (LSM_CAL_MID-3)*unit)){
-      _D_lsm_weight -= (rand()%temp1<(LSM_DELTA_DEP*temp2/(iter)))?1:0;
+      _D_lsm_weight -= (rand()%temp1) < (LSM_DELTA_DEP*temp2/iter) ? 1 : 0;
     }
   }
 #else
@@ -453,6 +453,22 @@ void Synapse::LSMLearn(int t, int iteration){
     }
   }
 #endif
+
+// keep track the weight update, and perform one update at the end
+#ifdef _UPDATE_AT_LAST
+#ifdef DIGITAL
+  if(weight_old != _D_lsm_weight){
+    _firing_stamp.push_back({t, _D_lsm_weight - weight_old});
+    _D_lsm_weight = weight_old;
+  }
+#else
+  if(fabs(weight_old - _lsm_weight) > 1e-8){
+    _firing_stamp.push_back({t, _lsm_weight - weight_old});
+    _lsm_weight = weight_old;
+  }
+#endif
+#endif
+
 
 #ifdef _DEBUG_YONG_RULE
   //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0"))
@@ -577,6 +593,30 @@ void Synapse::LSMBpSynError(double error, double vth){
     _lsm_weight -= error * (1.0/(50 * vth)) * p.second;
   }
   CheckReadoutWeightOutBound();
+}
+
+//* Update the learning weight in the end
+void Synapse::LSMUpdateLearningWeight(){
+  double sum = 0;
+  for(auto & p : _firing_stamp){
+    sum += p.second;
+  }
+#ifdef DIGITAL
+  if(_D_lsm_weight/_Unit > 0){
+    sum /= _D_lsm_weight_limit/_Unit;
+    _D_lsm_weight += sum;
+  }
+#else
+  if(_lsm_weight_limit > 0){
+    sum /= _lsm_weight_limit;
+    _lsm_weight += sum;
+  }
+#endif
+
+#ifdef _DEBUG_UPDATE_AT_LAST
+  if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
+    cout<<"Update: "<<sum<<endl;
+#endif
 }
 
 double Synapse::LSMSecondOrderResp(){
@@ -809,22 +849,9 @@ void Synapse::LSMSTDPSupvLearn(int t, int iteration){
 //* LUT approach of supervised STDP
 void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
 #ifdef DIGITAL
-  int delta_w_pos = 0, delta_w_neg = 0;
+  int delta_w_pos = 0, delta_w_neg = 0, weight_old = _D_lsm_weight;
 #else
-  double delta_w_pos = 0, delta_w_neg = 0;
-#endif
-
-#ifdef _DEBUG_SUPV_STDP
-  //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0")){
-  if(!strcmp(_post->Name(), "output_0")){
-      cout<<"Synapse from "<<_pre->Name()<<"\tto\t"<<_post->Name()<<endl;
-#ifdef DIGITAL
-      cout<<"The weight before : "<<_D_lsm_weight<<endl;
-#else
-      cout<<"The weight before : "<<_lsm_weight<<endl;
-#endif
-      cout<<"Firing @"<<t<<"\t t_pre: "<<_t_spike_pre<<"\t t_post: "<<_t_spike_post<<" with TS: "<<_post->GetTeacherSignal()<<endl;
-  }
+  double delta_w_pos = 0, delta_w_neg = 0, weight_old = _lsm_weight;
 #endif
 
 #ifdef _REWARD_MODULATE
@@ -859,11 +886,9 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
 
 #ifdef DIGITAL
   int l1_norm = 0;
-  int weight_old = _D_lsm_weight;
   int regular = 0;
 #else
   double l1_norm = 0;
-  double weight_old = _lsm_weight;
   double regular = 0;
 #endif
 
@@ -884,7 +909,7 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
 #endif
 #endif
 
-  StochasticSTDPSupv(delta_w_pos, delta_w_neg, l1_norm, iteration);
+  StochasticSTDPSupv(delta_w_pos, delta_w_neg, l1_norm, t, iteration);
 
 #else 
   // no stochastic case:
@@ -911,12 +936,21 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
 
 #ifdef _DEBUG_SUPV_STDP
   //if(!strcmp(_pre->Name(), "reservoir_0") && !strcmp(_post->Name(), "output_0"))
-  if(!strcmp(_post->Name(), "output_0"))
+  if(!strcmp(_post->Name(), "output_0")){
 #ifdef DIGITAL
-    cout<<"Weight: "<<_D_lsm_weight<<(delta_w_pos + delta_w_neg >= 0 ? " Weight increase: " : " Weight decrease: ")<<delta_w_pos + delta_w_neg<<" Calicium of the post: "<<_post->DLSMGetCalciumPre()<<" Reg-term: "<<regular<<endl;
+    if(_D_lsm_weight != weight_old){
+      cout<<"Synapse from "<<_pre->Name()<<"\tto\t"<<_post->Name()<<endl;
+      cout<<"The weight before : "<<weight_old<<"\n"<<"Firing @"<<t<<"\t t_pre: "<<_t_spike_pre<<"\t t_post: "<<_t_spike_post<<" with TS: "<<_post->GetTeacherSignal()<<endl;
+      cout<<"Weight: "<<_D_lsm_weight<<(_D_lsm_weight > weight_old ? " Weight increase: " : " Weight decrease: ")<<_D_lsm_weight - weight_old<<" Calicium of the post: "<<_post->DLSMGetCalciumPre()<<endl;
+    }
 #else
-  cout<<"Weight: "<<_lsm_weight<<(delta_w_pos + delta_w_neg >= 0 ? " Weight increase: " : " Weight decrease: ")<<delta_w_pos + delta_w_neg<<" Calicium of the post: "<<_post->GetCalciumPre()<<" Reg-term: "<<regular<<endl;
+    if(fabs(_lsm_weight - weight_old) > 1e-8){
+      cout<<"Synapse from "<<_pre->Name()<<"\tto\t"<<_post->Name()<<endl;
+      cout<<"The weight before : "<<weight_old<<"\n"<<"Firing @"<<t<<"\t t_pre: "<<_t_spike_pre<<"\t t_post: "<<_t_spike_post<<" with TS: "<<_post->GetTeacherSignal()<<endl;
+      cout<<"Weight: "<<_lsm_weight<<(_lsm_weight > weight_old ? " Weight increase: " : " Weight decrease: ")<<_lsm_weight - weight_old<<" Calicium of the post: "<<_post->GetCalciumPre()<<endl;
+    }
 #endif
+  }
 #endif
 
   // check if weight out of bound
@@ -1247,6 +1281,7 @@ void Synapse::LSMClear(){
   _D_lsm_state1 = 0;
   _D_lsm_state2 = 0;
   _firing_stamp.clear();
+
   _lsm_state = 0;
   _lsm_spike = 0;
   _D_lsm_spike = 0;

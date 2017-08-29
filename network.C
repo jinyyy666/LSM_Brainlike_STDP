@@ -589,8 +589,10 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 	}
 #endif
 
-#ifdef _REWARD_MODULATE_GLOBAL
+#if defined(_REWARD_MODULATE_GLOBAL)
 	BackPropError();
+#elif defined(_UPDATE_AT_LAST)
+    UpdateLearningWeights();
 #endif
 
 	LSMClearSignals();
@@ -1543,6 +1545,12 @@ void Network::BackPropError(){
   assert(*_sp_iter);
   _lsm_output_layer->BpError((*_sp_iter)->Class());
 #endif
+}
+
+//* update the learning weight in the end of each sample
+void Network::UpdateLearningWeights(){
+  assert(_lsm_output_layer);
+  _lsm_output_layer->UpdateLearningWeights();
 }
 
 //* judge the readout result:

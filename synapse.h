@@ -193,7 +193,8 @@ public:
   void LSMFiringStamp(int time);
   //* back prop the error wrt each syn
   void LSMBpSynError(double error, double vth);
-
+  //* perform an accumulated update at the end:
+  void LSMUpdateLearningWeight();
   //* the second order response (no w.r.t to weight)
   double LSMSecondOrderResp();
 
@@ -295,7 +296,7 @@ public:
       delta_w_pos = table[ind]; 
     }
     if(t == _t_spike_pre && t != _t_spike_post && ind < table.size()){
-      delta_w_neg = table[ind];
+      delta_w_neg = -table[ind];
     }
   }
 
@@ -412,7 +413,7 @@ public:
 
   // Update the reservoir weights using STDP in a stochastic way:
   template<class T>
-  void StochasticSTDPSupv(const T delta_w_pos, const T delta_w_neg, const T l1_norm, int iteration = 1){
+  void StochasticSTDPSupv(const T delta_w_pos, const T delta_w_neg, const T l1_norm, int time, int iteration = 1){
       int iter = iteration + 1;
       if(iteration <= 50) iter = 1;
       else if(iteration <= 100) iter = 2;
@@ -421,7 +422,10 @@ public:
       else if(iteration <= 250) iter = 16;
       else if(iteration <= 300) iter = 32;
       else iter = iteration/4; 
-
+      
+      int d_weight_old = _D_lsm_weight;
+      double weight_old = _lsm_weight;
+ 
 #ifdef DIGITAL
       const int c_dec_digit = IsReadoutSyn() ? NUM_DEC_DIGIT_READOUT_MEM : NUM_DEC_DIGIT_RESERVOIR_MEM;
       const int c_syn_bit_diff = IsReadoutSyn() ? NUM_BIT_SYN - NBT_STD_SYN : NUM_BIT_SYN_R - NBT_STD_SYN_R;
@@ -432,18 +436,18 @@ public:
       int regulization = l1_norm < c_weight_omega ? 0 : ((l1_norm - c_weight_omega)*_D_lsm_weight)/(1<<c_syn_bit_diff); // left shift cause overflow, so I use div here!
 
       if(_D_lsm_c > LSM_CAL_MID*unit){
-	  if((_D_lsm_c < (LSM_CAL_MID+3)*unit) &&  temp_delta > 0)
+	    if((_D_lsm_c < (LSM_CAL_MID+3)*unit) &&  temp_delta > 0)
 #ifdef ADDITIVE_STDP
 	      _D_lsm_weight += (rand()%temp1<(temp_delta*temp2*LAMBDA/iter))? 1 : 0;
 #else
 	      _D_lsm_weight += (rand()%temp1<(temp_delta*LSM_DELTA_POT/iter))? 1 : 0;
 #endif 
       }else{
-	  if((_D_lsm_c > (LSM_CAL_MID-3)*unit) && temp_delta < 0)
+	    if((_D_lsm_c > (LSM_CAL_MID-3)*unit) && temp_delta < 0)
 #ifdef ADDITIVE_STDP
 	      _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*temp2*LAMBDA/iter))? 1 : 0;
 #else
-              _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP/iter))? 1 : 0;
+          _D_lsm_weight -= (rand()%temp1<(-1*temp_delta*LSM_DELTA_DEP/iter))? 1 : 0;
 #endif
       }
       _D_lsm_weight -= regulization;
@@ -459,6 +463,20 @@ public:
 	      _lsm_weight += temp_delta/(1 + iter/ITER_SEARCH_CONV);
       }
       _lsm_weight -= regulization;
+#endif
+
+#ifdef _UPDATE_AT_LAST
+#ifdef DIGITAL
+      if(d_weight_old != _D_lsm_weight){
+        _firing_stamp.push_back(std::make_pair(time, _D_lsm_weight - d_weight_old));
+        _D_lsm_weight = d_weight_old;
+      }
+#else
+      if(fabs(weight_old - _lsm_weight) > 1e-8){
+        _firing_stamp.push_back(std::make_pair(time, _lsm_weight - weight_old));
+        _lsm_weight = weight_old;
+      }
+#endif
 #endif
   }
   

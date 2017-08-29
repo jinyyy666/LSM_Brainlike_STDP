@@ -137,6 +137,7 @@ public:
   bool LSMEndOfSpeech(networkmode_t);
   void LSMChannelDecrement(channelmode_t);
   void BackPropError();
+  void UpdateLearningWeights();
   void ReadoutJudge(int& correct, int& wrong, int& even);
   int  LSMJudge();
   //* this function is to add the active learning readout synapses:

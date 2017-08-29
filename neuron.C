@@ -1114,6 +1114,13 @@ void Neuron::BpError(double error){
   }
 }
 
+//* update the input learning weight
+void Neuron::UpdateLWeight(){
+  for(auto it = _inputSyns.begin(); it != _inputSyns.end(); ++it){
+    (*it)->LSMUpdateLearningWeight();
+  }
+}
+
 /* Remove/Resize the outputs synapse */
 void Neuron::ResizeSyn(){
   int n,m,i;
@@ -1821,6 +1828,14 @@ void NeuronGroup::BpError(int cls){
     _neurons[i]->BpError(error);
   }
   cout<<"Current accumulative error: "<<sum_error/2<<endl;
+}
+
+//* update the input synapses for each neuron
+void NeuronGroup::UpdateLearningWeights(){
+  for(int i = 0; i < _neurons.size(); ++i){
+    assert(_neurons[i]);
+    _neurons[i]->UpdateLWeight();
+  }
 }
 
 void NeuronGroup::DumpWaveFormGroup(ofstream & f_out){

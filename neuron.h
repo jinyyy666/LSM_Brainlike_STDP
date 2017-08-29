@@ -184,6 +184,7 @@ public:
   void MergeNeuron(Neuron * target); // merge the this into target neuron
   //* Bp the error for each neuron
   void BpError(double error);
+  void UpdateLWeight();
 
   void ResizeSyn();
   void LSMPrintOutputSyns(FILE*);
@@ -255,6 +256,7 @@ public:
 
   int Judge(int cls);
   void BpError(int cls);
+  void UpdateLearningWeights();
 
   void DumpWaveFormGroup(std::ofstream & f_out);
   void LSMRemoveSpeech();

@@ -1,4 +1,3 @@
-
 #ifndef DEF_H
 #define DEF_H
 
@@ -88,13 +87,14 @@
 *******************************************/
 #define _REWARD_MODULATE
 //#define _REWARD_MODULATE_GLOBAL // a global way 1) update at last 2) Discount reward 3) No TS
-#define _REWARD_MODULATE_2ND_RESP // use the entire 2nd resp as reward modification
+//#define _REWARD_MODULATE_2ND_RESP // use the entire 2nd resp as reward modification
 #define VMEM_DAMPING_FACTOR 1
+#define _UPDATE_AT_LAST // update the learning weight at the end of each speech
 
 #define TAU_REWARD_POS_E 4
 #define TAU_REWARD_NEG_E 8
-#define TAU_REWARD_POS_I 4
-#define TAU_REWARD_NEG_I 2
+#define TAU_REWARD_POS_I 8
+#define TAU_REWARD_NEG_I 4
 
 #define A_REWARD_POS 0.2
 #define A_REWARD_NEG 0.2
@@ -251,7 +251,7 @@
 #define SYN_ORDER_1 0 
 #define SYN_ORDER_0 0 
 
-//#define CV
+#define CV
 #define NFOLD 5
 
 //* Control variable to enable the old way of readout by writing outputs/*.dat
