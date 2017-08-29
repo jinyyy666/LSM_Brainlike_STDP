@@ -602,7 +602,7 @@ void Synapse::LSMUpdateLearningWeight(){
     sum += p.second;
   }
 #ifdef DIGITAL
-  if(_D_lsm_weight/_Unit > 0){
+  if(_D_lsm_weight_limit/_Unit > 0){
     sum /= _D_lsm_weight_limit/_Unit;
     _D_lsm_weight += sum;
   }
