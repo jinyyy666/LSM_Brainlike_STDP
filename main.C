@@ -61,6 +61,50 @@ void PrintResultsToFile(const vector<int>& r_correct, const vector<int>& r_wrong
   f_c.close(), f_w.close(), f_e.close();
 }
 
+
+void CollectResultsFromNetwork(Network array_network[]){
+  int num_speeches = array_network[0].NumSpeech();
+  int num_iters = array_network[0].NumIteration();
+  vector<int> r_correct(num_iters, 0);
+  vector<int> r_wrong(num_iters, 0);
+  vector<int> r_even(num_iters, 0);
+
+  for(int i = 0; i < NUM_THREADS; ++i)
+    array_network[i].MergeReadoutResults(r_correct, r_wrong, r_even);
+
+  int max_rate = *max_element(r_correct.begin(),r_correct.end());
+  cout<<"Best performance = "<<max_rate<<"/"<<num_speeches<<" = "<<double(max_rate)*100/double(num_speeches)<<'%'<<endl;
+  if(r_correct.size() >= 50)
+    cout<<"Performance at 50th iteration = "<<double(r_correct[49])*100/double(num_speeches)<<'%'<<endl;
+  if(r_correct.size() >= 100)
+    cout<<"Performance at 100th iteration = "<<double(r_correct[99])*100/double(num_speeches)<<'%'<<endl;
+  if(r_correct.size() >= 200)
+    cout<<"Performance at 200th iteration = "<<double(r_correct[199])*100/double(num_speeches)<<'%'<<endl;
+  if(r_correct.size() >= 300)
+    cout<<"Performance at 300th iteration = "<<double(r_correct[299])*100/double(num_speeches)<<'%'<<endl;
+  
+  PrintResultsToFile(r_correct, r_wrong, r_even, num_speeches);
+}
+
+
+void PrintTestErrorToFile(const vector<double>& test_errors, int num_speeches){
+    assert(!test_errors.empty());
+    ofstream f_out("outputs/test_errors.txt");
+    for(double e : test_errors) f_out<<e/num_speeches<<endl;
+    f_out.close();
+}
+
+
+void CollectTestErrorFromNetwork(Network array_network[]){
+    int num_speeches = array_network[0].NumSpeech();
+    int num_iters = array_network[0].NumIteration();
+    vector<double> test_errors(num_iters, 0);
+    for(int i = 0; i < NUM_THREADS; ++i)
+        array_network[i].MergeTestErrors(test_errors);
+    PrintTestErrorToFile(test_errors, num_speeches);        
+}
+
+
 int main(int argc, char * argv[]){
   struct timeval val1,val2;
   struct timezone zone;
@@ -171,28 +215,11 @@ int main(int argc, char * argv[]){
   readout_module.Multireadout();
 #else
   // collect the result directly from network:
-  int num_speeches = array_network[0].NumSpeech();
-  int num_iters = array_network[0].NumIteration();
-  vector<int> r_correct(num_iters, 0);
-  vector<int> r_wrong(num_iters, 0);
-  vector<int> r_even(num_iters, 0);
-
-  for(int i = 0; i < NUM_THREADS; ++i)
-    array_network[i].MergeReadoutResults(r_correct, r_wrong, r_even);
-
-  int max_rate = *max_element(r_correct.begin(),r_correct.end());
-  cout<<"Best performance = "<<max_rate<<"/"<<num_speeches<<" = "<<double(max_rate)*100/double(num_speeches)<<'%'<<endl;
-  if(r_correct.size() >= 50)
-    cout<<"Performance at 50th iteration = "<<double(r_correct[49])*100/double(num_speeches)<<'%'<<endl;
-  if(r_correct.size() >= 100)
-    cout<<"Performance at 100th iteration = "<<double(r_correct[99])*100/double(num_speeches)<<'%'<<endl;
-  if(r_correct.size() >= 200)
-    cout<<"Performance at 200th iteration = "<<double(r_correct[199])*100/double(num_speeches)<<'%'<<endl;
-  if(r_correct.size() >= 300)
-    cout<<"Performance at 300th iteration = "<<double(r_correct[299])*100/double(num_speeches)<<'%'<<endl;
-  
-  PrintResultsToFile(r_correct, r_wrong, r_even, num_speeches);
+  CollectResultsFromNetwork(array_network);
 #endif
+
+  // collect the test error at each iteration
+  CollectTestErrorFromNetwork(array_network);
 
   pthread_exit(NULL);
 

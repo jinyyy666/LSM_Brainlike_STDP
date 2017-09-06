@@ -255,7 +255,9 @@ public:
   void MergeCorrelatedNeurons(int num_sample);
 
   int Judge(int cls);
+  int MaxFireCount();
   void BpError(int cls);
+  double ComputeRatioError(int cls);
   void UpdateLearningWeights();
 
   void DumpWaveFormGroup(std::ofstream & f_out);

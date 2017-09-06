@@ -36,6 +36,7 @@ private:
   std::vector<int> _readout_correct; // sign : +1
   std::vector<int> _readout_wrong;   // sign: -1
   std::vector<int> _readout_even;    // sign: 0
+  std::vector<double> _readout_test_error; // test error: (o - y)^2
 
   // for LSM
   std::vector<Speech*> _speeches;
@@ -138,6 +139,7 @@ public:
   void LSMChannelDecrement(channelmode_t);
   void BackPropError();
   void UpdateLearningWeights();
+  void CollectErrorPerSample(std::vector<double>& each_sample_error);
   void ReadoutJudge(int& correct, int& wrong, int& even);
   int  LSMJudge();
   //* this function is to add the active learning readout synapses:
@@ -167,6 +169,10 @@ public:
   void LSMPushResults(int correct, int wrong, int even, int n_iter);
   std::vector<int> LSMViewResults();
   void MergeReadoutResults(std::vector<int>& r_correct, std::vector<int>& r_wrong, std::vector<int>& r_even);
+  void MergeTestErrors(std::vector<double>& test_errors);
+
+  // log the test errors:
+  void LogTestError(const std::vector<double>& each_sample_errors, int iter_n);
 
   // this first parameter is used to indicate which neurongroup does the syn belongs to.
   void DetermineSynType(const char * syn_type, synapsetype_t & ret_syn_type, const char * func_name);

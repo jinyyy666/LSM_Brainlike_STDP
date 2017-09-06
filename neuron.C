@@ -1805,13 +1805,18 @@ int NeuronGroup::Judge(int cls){
   else return -1;  // wrong case
 }
 
+int NeuronGroup::MaxFireCount(){
+    int max_count = -1;
+    for(int i = 0; i < _neurons.size(); ++i){
+        assert(_neurons[i]);
+        max_count = max(_neurons[i]->FireCount(), max_count);
+    }
+    return max_count;
+}
+
 //* compute and backprop the error in terms of the spike count/time-discounted reward
 void NeuronGroup::BpError(int cls){
-  int max_count = -1;
-  for(int i = 0; i < _neurons.size(); ++i){  
-    assert(_neurons[i]);
-    max_count = max(_neurons[i]->FireCount(), max_count);
-  }
+  int max_count = MaxFireCount();
   
   double error = 0;
   double sum_error = 0;
@@ -1828,6 +1833,19 @@ void NeuronGroup::BpError(int cls){
     _neurons[i]->BpError(error);
   }
   cout<<"Current accumulative error: "<<sum_error/2<<endl;
+}
+
+//* compute the back-prop error and print out:
+double NeuronGroup::ComputeRatioError(int cls){
+    int max_count = MaxFireCount();
+    double error = 0, sum_error = 0;
+    for(int i = 0; i < _neurons.size(); ++i){
+        int f_cnt = _neurons[i]->FireCount();
+        if(max_count != 0)  error = (i == cls) - double(f_cnt)/max_count;
+        else    error = (i == cls);
+        sum_error += error*error;
+    }
+    return sum_error;
 }
 
 //* update the input synapses for each neuron

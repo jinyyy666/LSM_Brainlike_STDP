@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <algorithm>
 
+#define _DUMP_READOUT_WEIGHTS
+
 using namespace std;
 double TSstrength;
 extern int file[500];
@@ -315,6 +317,13 @@ void Simulator::LSMRun(long tid){
   int correct = 0, wrong = 0, even = 0;
   for(int iii = 0; iii < NUM_ITERS; iii++){
     _network->LSMSupervisedTraining(networkmode, tid, iii);
+#ifdef _DUMP_READOUT_WEIGHTS
+    if(tid == 0){
+      sprintf(filename, "o_weights_info_trained_intern_%d.txt",iii);
+      _network->WriteSynWeightsToFile("readout", filename);
+    }
+#endif
+   
     /*
     count = 0, correct = 0, wrong = 0, even = 0;
     _network->LSMClearSignals();

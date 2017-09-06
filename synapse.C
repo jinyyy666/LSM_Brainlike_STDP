@@ -602,20 +602,24 @@ void Synapse::LSMUpdateLearningWeight(){
     sum += p.second;
   }
 #ifdef DIGITAL
+  int weight_old = _D_lsm_weight;
   if(_D_lsm_weight_limit/_Unit > 0){
-    sum /= _D_lsm_weight_limit/_Unit;
+    sum /= _D_lsm_weight_limit/_Unit; 
     _D_lsm_weight += sum;
   }
+  int update = _D_lsm_weight - weight_old;
 #else
+  double weight_old = _lsm_weight;
   if(_lsm_weight_limit > 0){
     sum /= _lsm_weight_limit;
     _lsm_weight += sum;
   }
+  double update = _lsm_weight - weight_old;
 #endif
 
 #ifdef _DEBUG_UPDATE_AT_LAST
   if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
-    cout<<"Update: "<<sum<<endl;
+    cout<<"Update: "<<update<<endl;
 #endif
 }
 

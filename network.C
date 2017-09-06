@@ -29,6 +29,7 @@ Network::Network():
 _readout_correct(vector<int>(NUM_ITERS, 0)),
 _readout_wrong(vector<int>(NUM_ITERS, 0)),
 _readout_even(vector<int>(NUM_ITERS, 0)),
+_readout_test_error(vector<double>(NUM_ITERS, 0.0)),
 _sp(NULL),
 _fold(0),
 _fold_ind(-1),
@@ -547,6 +548,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
     int count = 0, correct = 0, wrong = 0, even = 0;
     FILE * Foutp = NULL, * Fp = NULL;
     char filename[64];
+    vector<double> each_sample_errors;    
 
     // 1. Clear the signals
     LSMClearSignals();
@@ -643,6 +645,8 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #endif
 
       ReadoutJudge(correct, wrong, even); // judge the readout output here
+      CollectErrorPerSample(each_sample_errors); // collect the test error for the sample
+
 #ifdef _DUMP_WAVEFORM 
       if(tid == 0 && iteration == 0){
 	DumpWaveForm("Waveform/test", info);
@@ -658,6 +662,9 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
     }
     // 5. Push the recognition result:
     LSMPushResults(correct, wrong, even, iteration);
+    
+    // 6. Log the test error
+    LogTestError(each_sample_errors, iteration);
 }
 
 
@@ -1553,6 +1560,19 @@ void Network::UpdateLearningWeights(){
   _lsm_output_layer->UpdateLearningWeights();
 }
 
+//* collect the test error for a single sample
+void Network::CollectErrorPerSample(vector<double>& each_sample_errors){
+    assert(_lsm_output_layer);
+#ifdef CV
+    assert(*_cv_train_sp_iter);
+    double error = _lsm_output_layer->ComputeRatioError((*_cv_train_sp_iter)->Class());
+#else
+    assert(*_sp_iter);
+    double error = _lsm_output_layer->ComputeRatioError((*_sp_iter)->Class());
+#endif
+    each_sample_errors.push_back(error);
+}
+
 //* judge the readout result:
 void Network::ReadoutJudge(int& correct, int& wrong, int& even){
   int res = this->LSMJudge();
@@ -1631,6 +1651,15 @@ void Network::LSMPushResults(int correct, int wrong, int even, int iter_n){
   _readout_even[iter_n] += even;
 }
 
+//* log the test error into the corresponding vector:
+//* test error defined: \sum_j 1/2*(o_j - y_j)^2, where o_j = spike_j /max_k(spike_k)
+void Network::LogTestError(const vector<double>& each_sample_errors, int iter_n){
+    assert(iter_n < _readout_test_error.size());
+    double error_sum = 0;
+    for(double e : each_sample_errors)  error_sum += e;
+    _readout_test_error[iter_n] = error_sum;
+}
+
 //* return the most recent results of the readout (correct, wrong, even) in a vector:
 vector<int> Network::LSMViewResults(){
   vector<int> ret;
@@ -1655,6 +1684,14 @@ void Network::MergeReadoutResults(vector<int>& r_correct, vector<int>& r_wrong, 
   }
   
 }
+
+//* merge the test error from the network:
+void Network::MergeTestErrors(vector<double>& test_errors){
+    assert(!test_errors.empty() && test_errors.size() == _readout_test_error.size());
+    for(size_t i = 0; i < test_errors.size(); ++i)
+        test_errors[i] += _readout_test_error[i];
+}
+
 
 //* This is a supporting function. Given a synapse type (r/o synapses)
 //* determine the syn_type to be returned (ret_syn_type).
@@ -1811,7 +1848,7 @@ void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
 	 <<"\t"<<synapses[i]->PostNeuron()->IsExcitatory()
 	*/
 	 <<endl;
-
+  f_out.close();
 }
 
 //* This function is to load the synaptic weights from file and assign it to the synapses:
