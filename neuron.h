@@ -146,7 +146,9 @@ public:
   double LSMGetVMemPre(){return _lsm_v_mem_pre;}
   int DLSMGetVMemPre(){return _D_lsm_v_mem_pre;}
   double GetCalciumPre(){return _lsm_calcium_pre;}
+  double GetCalcium(){return _lsm_calcium;}
   int DLSMGetCalciumPre(){return _D_lsm_calcium_pre;}
+  int DLSMGetCalcium(){return _D_lsm_calcium;}
   void SetExcitatory(){_excitatory = true;}
   bool IsExcitatory(){return _excitatory;}
 
@@ -260,6 +262,7 @@ public:
   double ComputeRatioError(int cls);
   void UpdateLearningWeights();
 
+  void DumpCalciumLevels(std::ofstream & f_out);
   void DumpWaveFormGroup(std::ofstream & f_out);
   void LSMRemoveSpeech();
   void LSMTuneVth(int index);

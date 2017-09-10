@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <climits>
 #include <cmath>
+#include <string>
 
 //#define _DEBUG_NETWORK_SEPARATE
 //#define _DEBUG_VARBASE
@@ -291,8 +292,8 @@ void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int val
         if(!(pre->IsExcitatory()) D_weight = -8 + rand()%9; // best for depressive STDP
 	*/
 	int D_weight = -8 + rand()%15;
-	
-	//if((!pre->IsExcitatory() && D_weight > 0) ||(pre->IsExcitatory() && D_weight < 0))  D_weight = -1*D_weight;
+    // set the sign of the readout weight the same as pre-neuron E/I might be hampful for the performance
+	// if((!pre->IsExcitatory() && D_weight > 0) ||(pre->IsExcitatory() && D_weight < 0))  D_weight = -1*D_weight;
 	//D_weight = 0;
 	LSMAddSynapse(pre,neuron,D_weight,fixed,D_weight_limit,liquid);
       }
@@ -312,7 +313,8 @@ void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int val
       }else if(random == 0) factor = 0;
       else assert(0);
       double weight = value*factor;
-      if((!pre->IsExcitatory() && weight > 0) ||(pre->IsExcitatory() && weight < 0))  weight = -1*weight;
+      // set the sign of the readout weight the same as pre-neuron E/I might be hampful for the performance
+      // if((!pre->IsExcitatory() && weight > 0) ||(pre->IsExcitatory() && weight < 0))  weight = -1*weight; 
       //if(weight > 0)  weight = weight*0.5;
       LSMAddSynapse(pre,neuron,weight,fixed,weight_limit,liquid);
 #endif
@@ -650,6 +652,12 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #ifdef _DUMP_WAVEFORM 
       if(tid == 0 && iteration == 0){
 	DumpWaveForm("Waveform/test", info);
+      }
+#endif
+
+#ifdef _DUMP_CALCIUM
+      if(tid == 0 && iteration == 49){
+        DumpCalciumLevels("readout", "Calcium", "speech_"+ to_string(info));
       }
 #endif
       LSMClearSignals();
@@ -1811,6 +1819,33 @@ void Network::DumpWaveForm(string dir, int info){
     ng->DumpWaveFormGroup(f_out);
   }
   f_out.close();
+}
+
+
+//* Dump the calcium levels of the readout:
+void Network::DumpCalciumLevels(string neuron_group, string dir, string filename){
+    NeuronGroup * ng = NULL;
+    if(neuron_group == "readout"){
+        ng = SearchForNeuronGroup("output");
+        assert(ng);
+    }
+    else{
+        cout<<"Unrecognized neuron group: "<<neuron_group<<endl;
+        exit(EXIT_FAILURE);
+    }
+    // Create the directory if necessary
+    size_t end = (dir.find_first_of("/") == string::npos ? dir.length() : dir.find_first_of("/")) ;
+    string path = dir.substr(0, end), cmd;
+    struct stat sb;
+    if(stat(path.c_str(), &sb) != 0){
+        cmd = "mkdir " + path;
+        int i = system(cmd.c_str());
+    }   
+
+    string f_name = dir + "/" + filename + ".txt";
+    ofstream f_out(f_name.c_str());
+    ng->DumpCalciumLevels(f_out);
+    f_out.close();
 }
 
 //* This function is to write the synaptic weights back into a file:

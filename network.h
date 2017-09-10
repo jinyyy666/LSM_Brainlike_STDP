@@ -179,6 +179,7 @@ public:
   void NormalizeContinuousWeights(const char * syn_type);
   void RemoveZeroWeights(const char * type);
   void DumpWaveForm(std::string dir, int info);
+  void DumpCalciumLevels(std::string neuron_group, std::string dir, std::string filename);
   void WriteSynWeightsToFile(const char * syn_type, char * filename);
   void LoadSynWeightsFromFile(const char * syn_type, char * filename);
   void WriteSynActivityToFile(char * pre_name, char * post_name, char * filename);

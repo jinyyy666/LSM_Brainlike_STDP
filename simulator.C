@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <algorithm>
 
-#define _DUMP_READOUT_WEIGHTS
+//#define _DUMP_READOUT_WEIGHTS
 
 using namespace std;
 double TSstrength;

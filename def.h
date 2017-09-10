@@ -267,6 +267,7 @@
 //#define _VISUALIZE_READOUT_RESPONSE
 
 //#define _DUMP_WAVEFORM
+//#define _DUMP_CALCIUM
 
 //#define _UNIT_TEST
 

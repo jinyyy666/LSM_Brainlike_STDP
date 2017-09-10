@@ -1856,6 +1856,18 @@ void NeuronGroup::UpdateLearningWeights(){
   }
 }
 
+
+//* dump the calcium levels of each neuron in the group:
+void NeuronGroup::DumpCalciumLevels(ofstream & f_out){
+    for(size_t i = 0; i < _neurons.size(); ++i){
+#ifdef DIGITAL
+        f_out<<"Neuron Index: "<<i<<"\tCalcium level: "<<_neurons[i]->DLSMGetCalcium()<<endl;
+#else
+        f_out<<"Neuron Index: "<<i<<"\tCalcium level: "<<_neurons[i]->GetCalcium()<<endl;
+#endif
+    }
+}
+
 void NeuronGroup::DumpWaveFormGroup(ofstream & f_out){
   size_t size = 0;
   for(int i = 0; i < _neurons.size(); ++i){
