@@ -12,28 +12,28 @@
 using namespace std;
 
 Speech::Speech(int cls):
-_index(-1),
-_class(cls)
+    _index(-1),
+    _class(cls)
 {}
 
 Speech::~Speech(){
-  for(vector<Channel*>::iterator iter = _channels.begin(); iter != _channels.end(); iter++) delete *iter;
-  for(vector<Channel*>::iterator iter = _rChannels.begin(); iter != _rChannels.end(); iter++) delete *iter;
-  for(vector<Channel*>::iterator iter = _oChannels.begin(); iter != _oChannels.end(); iter++) delete *iter;
+    for(vector<Channel*>::iterator iter = _channels.begin(); iter != _channels.end(); iter++) delete *iter;
+    for(vector<Channel*>::iterator iter = _rChannels.begin(); iter != _rChannels.end(); iter++) delete *iter;
+    for(vector<Channel*>::iterator iter = _oChannels.begin(); iter != _oChannels.end(); iter++) delete *iter;
 }
 
 Channel * Speech::AddChannel(int step_analog, int step_spikeT){
-  Channel * channel = new Channel(step_analog, step_spikeT);
-  _channels.push_back(channel);
-  return channel;
+    Channel * channel = new Channel(step_analog, step_spikeT);
+    _channels.push_back(channel);
+    return channel;
 }
 
 void Speech::SetNumReservoirChannel(int size){
-  assert(size >= 0);
-  while(_rChannels.size() < size){
-    Channel * channel = new Channel;
-    _rChannels.push_back(channel);
-  }
+    assert(size >= 0);
+    while(_rChannels.size() < size){
+        Channel * channel = new Channel;
+        _rChannels.push_back(channel);
+    }
 }
 
 
@@ -41,130 +41,130 @@ void Speech::SetNumReservoirChannel(int size){
 void Speech::SetNumReadoutChannel(int size){
     assert(size >= 0 || _oChannels.empty());
     while(_oChannels.size() < size){
-	Channel * channel = new Channel;
-	_oChannels.push_back(channel);
+        Channel * channel = new Channel;
+        _oChannels.push_back(channel);
     }
 }
 
 Channel * Speech::GetChannel(int index, channelmode_t channelmode){
-  if(channelmode == INPUTCHANNEL){
-    if(index < 0 && index >= _channels.size()){
-      cout<<"Invalid channel index: "<<index
-	  <<" seen in aquiring input channels!\n"
-	  <<"Total number of input channels: "<<_channels.size()
-	  <<endl;
-      exit(EXIT_FAILURE);
+    if(channelmode == INPUTCHANNEL){
+        if(index < 0 && index >= _channels.size()){
+            cout<<"Invalid channel index: "<<index
+                <<" seen in aquiring input channels!\n"
+                <<"Total number of input channels: "<<_channels.size()
+                <<endl;
+            exit(EXIT_FAILURE);
+        }
+        return _channels[index];
+    }else if(channelmode == RESERVOIRCHANNEL){
+        if(index < 0 && index >= _rChannels.size()){
+            cout<<"Invalid channel index: "<<index
+                <<" seen in aquiring reservoir channels!\n"
+                <<"Total number of reservoir channels: "<<_rChannels.size()
+                <<endl;
+            exit(EXIT_FAILURE);
+        }
+        return _rChannels[index];
     }
-    return _channels[index];
-  }else if(channelmode == RESERVOIRCHANNEL){
-    if(index < 0 && index >= _rChannels.size()){
-      cout<<"Invalid channel index: "<<index
-	  <<" seen in aquiring reservoir channels!\n"
-	  <<"Total number of reservoir channels: "<<_rChannels.size()
-	  <<endl;
-      exit(EXIT_FAILURE);
+    else if(channelmode == READOUTCHANNEL){
+        if(index < 0 && index >= _oChannels.size()){
+            cout<<"Invalid channel index: "<<index
+                <<" seen in aquiring readout channels!\n"
+                <<"Total number of readout channels: "<<_oChannels.size()
+                <<endl;
+            exit(EXIT_FAILURE);
+        }
+        return _oChannels[index]; 
     }
-    return _rChannels[index];
-  }
-  else if(channelmode == READOUTCHANNEL){
-     if(index < 0 && index >= _oChannels.size()){
-      cout<<"Invalid channel index: "<<index
-	  <<" seen in aquiring readout channels!\n"
-	  <<"Total number of readout channels: "<<_oChannels.size()
-	  <<endl;
-      exit(EXIT_FAILURE);
+    else{
+        cout<<"Invalid channel mode: "<<channelmode<<endl;
+        exit(EXIT_FAILURE);
     }
-    return _oChannels[index]; 
-  }
-  else{
-      cout<<"Invalid channel mode: "<<channelmode<<endl;
-      exit(EXIT_FAILURE);
-  }
 }
 
 //* clear the targeted channels:
 void Speech::ClearChannel(channelmode_t channelmode){
     vector<Channel*> tmp;
     vector<Channel*>& ch = channelmode == INPUTCHANNEL ? _channels : 
-	                   channelmode == RESERVOIRCHANNEL ? _rChannels :
-	channelmode == READOUTCHANNEL ? _oChannels : tmp;
+        channelmode == RESERVOIRCHANNEL ? _rChannels :
+        channelmode == READOUTCHANNEL ? _oChannels : tmp;
     if(ch.empty()){
-	cout<<"Invalid channel type: "<<channelmode<<endl;
-	exit(EXIT_FAILURE);
+        cout<<"Invalid channel type: "<<channelmode<<endl;
+        exit(EXIT_FAILURE);
     }
-    
+
     for(size_t i = 0; i < ch.size(); ++i){
-	assert(ch[i]);
-	ch[i]->Clear();
+        assert(ch[i]);
+        ch[i]->Clear();
     }
-    
+
 }
 
 void Speech::AnalogToSpike(){
-  for(int i = 0; i < _channels.size(); i++){
-    assert(_channels[i]->SizeAnalog() == _channels[0]->SizeAnalog());
-    _channels[i]->BSA();
-//if(i>=4)assert(0);
-//    cout<<"Channel "<<i<<"\t"<<_channels[i]->SizeAnalog()<<"\tvs.\t"<<_channels[i]->SizeSpikeT()<<endl;
-  }
+    for(int i = 0; i < _channels.size(); i++){
+        assert(_channels[i]->SizeAnalog() == _channels[0]->SizeAnalog());
+        _channels[i]->BSA();
+        //if(i>=4)assert(0);
+        //    cout<<"Channel "<<i<<"\t"<<_channels[i]->SizeAnalog()<<"\tvs.\t"<<_channels[i]->SizeSpikeT()<<endl;
+    }
 }
 
 void Speech::RateToSpike(){
-  for(int i = 0; i < _channels.size(); i++){
-    assert(_channels[i]->SizeAnalog() == _channels[0]->SizeAnalog());
-    _channels[i]->PoissonSpike();
-  }
+    for(int i = 0; i < _channels.size(); i++){
+        assert(_channels[i]->SizeAnalog() == _channels[0]->SizeAnalog());
+        _channels[i]->PoissonSpike();
+    }
 }
 
 
 int Speech::NumChannels(channelmode_t channelmode){
-  if(channelmode == INPUTCHANNEL) return _channels.size();
-  else if(channelmode == RESERVOIRCHANNEL) return _rChannels.size();
-  else return _oChannels.size();
+    if(channelmode == INPUTCHANNEL) return _channels.size();
+    else if(channelmode == RESERVOIRCHANNEL) return _rChannels.size();
+    else return _oChannels.size();
 }
 
 void Speech::Info(){
-  cout<<"# of input channels = "<<_channels.size()<<endl;
-  for(int i = 0; i < _channels.size(); i++) cout<<_channels[i]->SizeSpikeT()<<"\t";
-  cout<<endl;
-  cout<<"# of reservoir channels = "<<_rChannels.size()<<endl;
-  for(int i = 0; i < _rChannels.size(); i++) cout<<_rChannels[i]->SizeSpikeT()<<"\t";
-  cout<<endl;
+    cout<<"# of input channels = "<<_channels.size()<<endl;
+    for(int i = 0; i < _channels.size(); i++) cout<<_channels[i]->SizeSpikeT()<<"\t";
+    cout<<endl;
+    cout<<"# of reservoir channels = "<<_rChannels.size()<<endl;
+    for(int i = 0; i < _rChannels.size(); i++) cout<<_rChannels[i]->SizeSpikeT()<<"\t";
+    cout<<endl;
 }
 
 void Speech::PrintSpikes(int info){
-  FILE * Fp_input;
-  FILE * Fp_reservoir;
-  char filename[64];
-  sprintf(filename,"Input_Response/input_spikes_%d.dat",info);
-  ofstream f_input(filename);
-  assert(f_input.is_open());
-  for(int i = 0; i < _channels.size(); i++){ 
+    FILE * Fp_input;
+    FILE * Fp_reservoir;
+    char filename[64];
+    sprintf(filename,"Input_Response/input_spikes_%d.dat",info);
+    ofstream f_input(filename);
+    assert(f_input.is_open());
+    for(int i = 0; i < _channels.size(); i++){ 
+        f_input<<"-1"<<endl;
+        _channels[i]->Print(f_input);
+    }
     f_input<<"-1"<<endl;
-    _channels[i]->Print(f_input);
-  }
-  f_input<<"-1"<<endl;
-  f_input.close();
+    f_input.close();
 
-  sprintf(filename,"Reservoir_Response/reservoir_spikes_%d.dat",info);
-  ofstream f_reservoir(filename);
-  assert(f_reservoir.is_open());
-  for(int i = 0; i < _rChannels.size(); i++){
+    sprintf(filename,"Reservoir_Response/reservoir_spikes_%d.dat",info);
+    ofstream f_reservoir(filename);
+    assert(f_reservoir.is_open());
+    for(int i = 0; i < _rChannels.size(); i++){
+        f_reservoir<<"-1"<<endl;
+        _rChannels[i]->Print(f_reservoir);
+    }
     f_reservoir<<"-1"<<endl;
-    _rChannels[i]->Print(f_reservoir);
-  }
-  f_reservoir<<"-1"<<endl;
-  f_reservoir.close();
+    f_reservoir.close();
 
-  sprintf(filename, "Readout_Response_Trans/readout_spikes_%d.dat", info);
-  ofstream f_readout(filename);
-  assert(f_readout.is_open());
-  for(int i = 0; i < _oChannels.size(); i++){
+    sprintf(filename, "Readout_Response_Trans/readout_spikes_%d.dat", info);
+    ofstream f_readout(filename);
+    assert(f_readout.is_open());
+    for(int i = 0; i < _oChannels.size(); i++){
+        f_readout<<"-1"<<endl;
+        _oChannels[i]->Print(f_readout);
+    }
     f_readout<<"-1"<<endl;
-    _oChannels[i]->Print(f_readout);
-  }
-  f_readout<<"-1"<<endl;
-  f_readout.close();
+    f_readout.close();
 }
 
 //* this function read each channel and output the firing frequency into a matrix
@@ -177,12 +177,12 @@ int Speech::PrintSpikeFreq(const char * type, ofstream & f_out){
     if(strcmp(type, "input") == 0) f = false;
     else if(strcmp(type, "reservoir") == 0) f = true;
     else assert(0);
-    
+
     if(!f){
-	SpikeFreq(f_out, _channels);	
+        SpikeFreq(f_out, _channels);	
     }
     else{
-	SpikeFreq(f_out, _rChannels);
+        SpikeFreq(f_out, _rChannels);
     }
     return _class;
 }
@@ -191,9 +191,9 @@ int Speech::PrintSpikeFreq(const char * type, ofstream & f_out){
 void Speech::SpikeFreq(ofstream & f_out, const vector<Channel*> & channels){
     // find out the stop time for each speech:
     int stop_t = EndTime();INT_MIN;
-    
+
     for(int i = 0; i < channels.size(); i++){ 
-	//f_out<<(double)channels[i]->SizeSpikeT()/stop_t<<"\t";
+        //f_out<<(double)channels[i]->SizeSpikeT()/stop_t<<"\t";
         f_out<<channels[i]->SizeSpikeT()<<"\t";
     }
     f_out<<endl;
@@ -203,34 +203,34 @@ void Speech::SpikeFreq(ofstream & f_out, const vector<Channel*> & channels){
 int Speech::EndTime(){
     int stop_t = INT_MIN;
     for(int i = 0; i < _channels.size(); i++){
-	assert(_channels[i]);
-	stop_t = max(stop_t, _channels[i]->LastSpikeT());
+        assert(_channels[i]);
+        stop_t = max(stop_t, _channels[i]->LastSpikeT());
     }
     if(stop_t == INT_MIN){
-      cout<<"The speech:  "<<_index<<" contains "<<_channels.size()<<" input channels."<<endl;
-      assert(stop_t != INT_MIN);
+        cout<<"The speech:  "<<_index<<" contains "<<_channels.size()<<" input channels."<<endl;
+        assert(stop_t != INT_MIN);
     }
     return stop_t;
 }
 
 //* Collect the firing fq into a vector:
 void Speech::CollectFreq(synapsetype_t syn_t, vector<double>& fs, int end_t){
-  vector<Channel*> tmp;
-  vector<Channel*> & channels = syn_t == INPUT_SYN ? _channels : 
-                                syn_t == RESERVOIR_SYN ? _rChannels :
-                                syn_t == READOUT_SYN ? _oChannels : tmp;
+    vector<Channel*> tmp;
+    vector<Channel*> & channels = syn_t == INPUT_SYN ? _channels : 
+        syn_t == RESERVOIR_SYN ? _rChannels :
+        syn_t == READOUT_SYN ? _oChannels : tmp;
 
-  if(channels.empty()){
-      cout<<"In Speech::CollectFreq(), you are reading: "<<syn_t<<" channels.\n "
-	  <<"Is the synapse type undefined or the channels are empty ?"<<endl;
-      assert(!channels.empty());
-  }
-  if(end_t == 0){
-      cout<<"The ending time of the speech is zero!!"<<endl;
-      assert(end_t != 0);
-  }
-  for(size_t i = 0; i < channels.size(); ++i){
-      assert(channels[i]);
-      fs.push_back(((double)(channels[i]->SizeSpikeT()))/end_t);
-  }
+    if(channels.empty()){
+        cout<<"In Speech::CollectFreq(), you are reading: "<<syn_t<<" channels.\n "
+            <<"Is the synapse type undefined or the channels are empty ?"<<endl;
+        assert(!channels.empty());
+    }
+    if(end_t == 0){
+        cout<<"The ending time of the speech is zero!!"<<endl;
+        assert(end_t != 0);
+    }
+    for(size_t i = 0; i < channels.size(); ++i){
+        assert(channels[i]);
+        fs.push_back(((double)(channels[i]->SizeSpikeT()))/end_t);
+    }
 }

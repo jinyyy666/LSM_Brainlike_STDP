@@ -19,6 +19,7 @@
 //#define _DEBUG_VARBASE
 //#define _DEBUG_CORBASE
 //#define _SHOW_SPEECH_ORDER
+//#define _PRINT_SPIKE_COUNT
 
 using namespace std;
 
@@ -46,174 +47,174 @@ _network_mode(VOID)
 }
 
 Network::~Network(){
-  for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
-    delete (*iter);
-  for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
-    delete (*iter);
-  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++)
-    delete (*iter);
-  for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end();++iter)
-    delete (*iter);
-  for(vector<Speech*>::iterator iter = _speeches.begin(); iter != _speeches.end();++iter)
-    delete (*iter);
+    for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
+        delete (*iter);
+    for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
+        delete (*iter);
+    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++)
+        delete (*iter);
+    for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end();++iter)
+        delete (*iter);
+    for(vector<Speech*>::iterator iter = _speeches.begin(); iter != _speeches.end();++iter)
+        delete (*iter);
 }
 
 bool Network::CheckExistence(char * name){
-  for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
-    if(strcmp((*iter)->Name(),name) == 0) return true;
-  for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
-    if(strcmp((*iter)->Name(),name) == 0) return true;
-  return false;
+    for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
+        if(strcmp((*iter)->Name(),name) == 0) return true;
+    for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
+        if(strcmp((*iter)->Name(),name) == 0) return true;
+    return false;
 }
 
 void Network::AddNeuron(char * name, bool excitatory){
-  for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
-    assert(strcmp((*iter)->Name(),name) != 0);
-  for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
-    assert(strcmp((*iter)->Name(),name) != 0);
+    for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
+        assert(strcmp((*iter)->Name(),name) != 0);
+    for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
+        assert(strcmp((*iter)->Name(),name) != 0);
 
-  Neuron * neuron = new Neuron(name, this);
-  _individualNeurons.push_back(neuron);
-  _allNeurons.push_back(neuron);
-  if(excitatory == true){
-    _allExcitatoryNeurons.push_back(neuron);
-    neuron->SetExcitatory();
-  }else _allInhibitoryNeurons.push_back(neuron);
+    Neuron * neuron = new Neuron(name, this);
+    _individualNeurons.push_back(neuron);
+    _allNeurons.push_back(neuron);
+    if(excitatory == true){
+        _allExcitatoryNeurons.push_back(neuron);
+        neuron->SetExcitatory();
+    }else _allInhibitoryNeurons.push_back(neuron);
 }
 
 void Network::AddNeuronGroup(char * name, int num, bool excitatory){
-  assert(num >= 1);
-  for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
-    assert(strcmp((*iter)->Name(),name) != 0);
-  for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
-    assert(strcmp((*iter)->Name(),name) != 0);
+    assert(num >= 1);
+    for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
+        assert(strcmp((*iter)->Name(),name) != 0);
+    for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
+        assert(strcmp((*iter)->Name(),name) != 0);
 
-  NeuronGroup * neuronGroup = new NeuronGroup(name, num, this);
-  _groupNeurons.push_back(neuronGroup);
-  for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
-    _allNeurons.push_back(neuron);
-    if(strcmp(name,"input") == 0)
-	_inputNeurons.push_back(neuron);
-    if(strcmp(name,"output") == 0)
-	_outputNeurons.push_back(neuron);
-  }
-  if(excitatory == true) for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
-    _allExcitatoryNeurons.push_back(neuron);
-    neuron->SetExcitatory();
-  }
-  else for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()) _allInhibitoryNeurons.push_back(neuron);
+    NeuronGroup * neuronGroup = new NeuronGroup(name, num, this);
+    _groupNeurons.push_back(neuronGroup);
+    for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
+        _allNeurons.push_back(neuron);
+        if(strcmp(name,"input") == 0)
+            _inputNeurons.push_back(neuron);
+        if(strcmp(name,"output") == 0)
+            _outputNeurons.push_back(neuron);
+    }
+    if(excitatory == true) for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
+        _allExcitatoryNeurons.push_back(neuron);
+        neuron->SetExcitatory();
+    }
+    else for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()) _allInhibitoryNeurons.push_back(neuron);
 }
 
 //* At this stage, this function is only used for measuring the separation
 //  this function is mainly used to delete the input neuron group
 void Network::LSMDeleteNeuronGroup(char * name){
-  NeuronGroup * to2del = SearchForNeuronGroup(name);
-  if(to2del == NULL){
-    cout<<"Cannot find the neurongroup named: "<<name<<endl;
-    exit(-1);
-  }
-  // Two vector records the names of synapses-to-be-delelte
-  vector<char*> pre_names;
-  vector<char*> post_names;
-
-  for(Neuron * neuron = to2del->First(); neuron != NULL; neuron = to2del->Next()){
-    list<Synapse*>* outputSyns = neuron->LSMDisconnectNeuron(); // This is just to disconnect the neuron from the network. 
-    
-    // record those synapses:
-    for(list<Synapse*>::iterator iter = (*outputSyns).begin(); iter != (*outputSyns).end(); iter++){
-      Neuron * pre = (*iter)->PreNeuron();
-      Neuron * post = (*iter)->PostNeuron();
-      pre_names.push_back(pre->Name());
-      post_names.push_back(post->Name());
+    NeuronGroup * to2del = SearchForNeuronGroup(name);
+    if(to2del == NULL){
+        cout<<"Cannot find the neurongroup named: "<<name<<endl;
+        exit(-1);
     }
-  }
-  
-  // Free the memory occupied those to-be-delete synapses.
-  // Delete the pointers of those to-be-delete synapses from _synapses.
-  for(int i = 0 ; i < pre_names.size(); ++i){
-      char * pre_name = pre_names[i];
-      char * post_name = post_names[i];
-      // Find the pointer of that synapse to delete:
-      for(list<Synapse*>::iterator iter_all = _synapses.begin(); iter_all != _synapses.end(); ){
-        Neuron * pre_test = (*iter_all)->PreNeuron();
-        Neuron * post_test = (*iter_all)->PostNeuron();
-        char * pre_name_test = pre_test->Name();
-        char * post_name_test = post_test->Name();
-        if(strcmp(pre_name, pre_name_test) == 0 && strcmp(post_name, post_name_test) == 0){
-#ifdef	_DEBUG_DEL
-          cout<<"Delete the pointer of synapse : "<<pre_name_test<<" to "<<post_name_test<<" from _synapses!"<<endl;
-#endif 
-	  delete (*iter_all);
-          iter_all = _synapses.erase(iter_all);
-          break;
-        }
-        else
-          iter_all++;
-      }
-  }
+    // Two vector records the names of synapses-to-be-delelte
+    vector<char*> pre_names;
+    vector<char*> post_names;
 
-  for(list<Neuron*>::iterator iter = _allExcitatoryNeurons.begin(); iter != _allExcitatoryNeurons.end();){
-    char neuron_name[64];
-    strcpy(neuron_name, (*iter)->Name());
-    char * token = strtok(neuron_name,"_");
-    if(strcmp(token, name) == 0)
-      iter = _allExcitatoryNeurons.erase(iter);
-    else 
-      iter++;
-  }
-  
-  for(list<Neuron*>::iterator iter = _allInhibitoryNeurons.begin(); iter != _allInhibitoryNeurons.end();){
-    char neuron_name[64];
-    strcpy(neuron_name, (*iter)->Name());
-    char * token = strtok(neuron_name,"_");
-    if(strcmp(token, name) == 0)
-      iter = _allInhibitoryNeurons.erase(iter);
-    else 
-      iter++;
-  }
-  
-  for(list<NeuronGroup*>::iterator iter =  _groupNeurons.begin(); iter != _groupNeurons.end(); ){
-     if(strcmp((*iter)->Name(), name) == 0)
-       iter = _groupNeurons.erase(iter);
-     else 
-       iter++;
-  }
+    for(Neuron * neuron = to2del->First(); neuron != NULL; neuron = to2del->Next()){
+        list<Synapse*>* outputSyns = neuron->LSMDisconnectNeuron(); // This is just to disconnect the neuron from the network. 
+
+        // record those synapses:
+        for(list<Synapse*>::iterator iter = (*outputSyns).begin(); iter != (*outputSyns).end(); iter++){
+            Neuron * pre = (*iter)->PreNeuron();
+            Neuron * post = (*iter)->PostNeuron();
+            pre_names.push_back(pre->Name());
+            post_names.push_back(post->Name());
+        }
+    }
+
+    // Free the memory occupied those to-be-delete synapses.
+    // Delete the pointers of those to-be-delete synapses from _synapses.
+    for(int i = 0 ; i < pre_names.size(); ++i){
+        char * pre_name = pre_names[i];
+        char * post_name = post_names[i];
+        // Find the pointer of that synapse to delete:
+        for(list<Synapse*>::iterator iter_all = _synapses.begin(); iter_all != _synapses.end(); ){
+            Neuron * pre_test = (*iter_all)->PreNeuron();
+            Neuron * post_test = (*iter_all)->PostNeuron();
+            char * pre_name_test = pre_test->Name();
+            char * post_name_test = post_test->Name();
+            if(strcmp(pre_name, pre_name_test) == 0 && strcmp(post_name, post_name_test) == 0){
+#ifdef	_DEBUG_DEL
+                cout<<"Delete the pointer of synapse : "<<pre_name_test<<" to "<<post_name_test<<" from _synapses!"<<endl;
+#endif 
+                delete (*iter_all);
+                iter_all = _synapses.erase(iter_all);
+                break;
+            }
+            else
+                iter_all++;
+        }
+    }
+
+    for(list<Neuron*>::iterator iter = _allExcitatoryNeurons.begin(); iter != _allExcitatoryNeurons.end();){
+        char neuron_name[64];
+        strcpy(neuron_name, (*iter)->Name());
+        char * token = strtok(neuron_name,"_");
+        if(strcmp(token, name) == 0)
+            iter = _allExcitatoryNeurons.erase(iter);
+        else 
+            iter++;
+    }
+
+    for(list<Neuron*>::iterator iter = _allInhibitoryNeurons.begin(); iter != _allInhibitoryNeurons.end();){
+        char neuron_name[64];
+        strcpy(neuron_name, (*iter)->Name());
+        char * token = strtok(neuron_name,"_");
+        if(strcmp(token, name) == 0)
+            iter = _allInhibitoryNeurons.erase(iter);
+        else 
+            iter++;
+    }
+
+    for(list<NeuronGroup*>::iterator iter =  _groupNeurons.begin(); iter != _groupNeurons.end(); ){
+        if(strcmp((*iter)->Name(), name) == 0)
+            iter = _groupNeurons.erase(iter);
+        else 
+            iter++;
+    }
 
     for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); ){
-    char neuron_name[64];
-    strcpy(neuron_name, (*iter)->Name());
-    char * token = strtok(neuron_name,"_");
-    assert(token != NULL);
-    if(strcmp(token, name) == 0){
+        char neuron_name[64];
+        strcpy(neuron_name, (*iter)->Name());
+        char * token = strtok(neuron_name,"_");
+        assert(token != NULL);
+        if(strcmp(token, name) == 0){
 #ifdef _DEBUG_DEL_1
-      cout<<"Delete pointer of neuron: "<<(*iter)->Name()<<" from allNeurons!"<<endl;         
+            cout<<"Delete pointer of neuron: "<<(*iter)->Name()<<" from allNeurons!"<<endl;         
 #endif
-      delete (*iter);
-      iter = _allNeurons.erase(iter);
+            delete (*iter);
+            iter = _allNeurons.erase(iter);
+        }
+        else 
+            iter++;
     }
-    else 
-      iter++;
-  }
 
 
-  delete to2del; // Free the memory occupied by this neurongroup!
-                 // Be careful to do so! Or you will have seg fault! 
-  _lsm_input_layer = NULL;
+    delete to2del; // Free the memory occupied by this neurongroup!
+    // Be careful to do so! Or you will have seg fault! 
+    _lsm_input_layer = NULL;
 }
 
 //* THIS FUNCTION is only used for measuring the separation 
 //  by running this function, the input layer is initialized
 void Network::InitializeInputLayer(int num_inputs, int num_connections){
-  assert(_lsm_input_layer == NULL);
-  assert(SearchForNeuronGroup("input") == NULL);
-  AddNeuronGroup(const_cast<char*>("input"), num_inputs, true);
- 
-  for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-    assert(SearchForNeuronGroup((*it)->Name()) != NULL);
-    LSMAddSynapse(const_cast<char*>("input"), (*it)->Name(), 1, num_connections, 8, 1, true); 
-              // from       to         fromN   toN         value  random  fixed
-    
-  }
+    assert(_lsm_input_layer == NULL);
+    assert(SearchForNeuronGroup("input") == NULL);
+    AddNeuronGroup(const_cast<char*>("input"), num_inputs, true);
+
+    for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+        assert(SearchForNeuronGroup((*it)->Name()) != NULL);
+        LSMAddSynapse(const_cast<char*>("input"), (*it)->Name(), 1, num_connections, 8, 1, true); 
+        // from       to         fromN   toN         value  random  fixed
+
+    }
 }
 
 //* add the speech labels to each individual reservoir
@@ -227,246 +228,246 @@ void Network::LSMAddLabelToReservoirs(const char * name, set<int> labels){
 
 //* construct the reservoir given 3 dimensional grid information
 void Network::LSMAddNeuronGroup(char * name, int dim1, int dim2, int dim3){
-  assert((dim1>0)&&(dim2>0)&&(dim3>0));
-  for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
-    assert(strcmp((*iter)->Name(),name) != 0);
-  for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
-    assert(strcmp((*iter)->Name(),name) != 0);
+    assert((dim1>0)&&(dim2>0)&&(dim3>0));
+    for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
+        assert(strcmp((*iter)->Name(),name) != 0);
+    for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
+        assert(strcmp((*iter)->Name(),name) != 0);
 
-  NeuronGroup * neuronGroup = new NeuronGroup(name, dim1, dim2, dim3, this);
+    NeuronGroup * neuronGroup = new NeuronGroup(name, dim1, dim2, dim3, this);
 
-  _groupNeurons.push_back(neuronGroup);
-  _allReservoirs.push_back(neuronGroup); // push the individual liquid into the liquids
+    _groupNeurons.push_back(neuronGroup);
+    _allReservoirs.push_back(neuronGroup); // push the individual liquid into the liquids
 
-  for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
-    _allNeurons.push_back(neuron);
-    if(neuron->IsExcitatory()) _allExcitatoryNeurons.push_back(neuron);
-    else _allInhibitoryNeurons.push_back(neuron);
-  }
+    for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
+        _allNeurons.push_back(neuron);
+        if(neuron->IsExcitatory()) _allExcitatoryNeurons.push_back(neuron);
+        else _allInhibitoryNeurons.push_back(neuron);
+    }
 }
 void Network::LSMAddNeuronGroup(char * name, char * path_info_neuron, char * path_info_synapse){
-  for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
-    assert(strcmp((*iter)->Name(),name) != 0);
-  for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
-    assert(strcmp((*iter)->Name(),name) != 0);
+    for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
+        assert(strcmp((*iter)->Name(),name) != 0);
+    for(list<NeuronGroup*>::iterator iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
+        assert(strcmp((*iter)->Name(),name) != 0);
 
-  NeuronGroup * neuronGroup = new NeuronGroup(name, path_info_neuron, path_info_synapse,this); //This function helps to generate the reservoir with brain-like connectivity
-  _groupNeurons.push_back(neuronGroup);
-  _allReservoirs.push_back(neuronGroup); // push the individual liquid into the liquids
+    NeuronGroup * neuronGroup = new NeuronGroup(name, path_info_neuron, path_info_synapse,this); //This function helps to generate the reservoir with brain-like connectivity
+    _groupNeurons.push_back(neuronGroup);
+    _allReservoirs.push_back(neuronGroup); // push the individual liquid into the liquids
 
-  for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
-    _allNeurons.push_back(neuron);
-    if(neuron->IsExcitatory()) _allExcitatoryNeurons.push_back(neuron);
-    else _allInhibitoryNeurons.push_back(neuron);
-  }
+    for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
+        _allNeurons.push_back(neuron);
+        if(neuron->IsExcitatory()) _allExcitatoryNeurons.push_back(neuron);
+        else _allInhibitoryNeurons.push_back(neuron);
+    }
 }
 
-  
+
 // Please find the fuction to to add the synapses for LSM in the header file: network.h. 
 //Function: template<T>  void Network::LSMAddSynapse(Neuron * pre, Neuron * post, T weight, bool fixed, T weight_limit,bool liquid)
 // This function is written as a template function.
 
 
 void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int value, int random, bool fixed){
-  Neuron * neuron;
-  double factor;
-  double weight_limit;
-  bool liquid = false;
-  int D_weight_limit;
-  if(fixed == true){
-    /***** this is for the case of input synapses: *****/
-    weight_limit = value;
-    D_weight_limit = value;
-  }else{
-    weight_limit = value;
-    D_weight_limit = value;
-  }
+    Neuron * neuron;
+    double factor;
+    double weight_limit;
+    bool liquid = false;
+    int D_weight_limit;
+    if(fixed == true){
+        /***** this is for the case of input synapses: *****/
+        weight_limit = value;
+        D_weight_limit = value;
+    }else{
+        weight_limit = value;
+        D_weight_limit = value;
+    }
 
-  if(npost < 0){
-    assert(npost == -1);
-    for(neuron = post->First(); neuron != NULL; neuron = post->Next()){
+    if(npost < 0){
+        assert(npost == -1);
+        for(neuron = post->First(); neuron != NULL; neuron = post->Next()){
 #ifdef DIGITAL
-      if(random == 2){
-	/* 
-	int D_weight = 1;
-        if(!(pre->IsExcitatory()) D_weight = -8 + rand()%9; // best for depressive STDP
-	*/
-	int D_weight = -8 + rand()%15;
-    // set the sign of the readout weight the same as pre-neuron E/I might be hampful for the performance
-	// if((!pre->IsExcitatory() && D_weight > 0) ||(pre->IsExcitatory() && D_weight < 0))  D_weight = -1*D_weight;
-	//D_weight = 0;
-	LSMAddSynapse(pre,neuron,D_weight,fixed,D_weight_limit,liquid);
-      }
-      else if(random == 0){
-	int D_weight = 0;
-	LSMAddSynapse(pre,neuron,D_weight,fixed,D_weight_limit,liquid);
-      }else assert(0);
-	
+            if(random == 2){
+                /* 
+                   int D_weight = 1;
+                   if(!(pre->IsExcitatory()) D_weight = -8 + rand()%9; // best for depressive STDP
+                   */
+                int D_weight = -8 + rand()%15;
+                // set the sign of the readout weight the same as pre-neuron E/I might be hampful for the performance
+                // if((!pre->IsExcitatory() && D_weight > 0) ||(pre->IsExcitatory() && D_weight < 0))  D_weight = -1*D_weight;
+                //D_weight = 0;
+                LSMAddSynapse(pre,neuron,D_weight,fixed,D_weight_limit,liquid);
+            }
+            else if(random == 0){
+                int D_weight = 0;
+                LSMAddSynapse(pre,neuron,D_weight,fixed,D_weight_limit,liquid);
+            }else assert(0);
+
 #else
-      if(random == 2){
-	/*** This is for the case of continuous readout weights: ***/
-	/*** Remember to change the netlist to                   ***/
-	/*** lsmsynapse reservoir output -1 -1 8 2, 2 is random  ***/
-	/*** The initial weights are in W_max*(-1 to 1)          ***/
-        factor = rand()%100000;
-        factor = factor*2/99999-1;
-      }else if(random == 0) factor = 0;
-      else assert(0);
-      double weight = value*factor;
-      // set the sign of the readout weight the same as pre-neuron E/I might be hampful for the performance
-      // if((!pre->IsExcitatory() && weight > 0) ||(pre->IsExcitatory() && weight < 0))  weight = -1*weight; 
-      //if(weight > 0)  weight = weight*0.5;
-      LSMAddSynapse(pre,neuron,weight,fixed,weight_limit,liquid);
+            if(random == 2){
+                /*** This is for the case of continuous readout weights: ***/
+                /*** Remember to change the netlist to                   ***/
+                /*** lsmsynapse reservoir output -1 -1 8 2, 2 is random  ***/
+                /*** The initial weights are in W_max*(-1 to 1)          ***/
+                factor = rand()%100000;
+                factor = factor*2/99999-1;
+            }else if(random == 0) factor = 0;
+            else assert(0);
+            double weight = value*factor;
+            // set the sign of the readout weight the same as pre-neuron E/I might be hampful for the performance
+            // if((!pre->IsExcitatory() && weight > 0) ||(pre->IsExcitatory() && weight < 0))  weight = -1*weight; 
+            //if(weight > 0)  weight = weight*0.5;
+            LSMAddSynapse(pre,neuron,weight,fixed,weight_limit,liquid);
 #endif
-    }
-  }else{
-    /*** This is for adding input synapses!! ***/
-    assert(random == 1);
-    for(int i = 0; i < npost; i++){
-      neuron = post->Order(rand()%post->Size());
+        }
+    }else{
+        /*** This is for adding input synapses!! ***/
+        assert(random == 1);
+        for(int i = 0; i < npost; i++){
+            neuron = post->Order(rand()%post->Size());
 #ifdef DIGITAL
-      if(rand()%2==1) LSMAddSynapse(pre,neuron,value,fixed,D_weight_limit,liquid);
-      else LSMAddSynapse(pre,neuron,-value,fixed,D_weight_limit,liquid);
+            if(rand()%2==1) LSMAddSynapse(pre,neuron,value,fixed,D_weight_limit,liquid);
+            else LSMAddSynapse(pre,neuron,-value,fixed,D_weight_limit,liquid);
 #else
-      factor = rand()%2;
-      factor = factor*2-1;
-      LSMAddSynapse(pre,neuron,value*factor,fixed,weight_limit,liquid);
+            factor = rand()%2;
+            factor = factor*2-1;
+            LSMAddSynapse(pre,neuron,value*factor,fixed,weight_limit,liquid);
 #endif
+        }
     }
-  }
 }
 
 void Network::LSMAddSynapse(NeuronGroup * pre, NeuronGroup * post, int npre, int npost, int value, int random, bool fixed){
-  assert((npre == 1)||(npre == -1));
-  for(Neuron * neuron = pre->First(); neuron != NULL; neuron = pre->Next()){
-    LSMAddSynapse(neuron,post,npost,value, random, fixed);
-  }
+    assert((npre == 1)||(npre == -1));
+    for(Neuron * neuron = pre->First(); neuron != NULL; neuron = pre->Next()){
+        LSMAddSynapse(neuron,post,npost,value, random, fixed);
+    }
 }
 
 void Network::LSMAddSynapse(char * pre, char * post, int npre, int npost, int value, int random, bool fixed){
-  NeuronGroup * preNeuronGroup = SearchForNeuronGroup(pre);
-  NeuronGroup * postNeuronGroup = SearchForNeuronGroup(post);
-  assert((preNeuronGroup != NULL)&&(postNeuronGroup != NULL));
+    NeuronGroup * preNeuronGroup = SearchForNeuronGroup(pre);
+    NeuronGroup * postNeuronGroup = SearchForNeuronGroup(post);
+    assert((preNeuronGroup != NULL)&&(postNeuronGroup != NULL));
 
-  // add synapses
-  LSMAddSynapse(preNeuronGroup, postNeuronGroup, npre, npost, value, random, fixed);
+    // add synapses
+    LSMAddSynapse(preNeuronGroup, postNeuronGroup, npre, npost, value, random, fixed);
 }
 
 
 void Network::PrintSize(){
-  cout<<"Total Number of neurons: "<<_allNeurons.size()<<endl;
-  cout<<"Total Number of synapses: "<<_synapses.size()<<endl;
-  int numExitatory = 0;
-  int numLearning = 0;
-  for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++){
-    if((*iter)->Excitatory()==true) numExitatory++;
-    if((*iter)->Fixed()==false) numLearning++;
-  }
-  cout<<"\tNumber of excitatory synapses: "<<numExitatory<<endl;
-  cout<<"\tNumber of learning synapses: "<<numLearning<<endl;
+    cout<<"Total Number of neurons: "<<_allNeurons.size()<<endl;
+    cout<<"Total Number of synapses: "<<_synapses.size()<<endl;
+    int numExitatory = 0;
+    int numLearning = 0;
+    for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++){
+        if((*iter)->Excitatory()==true) numExitatory++;
+        if((*iter)->Fixed()==false) numLearning++;
+    }
+    cout<<"\tNumber of excitatory synapses: "<<numExitatory<<endl;
+    cout<<"\tNumber of learning synapses: "<<numLearning<<endl;
 }
 
 int Network::LSMSumAllOutputSyns(){
-  int sum = 0;
-  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) sum += (*iter)->SizeOutputSyns();
-  return sum;
+    int sum = 0;
+    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) sum += (*iter)->SizeOutputSyns();
+    return sum;
 }
 
 void Network::LSMTruncSyns(int loss_synapse){
-  int i,j,k;
-  char *_name;
-  
-  LSMPrintAllSyns(0);
-  for(i = 0; i < loss_synapse; i++){
-    j = 0;
-    cout<<"# of all neurons:"<<_allNeurons.size()<<endl;
-    k = rand()%(_allNeurons.size()-109) + 83; //Only select synapse in liquid
-    cout<<"# of Neurons in liquid: "<< (_allNeurons.size()-87)<<endl;
-    cout<<"k = "<<k<<endl;
-    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++){
-      if(j == k){
-         _name = (*iter)->Name();
-         assert((_name[0] == 'r')&&(_name[1] == 'e')&&(_name[2] == 's'));
-         (*iter)->ResizeSyn();
-         break;
-      }
-      else j++;
-    }
-  }
+    int i,j,k;
+    char *_name;
 
-  //Print all synapses to double check
-  LSMPrintAllSyns(1);
+    LSMPrintAllSyns(0);
+    for(i = 0; i < loss_synapse; i++){
+        j = 0;
+        cout<<"# of all neurons:"<<_allNeurons.size()<<endl;
+        k = rand()%(_allNeurons.size()-109) + 83; //Only select synapse in liquid
+        cout<<"# of Neurons in liquid: "<< (_allNeurons.size()-87)<<endl;
+        cout<<"k = "<<k<<endl;
+        for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++){
+            if(j == k){
+                _name = (*iter)->Name();
+                assert((_name[0] == 'r')&&(_name[1] == 'e')&&(_name[2] == 's'));
+                (*iter)->ResizeSyn();
+                break;
+            }
+            else j++;
+        }
+    }
+
+    //Print all synapses to double check
+    LSMPrintAllSyns(1);
 
 } 
 
 void Network::LSMTruncNeurons(int loss_neuron){
- int i,j,k;
- char *_name;
- 
- assert(_allReservoirs.size() == 1);
+    int i,j,k;
+    char *_name;
 
- while(i < loss_neuron){
-    int j = 0;
-    int k = rand()%135; //Only select neuron in liquid
-    for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	// for all reservoir neurons:
-	for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
-	    if(j == k){
-		_name = neuron->Name();
-		assert((_name[0] == 'r')&&(_name[1] == 'e')&&(_name[2] == 's'));
-		if(neuron->LSMCheckNeuronMode(DEACTIVATED) == false){
-		    cout<<"The reservoir neuron being removed has index: "<<k<<endl;
-		    neuron->LSMSetNeuronMode(DEACTIVATED);
-		    ++i;
-		    (*it)->UnlockFirst();
-		    break;
-		}
-	    }
-	    else j++;
-	}
+    assert(_allReservoirs.size() == 1);
+
+    while(i < loss_neuron){
+        int j = 0;
+        int k = rand()%135; //Only select neuron in liquid
+        for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+            // for all reservoir neurons:
+            for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
+                if(j == k){
+                    _name = neuron->Name();
+                    assert((_name[0] == 'r')&&(_name[1] == 'e')&&(_name[2] == 's'));
+                    if(neuron->LSMCheckNeuronMode(DEACTIVATED) == false){
+                        cout<<"The reservoir neuron being removed has index: "<<k<<endl;
+                        neuron->LSMSetNeuronMode(DEACTIVATED);
+                        ++i;
+                        (*it)->UnlockFirst();
+                        break;
+                    }
+                }
+                else j++;
+            }
+        }
     }
- }
 }
 
 void Network::LSMPrintAllLiquidSyns(int count){
-  FILE * Fp_liquid = NULL;
-  char filename[64];
-  sprintf(filename,"reservoir_synapse_%d.txt",count);
-  Fp_liquid = fopen(filename,"w");
-  assert(Fp_liquid != NULL);
-  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++) (*iter)->LSMPrintLiquidSyns(Fp_liquid);
-  fclose(Fp_liquid);
+    FILE * Fp_liquid = NULL;
+    char filename[64];
+    sprintf(filename,"reservoir_synapse_%d.txt",count);
+    Fp_liquid = fopen(filename,"w");
+    assert(Fp_liquid != NULL);
+    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++) (*iter)->LSMPrintLiquidSyns(Fp_liquid);
+    fclose(Fp_liquid);
 }
 
 
 int Network::LSMSizeAllNeurons(){
-  return _allNeurons.size();
+    return _allNeurons.size();
 }
 
 void Network::LSMPrintAllSyns(int count){
-  FILE * Fp_syn = NULL;
-  char filename[64]; 
-  sprintf(filename,"all_synapse_%d.txt",count);
-  Fp_syn = fopen(filename,"w");
-  assert(Fp_syn != NULL);
-  
-  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++) (*iter)->LSMPrintOutputSyns(Fp_syn);
-  fclose(Fp_syn);
+    FILE * Fp_syn = NULL;
+    char filename[64]; 
+    sprintf(filename,"all_synapse_%d.txt",count);
+    Fp_syn = fopen(filename,"w");
+    assert(Fp_syn != NULL);
+
+    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++) (*iter)->LSMPrintOutputSyns(Fp_syn);
+    fclose(Fp_syn);
 }
 
 void Network::LSMPrintAllNeurons(int count){
-  FILE * Fp_neuron = NULL;
-  char filename[64];
-  char * _name; 
-  sprintf(filename,"l_neuron_%d.txt",count);
-  Fp_neuron = fopen(filename,"w");
-  assert(Fp_neuron != NULL);
-  
-  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++){
-      _name = (*iter)->Name();
-      if(Fp_neuron != NULL) fprintf(Fp_neuron,"%s\n",_name);
-  }
-  fclose(Fp_neuron);
+    FILE * Fp_neuron = NULL;
+    char filename[64];
+    char * _name; 
+    sprintf(filename,"l_neuron_%d.txt",count);
+    Fp_neuron = fopen(filename,"w");
+    assert(Fp_neuron != NULL);
+
+    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++){
+        _name = (*iter)->Name();
+        if(Fp_neuron != NULL) fprintf(Fp_neuron,"%s\n",_name);
+    }
+    fclose(Fp_neuron);
 }
 
 //***********************************************************************************
@@ -481,11 +482,11 @@ void Network::LSMAdaptivePowerGating(){
 
     int cnt = 0;
     for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	// for all reservoir neurons:
-	for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
-	    // do the power gating:
-	    cnt += neuron->PowerGating();
-	}
+        // for all reservoir neurons:
+        for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
+            // do the power gating:
+            cnt += neuron->PowerGating();
+        }
     }
     cout<<"Total number of reservoir neurons being power gated is "<<cnt<<endl;
 }
@@ -502,14 +503,14 @@ void Network::LSMSumGatedNeurons(){
 
     int cnt = 0;
     for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	// for all reservoir neurons:
-	for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
-	    // do the power gating:
-	    if(neuron->LSMCheckNeuronMode(DEACTIVATED)){
-		cnt++;
-		cout<<"The neuron gated: "<<neuron->Name()<<endl;
-	    }
-	}
+        // for all reservoir neurons:
+        for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
+            // do the power gating:
+            if(neuron->LSMCheckNeuronMode(DEACTIVATED)){
+                cnt++;
+                cout<<"The neuron gated: "<<neuron->Name()<<endl;
+            }
+        }
     }
     cout<<"Actually, total number of reservoir neurons being power gated is "<<cnt<<endl;
 }
@@ -525,14 +526,14 @@ void Network::LSMHubDetection(){
 
     int cnt = 0;
     for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	// for all reservoir neurons:
-	for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
-	    // do the hub detection
-	    if(neuron->IsHubRoot()){
-		cnt++;
-		cout<<"The neuron which is the core of hub "<<neuron->Name()<<endl;
-	    }
-	}
+        // for all reservoir neurons:
+        for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
+            // do the hub detection
+            if(neuron->IsHubRoot()){
+                cnt++;
+                cout<<"The neuron which is the core of hub "<<neuron->Name()<<endl;
+            }
+        }
     }
     cout<<"Total number of hubs in the reservoir is "<<cnt<<endl;
 }
@@ -554,7 +555,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 
     // 1. Clear the signals
     LSMClearSignals();
-    
+
     // 2. Load the first speech:
 #ifdef CV
     info = LoadFirstSpeechTrainCV(networkmode);
@@ -565,46 +566,47 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
     // 3. Load the speech for training
     while(info != -1){
         count++;
-        int time = 0;
-	Foutp = NULL;
+        int time = 0, end_time = this->SpeechEndTime();
+        Foutp = NULL;
 #ifdef _VISUALIZE_READOUT_RESPONSE
-	if(tid == 0){
-	  sprintf(filename,"Readout_Response_Supv/train/readout_spikes_%d.dat",info);
-	  Foutp = fopen(filename,"a");
-	  assert(Foutp != NULL);
-	}
+        if(tid == 0){
+            sprintf(filename,"Readout_Response_Supv/train/readout_spikes_%d.dat",info);
+            Foutp = fopen(filename,"a");
+            assert(Foutp != NULL);
+        }
 #endif
 #ifdef _SHOW_SPEECH_ORDER
-	cout<<"************* Speech : "<<info<<" ****************"<<endl;
+        cout<<"************* Speech : "<<info<<" ****************"<<endl;
 #endif
-	while(!LSMEndOfSpeech(networkmode)){
-	  LSMNextTimeStep(++time, true, iteration, 1, Foutp, NULL); 
-	}
+        while(!LSMEndOfSpeech(networkmode)){
+            LSMNextTimeStep(++time, true, iteration, end_time, Foutp, NULL); 
+        }
 #ifdef _VISUALIZE_READOUT_RESPONSE
-	if(tid == 0){
-	  assert(Foutp != NULL);
-	  fprintf(Foutp,"%d\t%d\n",-1,-1);
-	  fclose(Foutp);
-	}
+        if(tid == 0){
+            assert(Foutp != NULL);
+            fprintf(Foutp,"%d\t%d\n",-1,-1);
+            fclose(Foutp);
+        }
 #endif
 #ifdef _DUMP_WAVEFORM
-	if(tid == 0 && iteration == 0){
-	  DumpWaveForm("Waveform/train", info);
-	}
+        if(tid == 0 && iteration == 0){
+            DumpWaveForm("Waveform/train", info);
+        }
+#endif
+        // Apply the error bp when the speech is played
+        if(_network_mode == READOUTBP)        
+            BackPropError(iteration);
+
+#if defined(_UPDATE_AT_LAST)
+        UpdateLearningWeights();
 #endif
 
-#if defined(_REWARD_MODULATE_GLOBAL)
-	BackPropError();
-#elif defined(_UPDATE_AT_LAST)
-    UpdateLearningWeights();
-#endif
-
-	LSMClearSignals();
+        LSMClearSignals();
 
 #ifdef CV
-	info = LoadNextSpeechTrainCV(networkmode);
+        info = LoadNextSpeechTrainCV(networkmode);
 #else
-	info = LoadNextSpeech(true, networkmode);
+        info = LoadNextSpeech(true, networkmode);
 #endif
     }
     LSMClearSignals();
@@ -623,54 +625,57 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #if defined(_WRITE_STAT)
         sprintf(filename,"outputs/spikepattern%d.dat",info);
 #else
-	sprintf(filename, "Readout_Response_Supv/test/readout_spikes_%d.dat",info);
+        sprintf(filename, "Readout_Response_Supv/test/readout_spikes_%d.dat",info);
 #endif
-	Foutp = fopen(filename,"a");
-	assert(Foutp != NULL);
+        Foutp = fopen(filename,"a");
+        assert(Foutp != NULL);
 #endif
 
-	int time = 0, end_time = this->SpeechEndTime();
-	while(!LSMEndOfSpeech(networkmode)){
-	  LSMNextTimeStep(++time,false,1,end_time, Foutp, NULL);
-	}
-	/*
-	if(file[info] != -1 && file[info] != Tid){
-          cout<<"Thread "<<Tid<<" tried to write file: "<<filename<<" but Thread "<<file[info]<<" is writing it!"<<endl;
-	  assert(0);
+        int time = 0, end_time = this->SpeechEndTime();
+        while(!LSMEndOfSpeech(networkmode)){
+            LSMNextTimeStep(++time,false,1,end_time, Foutp, NULL);
         }
-	file[info] = Tid;
-      */
+        /*
+           if(file[info] != -1 && file[info] != Tid){
+           cout<<"Thread "<<Tid<<" tried to write file: "<<filename<<" but Thread "<<file[info]<<" is writing it!"<<endl;
+           assert(0);
+           }
+           file[info] = Tid;
+           */
 #if defined(_WRITE_STAT) || defined(_VISUALIZE_READOUT_RESPONSE)
-      assert(Foutp != NULL);
-      fprintf(Foutp,"%d\t%d\n",-1,-1);
-      fclose(Foutp);
+        assert(Foutp != NULL);
+        fprintf(Foutp,"%d\t%d\n",-1,-1);
+        fclose(Foutp);
 #endif
 
-      ReadoutJudge(correct, wrong, even); // judge the readout output here
-      CollectErrorPerSample(each_sample_errors); // collect the test error for the sample
+        ReadoutJudge(correct, wrong, even); // judge the readout output here
+        CollectErrorPerSample(each_sample_errors); // collect the test error for the sample
+#ifdef _PRINT_SPIKE_COUNT
+        PrintSpikeCount("readout"); // print the readout firing counts
+#endif
 
 #ifdef _DUMP_WAVEFORM 
-      if(tid == 0 && iteration == 0){
-	DumpWaveForm("Waveform/test", info);
-      }
+        if(tid == 0 && iteration == 0){
+            DumpWaveForm("Waveform/test", info);
+        }
 #endif
 
 #ifdef _DUMP_CALCIUM
-      if(tid == 0 && iteration == 49){
-        DumpCalciumLevels("readout", "Calcium", "speech_"+ to_string(info));
-      }
+        if(tid == 0 && iteration == 49){
+            DumpCalciumLevels("readout", "Calcium", "speech_"+ to_string(info));
+        }
 #endif
-      LSMClearSignals();
-      
+        LSMClearSignals();
+
 #ifdef CV
-      info = LoadNextSpeechTestCV(networkmode);
+        info = LoadNextSpeechTestCV(networkmode);
 #else
-      info = LoadNextSpeech(false, networkmode);
+        info = LoadNextSpeech(false, networkmode);
 #endif
     }
     // 5. Push the recognition result:
     LSMPushResults(correct, wrong, even, iteration);
-    
+
     // 6. Log the test error
     LogTestError(each_sample_errors, iteration);
 }
@@ -687,7 +692,7 @@ void Network::LSMUnsupervisedTraining(networkmode_t networkmode, int tid){
     int info = -1;
     // 1. Clear the signals
     LSMClearSignals();
-    
+
     // 2. Load the first speech:
     info = LoadFirstSpeech(false, networkmode);
     FILE * Foutp = NULL;
@@ -695,30 +700,30 @@ void Network::LSMUnsupervisedTraining(networkmode_t networkmode, int tid){
 
     // 3. Simulate
     while(info != -1){
-        int time = 0;
+        int time = 0, end_time = this->SpeechEndTime();
 #ifdef _SHOW_SPEECH_ORDER
-	cout<<"========================\n"<<"Loading speech: "<<info<<"\n======================\n"<<endl;
+        cout<<"========================\n"<<"Loading speech: "<<info<<"\n======================\n"<<endl;
 #endif
-	Foutp = NULL;
+        Foutp = NULL;
 #ifdef _VISUALIZE_READOUT_RESPONSE
-	if(tid == 0){
-	  sprintf(filename,"Readout_Response_Unsupv/readout_spikes_%d.dat",info);
-	  Foutp = fopen(filename,"a");
-	  assert(Foutp != NULL);
-	}
+        if(tid == 0){
+            sprintf(filename,"Readout_Response_Unsupv/readout_spikes_%d.dat",info);
+            Foutp = fopen(filename,"a");
+            assert(Foutp != NULL);
+        }
 #endif
-	while(!LSMEndOfSpeech(networkmode)){
-	  LSMNextTimeStep(++time, false, 1, 1, Foutp, NULL); 
-	}
+        while(!LSMEndOfSpeech(networkmode)){
+            LSMNextTimeStep(++time, false, 1, end_time, Foutp, NULL); 
+        }
 #ifdef _VISUALIZE_READOUT_RESPONSE
-	if(tid == 0){
-	  assert(Foutp != NULL);
-	  fprintf(Foutp,"%d\t%d\n",-1,-1);
-	  fclose(Foutp);
-	}
+        if(tid == 0){
+            assert(Foutp != NULL);
+            fprintf(Foutp,"%d\t%d\n",-1,-1);
+            fclose(Foutp);
+        }
 #endif
-	LSMClearSignals();
-	info = LoadNextSpeech(false, networkmode);
+        LSMClearSignals();
+        info = LoadNextSpeech(false, networkmode);
     }
     LSMClearSignals();
 
@@ -733,190 +738,190 @@ void Network::LSMReservoirTraining(networkmode_t networkmode){
     //1. Clear the signals
     LSMClearSignals();
     // note that no training of the readout synapses happens during this stage!
-    
+
     // 2. Loop through reservoirs:
     int cnt_reservoir = 0;
     for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	info = LoadFirstSpeech(false, networkmode, (*it));
-	while(info != -1){
+        info = LoadFirstSpeech(false, networkmode, (*it));
+        while(info != -1){
 #ifdef _SEPARATE_RESERVOIR
-	    // separate the reservoir into several parts and stimulate with different sp:
-	    if(!(*it)->InSet(info % CLS)){
-		// speech label is not related to the reservoir, go on to next speech:
-		info = LoadNextSpeech(false, networkmode, (*it));
-		continue;
-	    }		
+            // separate the reservoir into several parts and stimulate with different sp:
+            if(!(*it)->InSet(info % CLS)){
+                // speech label is not related to the reservoir, go on to next speech:
+                info = LoadNextSpeech(false, networkmode, (*it));
+                continue;
+            }		
 #endif
 
 #ifdef _DEBUG_NETWORK_SEPARATE
-	    cout<<"Inputing speech: "<<info<<" for "<<cnt_reservoir<<"th reservoir"<<endl;
+            cout<<"Inputing speech: "<<info<<" for "<<cnt_reservoir<<"th reservoir"<<endl;
 #endif
-	    int time = 0;
+            int time = 0, end_time = this->SpeechEndTime();
 #ifdef _SHOW_SPEECH_ORDER
-	    cout<<"================================================\n"
-		<<"Loading speech: "<<info
-	        <<"\n===============================================\n"<<endl;
+            cout<<"================================================\n"
+                <<"Loading speech: "<<info
+                <<"\n===============================================\n"<<endl;
 #endif
-	    while(!LSMEndOfSpeech(networkmode)){
-		// the 6th parameter is the pointer to the individual reservoir,
-		// if the 6th parameter is NULL meaning we are using all reservoirs.
-      	        LSMNextTimeStep(++time, false, 1, 1, NULL, NULL, (*it)); 
-	    }
+            while(!LSMEndOfSpeech(networkmode)){
+                // the 6th parameter is the pointer to the individual reservoir,
+                // if the 6th parameter is NULL meaning we are using all reservoirs.
+                LSMNextTimeStep(++time, false, 1, end_time, NULL, NULL, (*it)); 
+            }
 
 #ifdef _PRINT_SYN_ACT
-	    char filename[128];
-	    sprintf(filename, "activity/speech_%d.txt", info);
-	    WriteSynActivityToFile("reservoir_1", "reservoir_15");
+            char filename[128];
+            sprintf(filename, "activity/speech_%d.txt", info);
+            WriteSynActivityToFile("reservoir_1", "reservoir_15");
 #endif
-	    LSMClearSignals();
-	    info = LoadNextSpeech(false, networkmode, (*it));
-	}
-	cnt_reservoir++;
+            LSMClearSignals();
+            info = LoadNextSpeech(false, networkmode, (*it));
+        }
+        cnt_reservoir++;
     }
 
 }
 
 //* next simulation step; the last parameter should be the ptr to reservoir or NULL.
 void Network::LSMNextTimeStep(int t, bool train,int iteration,int end_time, FILE * Foutp, FILE * Fp, NeuronGroup * reservoir){
-  _lsm_t = t;
+    _lsm_t = t;
 
-#if defined(_REWARD_MODULATE_GLOBAL) || defined(_REWARD_MODULATE_2ND_RESP)
-  for(vector<Synapse*>::iterator iter = _rosynapses.begin(); iter != _rosynapses.end(); ++iter) (*iter)->LSMRespDecay(t);
+#if defined(_REWARD_MODULATE_2ND_RESP)
+    for(vector<Synapse*>::iterator iter = _rosynapses.begin(); iter != _rosynapses.end(); ++iter) (*iter)->LSMRespDecay(t);
 #endif
 
-  for(list<Synapse*>::iterator iter = _lsmActiveSyns.begin(); iter != _lsmActiveSyns.end(); iter++) (*iter)->LSMNextTimeStep();
-  _lsmActiveSyns.clear();
+    for(list<Synapse*>::iterator iter = _lsmActiveSyns.begin(); iter != _lsmActiveSyns.end(); iter++) (*iter)->LSMNextTimeStep();
+    _lsmActiveSyns.clear();
 
-  // Please remember that the neuron firing activity will change the list: 
-  // _lsmActiveSyns, _lsmActiveSTDPLearnSyns, and _lsmActiveLearnSyns:
-  if(reservoir){
-      // one individual reservoir is considered :
-      // this case happens only when STDP training and we don't need to train readout!
-      assert(!_inputNeurons.empty());
-      for(list<Neuron*>::iterator it=_inputNeurons.begin(); it!=_inputNeurons.end();++it)
-	  (*it)->LSMNextTimeStep(t, Foutp, Fp, train, end_time);
-      for(Neuron* neuron=reservoir->First(); neuron != NULL;neuron = reservoir->Next()) 
-	  neuron->LSMNextTimeStep(t, Foutp, Fp, train,end_time);
-  }
-  else{
-      // all reservoirs are considered:
-    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMNextTimeStep(t, Foutp, Fp, train, end_time);
-  }
-  // train the reservoir/input/readout using STDP (unsupervised):
-  if(_network_mode == TRAINRESERVOIR || _network_mode == TRAININPUT || _network_mode == TRAINREADOUT){
-      assert(train == false);
-#ifndef _LUT_HARDWARE_APPROACH
-      // using state variable to implement the STDP mechanism
-      // for training the reservoir synapse 
-      if(_network_mode == TRAINRESERVOIR)
-	if(reservoir){
-	  // if the individual reservoir is specified:
-	  for(Synapse * synapse = reservoir->FirstSynapse(); synapse != NULL; synapse = reservoir->NextSynapse()){
-	      synapse->LSMUpdate(t);
-	  }    
-	}
-	else{
-	  // if simulating the whole network:
-	  for(vector<Synapse*>::iterator iter = _rsynapses.begin(); iter != _rsynapses.end(); ++iter){
-	      // Update the local variable implememnting STDP:
-	      (*iter)->LSMUpdate(t);        
-	  }
-	}
-      else{
-	// for training the input/reaodut synapses (unsupervised)
-	vector<Synapse*> &tmp_synapses = _network_mode == TRAININPUT ? _isynapses : _rosynapses;
-	for(vector<Synapse*>::iterator iter = tmp_synapses.begin(); iter != tmp_synapses.end(); ++iter){
-	  // Update the local variable implememnting STDP:
-	  (*iter)->LSMUpdate(t);        
-	}
-      }
-#endif
-      
-      for(list<Synapse*>::iterator iter = _lsmActiveSTDPLearnSyns.begin(); iter != _lsmActiveSTDPLearnSyns.end(); iter++){   
-	  // train the targeted synapse with STDP rule:
-	  (*iter)->LSMSTDPLearn(t);
-      }
-      _lsmActiveSTDPLearnSyns.clear();
-  }
-    
-  if(train == true) {
-    if(_network_mode == READOUT){
-      for(list<Synapse*>::iterator iter = _lsmActiveLearnSyns.begin(); iter != _lsmActiveLearnSyns.end(); iter++){
-	(*iter)->LSMLearn(t, iteration);
-      }
-      _lsmActiveLearnSyns.clear();
-    }else if(_network_mode == READOUTSUPV){
-      for(list<Synapse*>::iterator iter = _lsmActiveSTDPLearnSyns.begin(); iter != _lsmActiveSTDPLearnSyns.end(); iter++){
-	(*iter)->LSMSTDPSupvLearn(t, iteration);
-      }
-      _lsmActiveSTDPLearnSyns.clear();
+    // Please remember that the neuron firing activity will change the list: 
+    // _lsmActiveSyns, _lsmActiveSTDPLearnSyns, and _lsmActiveLearnSyns:
+    if(reservoir){
+        // one individual reservoir is considered :
+        // this case happens only when STDP training and we don't need to train readout!
+        assert(!_inputNeurons.empty());
+        for(list<Neuron*>::iterator it=_inputNeurons.begin(); it!=_inputNeurons.end();++it)
+            (*it)->LSMNextTimeStep(t, Foutp, Fp, train, end_time);
+        for(Neuron* neuron=reservoir->First(); neuron != NULL;neuron = reservoir->Next()) 
+            neuron->LSMNextTimeStep(t, Foutp, Fp, train,end_time);
     }
-  }
+    else{
+        // all reservoirs are considered:
+        for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMNextTimeStep(t, Foutp, Fp, train, end_time);
+    }
+    // train the reservoir/input/readout using STDP (unsupervised):
+    if(_network_mode == TRAINRESERVOIR || _network_mode == TRAININPUT || _network_mode == TRAINREADOUT){
+        assert(train == false);
+#ifndef _LUT_HARDWARE_APPROACH
+        // using state variable to implement the STDP mechanism
+        // for training the reservoir synapse 
+        if(_network_mode == TRAINRESERVOIR)
+            if(reservoir){
+                // if the individual reservoir is specified:
+                for(Synapse * synapse = reservoir->FirstSynapse(); synapse != NULL; synapse = reservoir->NextSynapse()){
+                    synapse->LSMUpdate(t);
+                }    
+            }
+            else{
+                // if simulating the whole network:
+                for(vector<Synapse*>::iterator iter = _rsynapses.begin(); iter != _rsynapses.end(); ++iter){
+                    // Update the local variable implememnting STDP:
+                    (*iter)->LSMUpdate(t);        
+                }
+            }
+        else{
+            // for training the input/reaodut synapses (unsupervised)
+            vector<Synapse*> &tmp_synapses = _network_mode == TRAININPUT ? _isynapses : _rosynapses;
+            for(vector<Synapse*>::iterator iter = tmp_synapses.begin(); iter != tmp_synapses.end(); ++iter){
+                // Update the local variable implememnting STDP:
+                (*iter)->LSMUpdate(t);        
+            }
+        }
+#endif
+
+        for(list<Synapse*>::iterator iter = _lsmActiveSTDPLearnSyns.begin(); iter != _lsmActiveSTDPLearnSyns.end(); iter++){   
+            // train the targeted synapse with STDP rule:
+            (*iter)->LSMSTDPLearn(t);
+        }
+        _lsmActiveSTDPLearnSyns.clear();
+    }
+
+    if(train == true) {
+        if(_network_mode == READOUT){
+            for(list<Synapse*>::iterator iter = _lsmActiveLearnSyns.begin(); iter != _lsmActiveLearnSyns.end(); iter++){
+                (*iter)->LSMLearn(t, iteration);
+            }
+            _lsmActiveLearnSyns.clear();
+        }else if(_network_mode == READOUTSUPV){
+            for(list<Synapse*>::iterator iter = _lsmActiveSTDPLearnSyns.begin(); iter != _lsmActiveSTDPLearnSyns.end(); iter++){
+                (*iter)->LSMSTDPSupvLearn(t, iteration);
+            }
+            _lsmActiveSTDPLearnSyns.clear();
+        }
+    }
 
 #ifdef _CORBASED_SPARSE
-  if(_network_mode == TRANSIENTSTATE){
-    for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-      assert(*it);
-      (*it)->ComputeCorrelation();
+    if(_network_mode == TRANSIENTSTATE){
+        for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+            assert(*it);
+            (*it)->ComputeCorrelation();
+        }
     }
-  }
 #endif
 }
 
 
 Neuron * Network::SearchForNeuron(const char * name){
-  for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
-    if(strcmp((*iter)->Name(),name) == 0){
-      return (*iter);
-    }
+    for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
+        if(strcmp((*iter)->Name(),name) == 0){
+            return (*iter);
+        }
 
-  return NULL;
+    return NULL;
 }
 
 Neuron * Network::SearchForNeuron(const char * name1, const char * name2){
-  char * name = new char[strlen(name1)+strlen(name2)+2];
-  sprintf(name,"%s_%s",name1,name2);
+    char * name = new char[strlen(name1)+strlen(name2)+2];
+    sprintf(name,"%s_%s",name1,name2);
 
-  list<NeuronGroup*>::iterator iter;
-  Neuron * neuron;
+    list<NeuronGroup*>::iterator iter;
+    Neuron * neuron;
 
-  for(iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
-    if(strcmp((*iter)->Name(),name1) == 0) break;
+    for(iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
+        if(strcmp((*iter)->Name(),name1) == 0) break;
 
-  assert(iter != _groupNeurons.end());
-  for(neuron = (*iter)->First(); neuron != NULL; neuron = (*iter)->Next())
-    if(strcmp(name,neuron->Name()) == 0){
-      (*iter)->UnlockFirst();
-      delete [] name;
-      return neuron;
-    }
+    assert(iter != _groupNeurons.end());
+    for(neuron = (*iter)->First(); neuron != NULL; neuron = (*iter)->Next())
+        if(strcmp(name,neuron->Name()) == 0){
+            (*iter)->UnlockFirst();
+            delete [] name;
+            return neuron;
+        }
 
-  assert(neuron != NULL);
+    assert(neuron != NULL);
 }
 
 
 NeuronGroup * Network::SearchForNeuronGroup(const char * name){
-  list<NeuronGroup*>::iterator iter;
+    list<NeuronGroup*>::iterator iter;
 
-  for(iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
-    if(strcmp((*iter)->Name(),name) == 0) break;
+    for(iter = _groupNeurons.begin(); iter != _groupNeurons.end(); iter++)
+        if(strcmp((*iter)->Name(),name) == 0) break;
 
-  if(iter == _groupNeurons.end()) return NULL;
-  return (*iter);
+    if(iter == _groupNeurons.end()) return NULL;
+    return (*iter);
 }
 
 // inquiry to know the ending time of the current speech being loaded:
 int Network::SpeechEndTime(){
-  if(_sp == NULL){
-    cout<<"In Network::EndSpeechTime(), find out the attached _sp in network"
-	<<" is valid!!"<< endl;
-    assert(_sp != NULL);
-  }
-  return _sp->EndTime();
+    if(_sp == NULL){
+        cout<<"In Network::EndSpeechTime(), find out the attached _sp in network"
+            <<" is valid!!"<< endl;
+        assert(_sp != NULL);
+    }
+    return _sp->EndTime();
 }
 
 void Network::AddSpeech(Speech * speech){
-  _speeches.push_back(speech);
+    _speeches.push_back(speech);
 }
 
 //* function wrapper
@@ -927,15 +932,15 @@ void Network::AddSpeech(Speech * speech){
 //  Although we do not load the speech to the reservoir during STDP training, we still
 //  need to set the reservoir neuron mode under this case !!!!
 void Network::LoadSpeeches(Speech      * sp,
-			   NeuronGroup * input,
-			   NeuronGroup * reservoir,
-			   NeuronGroup * output,
-			   neuronmode_t neuronmode_input,
-			   neuronmode_t neuronmode_reservoir,
-			   neuronmode_t neuronmode_readout,
-			   bool train,
-			   bool ignore_reservoir
-			   )
+        NeuronGroup * input,
+        NeuronGroup * reservoir,
+        NeuronGroup * output,
+        neuronmode_t neuronmode_input,
+        neuronmode_t neuronmode_reservoir,
+        neuronmode_t neuronmode_readout,
+        bool train,
+        bool ignore_reservoir
+        )
 {
     // assign the speech ptr here!
     assert(sp);
@@ -948,35 +953,38 @@ void Network::LoadSpeeches(Speech      * sp,
     // channels are used for outputing spikes/ recording spikes
     if(!ignore_reservoir){
         // networkmode is TRANSIENT/(TRAINREADOUT/READOUT/READOUTSUPV), the reservoir needs to record/output spike
-	assert(_network_mode != TRAINRESERVOIR && _network_mode != TRAININPUT);
-	// setup the channel and set neuronmode
-	if(reservoir)
-	    reservoir->LSMLoadSpeech(sp,&_lsm_reservoir,neuronmode_reservoir,RESERVOIRCHANNEL);
-	else
-	    LoadSpeechToAllReservoirs(sp,neuronmode_reservoir);
+        assert(_network_mode != TRAINRESERVOIR && _network_mode != TRAININPUT);
+        // setup the channel and set neuronmode
+        if(reservoir)
+            reservoir->LSMLoadSpeech(sp,&_lsm_reservoir,neuronmode_reservoir,RESERVOIRCHANNEL);
+        else
+            LoadSpeechToAllReservoirs(sp,neuronmode_reservoir);
     }else{
         // TRAINRESERVOIR/TRAININPUT: no channel should be attached to reservoir neurons, only set neuronmode 
-	assert(reservoir && _lsm_reservoir_layer);
-	// pass a NULL to ptr to speech, so that the function only set neuron mode!
-	reservoir->LSMSetNeurons(NULL, neuronmode_reservoir, RESERVOIRCHANNEL, 0);
+        assert(reservoir && _lsm_reservoir_layer);
+        // pass a NULL to ptr to speech, so that the function only set neuron mode!
+        reservoir->LSMSetNeurons(NULL, neuronmode_reservoir, RESERVOIRCHANNEL, 0);
     }
-    
+
     // load the speech to the output layer and setup its channels
     output->LSMLoadSpeech(sp,&_lsm_readout,neuronmode_readout,READOUTCHANNEL);
 
     // if train the readout -- supervised STDP is controlled here!
     if(train == true){
-	assert(output);
-	if(neuronmode_readout == NORMAL) // original Yong's rule
-	  output->LSMSetTeacherSignalStrength(DEFAULT_TS_STRENGTH_P, DEFAULT_TS_STRENGTH_N, DEFAULT_TS_FREQ);
-	else if(neuronmode_readout == NORMALSTDP){ // supervised STDP 
-	  output->LSMSetTeacherSignalStrength(TS_STRENGTH_P_SUPV, TS_STRENGTH_N_SUPV, TS_FREQ_SUPV);
+        assert(output);
+        if(neuronmode_readout == NORMAL) // original Yong's rule
+            output->LSMSetTeacherSignalStrength(DEFAULT_TS_STRENGTH_P, DEFAULT_TS_STRENGTH_N, DEFAULT_TS_FREQ);
+        else if(neuronmode_readout == NORMALSTDP){ // supervised STDP 
+            output->LSMSetTeacherSignalStrength(TS_STRENGTH_P_SUPV, TS_STRENGTH_N_SUPV, TS_FREQ_SUPV);
 #ifdef _REWARD_MODULATE 
-	  output->LSMTuneVth(sp->Class()); // tune the Vth for undesired neurons
+            output->LSMTuneVth(sp->Class()); // tune the Vth for undesired neurons
 #endif
-	}
-	else	  assert(0);
-	output->LSMSetTeacherSignal(sp->Class());
+        }
+        else if(neuronmode_readout == NORMALBP){ // error backprop, set the TS = 0
+            output->LSMSetTeacherSignalStrength(0, 0, 10000);
+        }
+        else	  assert(0);
+        output->LSMSetTeacherSignal(sp->Class());
     }
 }
 
@@ -993,18 +1001,18 @@ void Network::LoadSpeechToAllReservoirs(Speech* sp, neuronmode_t neuronmode_rese
     // the reservoir layer will be NULL if we load speech to every reservoir neuron
     // under the situation of separate reservoirs:
     assert(_lsm_reservoir_layer == NULL && _allReservoirs.size() > 1);
-    
+
     // count total number of reservoir neurons first 
     // and set the total number of reservoir channel!
     int cnt = 0;
     for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	cnt += (*it)->Size();
+        cnt += (*it)->Size();
     }
 #ifdef _DEBUG_NETWORK_LOADSPEECH2ALL
     cout<<"Total number of neurons in the reservoir: "<<cnt<<endl;
 #endif
     sp->SetNumReservoirChannel(cnt);
-    
+
     // set the total of reservoir channels:
     _lsm_reservoir = cnt;
 
@@ -1012,11 +1020,11 @@ void Network::LoadSpeechToAllReservoirs(Speech* sp, neuronmode_t neuronmode_rese
     // and set the neuronmode:
     int offset = 0;
     for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	(*it)->LSMSetNeurons(sp, neuronmode_reservoir, RESERVOIRCHANNEL, offset);
-	offset += (*it)->Size();
+        (*it)->LSMSetNeurons(sp, neuronmode_reservoir, RESERVOIRCHANNEL, offset);
+        offset += (*it)->Size();
     }	
 }
-  
+
 
 
 //* function wrapper for removing speeches in the network 
@@ -1025,22 +1033,22 @@ void Network::LSMNetworkRemoveSpeech(){
     assert(_lsm_input_layer || _lsm_output_layer);
 
     if(_lsm_input_layer)
-	_lsm_input_layer->LSMRemoveSpeech();
+        _lsm_input_layer->LSMRemoveSpeech();
     _lsm_input_layer = NULL;
 
     if(_lsm_output_layer)
-	_lsm_output_layer->LSMRemoveSpeech();
+        _lsm_output_layer->LSMRemoveSpeech();
     _lsm_output_layer = NULL;
 
     assert(!_allReservoirs.empty());
     if(_lsm_reservoir_layer == NULL){ // if all invidual reservoirs are loaded with speeches:
-	for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	    assert(*it);
-	    (*it)->LSMRemoveSpeech();
-	}
+        for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+            assert(*it);
+            (*it)->LSMRemoveSpeech();
+        }
     }
     else
-	_lsm_reservoir_layer->LSMRemoveSpeech();
+        _lsm_reservoir_layer->LSMRemoveSpeech();
 
     _lsm_reservoir_layer = NULL;
 }
@@ -1049,21 +1057,21 @@ void Network::LSMNetworkRemoveSpeech(){
 //* function wrapper for load the input, reservoir and output layers/neurongroups:
 //* if the reservoir_group is NULL, then we are going to load all individual reservoirs
 void Network::LSMLoadLayers(NeuronGroup* reservoir_group){
-  assert(_lsm_input_layer == NULL);
-  _lsm_input_layer = SearchForNeuronGroup("input");
-  assert(_lsm_input_layer != NULL);
+    assert(_lsm_input_layer == NULL);
+    _lsm_input_layer = SearchForNeuronGroup("input");
+    assert(_lsm_input_layer != NULL);
 
-  assert(!_allReservoirs.empty());
-  if(_allReservoirs.size() > 1)
-      _lsm_reservoir_layer = reservoir_group;
-  else{
-      assert(_lsm_reservoir_layer == NULL);
-      _lsm_reservoir_layer = SearchForNeuronGroup("reservoir");
-      assert(_lsm_reservoir_layer != NULL);
-  }
+    assert(!_allReservoirs.empty());
+    if(_allReservoirs.size() > 1)
+        _lsm_reservoir_layer = reservoir_group;
+    else{
+        assert(_lsm_reservoir_layer == NULL);
+        _lsm_reservoir_layer = SearchForNeuronGroup("reservoir");
+        assert(_lsm_reservoir_layer != NULL);
+    }
 
-  _lsm_output_layer = SearchForNeuronGroup("output");
-  assert(_lsm_output_layer != NULL);
+    _lsm_output_layer = SearchForNeuronGroup("output");
+    assert(_lsm_output_layer != NULL);
 }
 
 /************************************************************************
@@ -1071,35 +1079,40 @@ void Network::LSMLoadLayers(NeuronGroup* reservoir_group){
  * Implement the different neuron mode here for STDP/Supervised Training
  ***********************************************************************/
 void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neuronmode_t & neuronmode_input, neuronmode_t & neuronmode_reservoir, neuronmode_t & neuronmode_readout){
-  if(networkmode == TRANSIENTSTATE){
-    neuronmode_input = READCHANNEL;
-    neuronmode_reservoir = WRITECHANNEL;
-    neuronmode_readout = NORMAL;
-  }else if(networkmode == TRAINRESERVOIR){
-    neuronmode_input = READCHANNEL;
-    neuronmode_reservoir = STDP;
-    neuronmode_readout = NORMAL;
-  }else if(networkmode == TRAININPUT){
-    neuronmode_input = READCHANNELSTDP; // read channel and enable STDP
-    neuronmode_reservoir = NORMALSTDP;  // enable inputSyns trained by STDP
-    neuronmode_readout = NORMAL;
-  }else if(networkmode == TRAINREADOUT){ 
-    neuronmode_input = DEACTIVATED;
-    neuronmode_reservoir = READCHANNELSTDP; 
-    neuronmode_readout = NORMALSTDP;
-  }else if(networkmode == READOUT){
-    neuronmode_input = DEACTIVATED;
-    neuronmode_reservoir = READCHANNEL;
-    neuronmode_readout = NORMAL;
-  }
-  else if(networkmode == READOUTSUPV){
-    neuronmode_input = DEACTIVATED;
-    neuronmode_reservoir = READCHANNELSTDP;
-    neuronmode_readout = NORMALSTDP;
-  }else{
-    cout<<"Unrecognized network mode!"<<endl;
-    exit(EXIT_FAILURE);
-  }
+    if(networkmode == TRANSIENTSTATE){
+        neuronmode_input = READCHANNEL;
+        neuronmode_reservoir = WRITECHANNEL;
+        neuronmode_readout = NORMAL;
+    }else if(networkmode == TRAINRESERVOIR){
+        neuronmode_input = READCHANNEL;
+        neuronmode_reservoir = STDP;
+        neuronmode_readout = NORMAL;
+    }else if(networkmode == TRAININPUT){
+        neuronmode_input = READCHANNELSTDP; // read channel and enable STDP
+        neuronmode_reservoir = NORMALSTDP;  // enable inputSyns trained by STDP
+        neuronmode_readout = NORMAL;
+    }else if(networkmode == TRAINREADOUT){ 
+        neuronmode_input = DEACTIVATED;
+        neuronmode_reservoir = READCHANNELSTDP; 
+        neuronmode_readout = NORMALSTDP;
+    }else if(networkmode == READOUT){
+        neuronmode_input = DEACTIVATED;
+        neuronmode_reservoir = READCHANNEL;
+        neuronmode_readout = NORMAL;
+    }
+    else if(networkmode == READOUTSUPV){
+        neuronmode_input = DEACTIVATED;
+        neuronmode_reservoir = READCHANNELSTDP;
+        neuronmode_readout = NORMALSTDP;
+    }
+    else if(networkmode == READOUTBP){ // the error backprop mode
+        neuronmode_input = DEACTIVATED;
+        neuronmode_reservoir = READCHANNELBP;
+        neuronmode_readout = NORMALBP;
+    }else{
+        cout<<"Unrecognized network mode!"<<endl;
+        exit(EXIT_FAILURE);
+    }
 
 }
 
@@ -1116,15 +1129,15 @@ int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup 
     if(_sp_iter != _speeches.end()){
         LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer,neuronmode_input, neuronmode_reservoir, neuronmode_readout, train, ignore_reservoir);
 #ifdef _READOUT_HELPER_CURRENT
-	if(!train && networkmode == TRAINREADOUT && _lsm_output_layer){
-	  _lsm_output_layer->LSMSetTeacherSignal((*_sp_iter)->Class());
-	  _lsm_output_layer->LSMSetTeacherSignalStrength(TS_STRENGTH_P, TS_STRENGTH_N, TS_FREQ);
-	}
+        if(!train && networkmode == TRAINREADOUT && _lsm_output_layer){
+            _lsm_output_layer->LSMSetTeacherSignal((*_sp_iter)->Class());
+            _lsm_output_layer->LSMSetTeacherSignalStrength(TS_STRENGTH_P, TS_STRENGTH_N, TS_FREQ);
+        }
 #endif
-	return (*_sp_iter)->Index();
+        return (*_sp_iter)->Index();
     }else{
         _sp = NULL;
-	return -1;
+        return -1;
     }
 }
 
@@ -1133,32 +1146,32 @@ int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup 
     // if the input layer has not been added to the network, then add it.
     // this can only happen for measuring the separation property:
     if(!inputExist){
-      _sp_iter = _speeches.begin();
-      
-      if(_sp_iter != _speeches.end()){
-	// Add the input layer here!!!
-	InitializeInputLayer((*_sp_iter)->NumInputs(), (*_sp_iter)->NumConnections()); 
-      }
-      else{
-	cout<<"No speech parsed into the network!"<<endl;
-	return -1;
-      }
+        _sp_iter = _speeches.begin();
+
+        if(_sp_iter != _speeches.end()){
+            // Add the input layer here!!!
+            InitializeInputLayer((*_sp_iter)->NumInputs(), (*_sp_iter)->NumConnections()); 
+        }
+        else{
+            cout<<"No speech parsed into the network!"<<endl;
+            return -1;
+        }
     }
 
     LSMLoadLayers(group);
     neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
     // determine the neuron mode by the network mode:
     DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
-    
+
     bool ignore_reservoir = networkmode == TRAINRESERVOIR || networkmode == TRAININPUT ? true : false;
 
     _sp_iter = _speeches.begin();
     if(_sp_iter != _speeches.end()){
         LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer,neuronmode_input, neuronmode_reservoir, neuronmode_readout,train, ignore_reservoir);
-	return (*_sp_iter)->Index();
+        return (*_sp_iter)->Index();
     }else{
         _sp = NULL;
-	return -1;
+        return -1;
     }
 }
 
@@ -1171,28 +1184,28 @@ int Network::LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup *
     neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
     // determine the neuron mode by the network mode:
     DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
-    
+
     bool ignore_reservoir = networkmode == TRAINRESERVOIR || networkmode == TRAININPUT ? true : false;
 
     if(train == true) _lsm_output_layer->LSMRemoveTeacherSignal((*_sp_iter)->Class());
     _sp_iter++;
     if(_sp_iter != _speeches.end()){
-      LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout, train, ignore_reservoir);
+        LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout, train, ignore_reservoir);
 #ifdef _READOUT_HELPER_CURRENT
-      if(!train && networkmode==TRAINREADOUT && _lsm_output_layer) 
-	_lsm_output_layer->LSMSetTeacherSignal((*_sp_iter)->Class());
+        if(!train && networkmode==TRAINREADOUT && _lsm_output_layer) 
+            _lsm_output_layer->LSMSetTeacherSignal((*_sp_iter)->Class());
 #endif
-	return (*_sp_iter)->Index();
+        return (*_sp_iter)->Index();
     }else{
-	LSMNetworkRemoveSpeech();
-	return -1;
+        LSMNetworkRemoveSpeech();
+        return -1;
     }
 }
 
 // This function is similar to the original LoadNextSpeech. 
 // But it is only used for separation measurement.
 int Network::LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup * group, bool inputExist){
-  //assert(_lsm_input_layer != NULL);
+    //assert(_lsm_input_layer != NULL);
     assert(_lsm_reservoir_layer != NULL || _allReservoirs.size() > 1);
     assert(_lsm_output_layer != NULL);
 
@@ -1206,260 +1219,260 @@ int Network::LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup *
     _sp_iter++;
     if(_sp_iter != _speeches.end()){
         if(!inputExist){
-	  // if the input layer has not been added yet, added it here!
-	  InitializeInputLayer((*_sp_iter)->NumInputs(), (*_sp_iter)->NumConnections());
-	  assert(_lsm_input_layer == NULL);
-	  _lsm_input_layer = SearchForNeuronGroup("input");
-	  assert(_lsm_input_layer != NULL);
-	}
-	  
-	LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout,train, ignore_reservoir);
-	return (*_sp_iter)->Index();
+            // if the input layer has not been added yet, added it here!
+            InitializeInputLayer((*_sp_iter)->NumInputs(), (*_sp_iter)->NumConnections());
+            assert(_lsm_input_layer == NULL);
+            _lsm_input_layer = SearchForNeuronGroup("input");
+            assert(_lsm_input_layer != NULL);
+        }
+
+        LoadSpeeches(*_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout,train, ignore_reservoir);
+        return (*_sp_iter)->Index();
     }else{
-	LSMNetworkRemoveSpeech();
-	return -1;
+        LSMNetworkRemoveSpeech();
+        return -1;
     }
 }
 
 
 int Network::LoadFirstSpeechTrainCV(networkmode_t networkmode){
-  assert((_fold_ind>=0)&&(_fold_ind<_fold));
- 
-  LSMLoadLayers(NULL);
-  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
-  // determine the neuron mode by the network mode:
-  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
-   
-    
-  if(_fold_ind == 0) _train_fold_ind = 1;
-  else _train_fold_ind = 0;
-  _cv_train_sp_iter = _CVspeeches[_train_fold_ind]->begin();
-  if(_cv_train_sp_iter != _CVspeeches[_train_fold_ind]->end()){
-    LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout,true, false); 
-      return (*_cv_train_sp_iter)->Index();
-  }else{
-      cout<<"Warning, no training speech is specified!!"<<endl;
-      _sp = NULL;
-      return -1;
-  }
+    assert((_fold_ind>=0)&&(_fold_ind<_fold));
+
+    LSMLoadLayers(NULL);
+    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
+    // determine the neuron mode by the network mode:
+    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
+
+
+    if(_fold_ind == 0) _train_fold_ind = 1;
+    else _train_fold_ind = 0;
+    _cv_train_sp_iter = _CVspeeches[_train_fold_ind]->begin();
+    if(_cv_train_sp_iter != _CVspeeches[_train_fold_ind]->end()){
+        LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout,true, false); 
+        return (*_cv_train_sp_iter)->Index();
+    }else{
+        cout<<"Warning, no training speech is specified!!"<<endl;
+        _sp = NULL;
+        return -1;
+    }
 }
 
 int Network::LoadNextSpeechTrainCV(networkmode_t networkmode){
-  assert(_lsm_input_layer != NULL);
-  assert(_lsm_reservoir_layer != NULL || _allReservoirs.size() > 1);
-  assert(_lsm_output_layer != NULL);
-  
-  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
-  // determine the neuron mode by the network mode:
-  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout); 
+    assert(_lsm_input_layer != NULL);
+    assert(_lsm_reservoir_layer != NULL || _allReservoirs.size() > 1);
+    assert(_lsm_output_layer != NULL);
 
-  _lsm_output_layer->LSMRemoveTeacherSignal((*_cv_train_sp_iter)->Class());
-  _cv_train_sp_iter++;
-  if(_cv_train_sp_iter != _CVspeeches[_train_fold_ind]->end()){
-    LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout,true, false);
-    return (*_cv_train_sp_iter)->Index();
-  }else{
-    ++_train_fold_ind;
-    if(_train_fold_ind == _fold_ind)  ++_train_fold_ind;
-    
-    if(_train_fold_ind < _fold){
-	_cv_train_sp_iter = _CVspeeches[_train_fold_ind]->begin();
-	if(_cv_train_sp_iter != _CVspeeches[_train_fold_ind]->end()){
-      	    LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir,neuronmode_readout, true, false);
-	    return (*_cv_train_sp_iter)->Index();
-	}else{
-	    assert(0);
-	    return -1;
-	}
+    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
+    // determine the neuron mode by the network mode:
+    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout); 
+
+    _lsm_output_layer->LSMRemoveTeacherSignal((*_cv_train_sp_iter)->Class());
+    _cv_train_sp_iter++;
+    if(_cv_train_sp_iter != _CVspeeches[_train_fold_ind]->end()){
+        LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout,true, false);
+        return (*_cv_train_sp_iter)->Index();
     }else{
-	LSMNetworkRemoveSpeech();
-	return -1;
+        ++_train_fold_ind;
+        if(_train_fold_ind == _fold_ind)  ++_train_fold_ind;
+
+        if(_train_fold_ind < _fold){
+            _cv_train_sp_iter = _CVspeeches[_train_fold_ind]->begin();
+            if(_cv_train_sp_iter != _CVspeeches[_train_fold_ind]->end()){
+                LoadSpeeches(*_cv_train_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir,neuronmode_readout, true, false);
+                return (*_cv_train_sp_iter)->Index();
+            }else{
+                assert(0);
+                return -1;
+            }
+        }else{
+            LSMNetworkRemoveSpeech();
+            return -1;
+        }
     }
-  }
 }
 
 int Network::LoadFirstSpeechTestCV(networkmode_t networkmode){
-  assert((_fold_ind>=0)&&(_fold_ind<_fold));
+    assert((_fold_ind>=0)&&(_fold_ind<_fold));
 
-  LSMLoadLayers(NULL);
-  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
-  // determine the neuron mode by the network mode:
-  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout); 
+    LSMLoadLayers(NULL);
+    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
+    // determine the neuron mode by the network mode:
+    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout); 
 
-  
-  _cv_test_sp_iter = _CVspeeches[_fold_ind]->begin();
-  if(_cv_test_sp_iter != _CVspeeches[_fold_ind]->end()){
-    LoadSpeeches(*_cv_test_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout, false, false);
-    return (*_cv_test_sp_iter)->Index();
-  }else{
-    _sp = NULL;
-    return -1;
-  }
+
+    _cv_test_sp_iter = _CVspeeches[_fold_ind]->begin();
+    if(_cv_test_sp_iter != _CVspeeches[_fold_ind]->end()){
+        LoadSpeeches(*_cv_test_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout, false, false);
+        return (*_cv_test_sp_iter)->Index();
+    }else{
+        _sp = NULL;
+        return -1;
+    }
 }
 
 int Network::LoadNextSpeechTestCV(networkmode_t networkmode){
-  assert(_lsm_input_layer != NULL);
-  assert(_lsm_reservoir_layer != NULL || _allReservoirs.size() > 1);
-  assert(_lsm_output_layer != NULL);
+    assert(_lsm_input_layer != NULL);
+    assert(_lsm_reservoir_layer != NULL || _allReservoirs.size() > 1);
+    assert(_lsm_output_layer != NULL);
 
-  neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
-  // determine the neuron mode by the network mode:
-  DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
- 
-  _cv_test_sp_iter++;
-  if(_cv_test_sp_iter != _CVspeeches[_fold_ind]->end()){
-    LoadSpeeches(*_cv_test_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout, false, false);
-    return (*_cv_test_sp_iter)->Index();
-  }else{
-      LSMNetworkRemoveSpeech();
-      return -1;
-  }
+    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
+    // determine the neuron mode by the network mode:
+    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
+
+    _cv_test_sp_iter++;
+    if(_cv_test_sp_iter != _CVspeeches[_fold_ind]->end()){
+        LoadSpeeches(*_cv_test_sp_iter, _lsm_input_layer, _lsm_reservoir_layer, _lsm_output_layer, neuronmode_input, neuronmode_reservoir, neuronmode_readout, false, false);
+        return (*_cv_test_sp_iter)->Index();
+    }else{
+        LSMNetworkRemoveSpeech();
+        return -1;
+    }
 }
 
 
 void Network::PrintAllNeuronName(){
-  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) cout<<(*iter)->Name()<<endl;
+    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) cout<<(*iter)->Name()<<endl;
 }
 
 
 
 void Network::AnalogToSpike(){
-  int counter = 0;
-  for(vector<Speech*>::iterator iter = _speeches.begin(); iter != _speeches.end(); iter++){
-//    cout<<"Preprocessing speech "<<counter++<<"..."<<endl;
-    counter++;
-    (*iter)->AnalogToSpike();
-  }
+    int counter = 0;
+    for(vector<Speech*>::iterator iter = _speeches.begin(); iter != _speeches.end(); iter++){
+        //    cout<<"Preprocessing speech "<<counter++<<"..."<<endl;
+        counter++;
+        (*iter)->AnalogToSpike();
+    }
 }
 
 
 void Network::RateToSpike(){
-  int counter = 0;
-  for(vector<Speech*>::iterator iter = _speeches.begin(); iter != _speeches.end(); iter++){
-//    cout<<"Preprocessing speech "<<counter++<<"..."<<endl;
-    counter++;
-    (*iter)->RateToSpike();
-  }
+    int counter = 0;
+    for(vector<Speech*>::iterator iter = _speeches.begin(); iter != _speeches.end(); iter++){
+        //    cout<<"Preprocessing speech "<<counter++<<"..."<<endl;
+        counter++;
+        (*iter)->RateToSpike();
+    }
 }
 
 void Network::LSMClearSignals(){
-  for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMClear();
-  for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClear();
-  // Remember to clear the list to store the synapses:      
-  _lsmActiveLearnSyns.clear();                              
-  _lsmActiveSyns.clear();
-  _lsmActiveSTDPLearnSyns.clear(); 
+    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMClear();
+    for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClear();
+    // Remember to clear the list to store the synapses:      
+    _lsmActiveLearnSyns.clear();                              
+    _lsmActiveSyns.clear();
+    _lsmActiveSTDPLearnSyns.clear(); 
 }
 void Network::LSMClearWeights(){
-  for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClearLearningSynWeights();
+    for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClearLearningSynWeights();
 }
 bool Network::LSMEndOfSpeech(networkmode_t networkmode){
-/*
-  if(_lsm_t < 1000) return false;
-  else{
-    _lsm_t = 0;
-    return true;
-  }
-*/
-  if((networkmode == TRAINRESERVOIR||networkmode ==TRAININPUT)&&(_lsm_input>0)){
-    return false;
-  }
+    /*
+       if(_lsm_t < 1000) return false;
+       else{
+       _lsm_t = 0;
+       return true;
+       }
+       */
+    if((networkmode == TRAINRESERVOIR||networkmode ==TRAININPUT)&&(_lsm_input>0)){
+        return false;
+    }
 
-  if((networkmode == TRANSIENTSTATE)&&(_lsm_input>0)){
-    return false;
-  }
-  if((networkmode == READOUT || networkmode == TRAINREADOUT || networkmode == READOUTSUPV)&&(_lsm_reservoir>0)){
-    return false;
-  }
-  return true;
+    if((networkmode == TRANSIENTSTATE)&&(_lsm_input>0)){
+        return false;
+    }
+    if((networkmode != VOID)&&(_lsm_reservoir>0)){
+        return false;
+    }
+    return true;
 }
 
 void Network::SpeechInfo(){
     if(_sp_iter != _speeches.end())
-	(*_sp_iter)->Info();
+        (*_sp_iter)->Info();
 }
 
 void Network::SpeechPrint(int info){
     if(_sp_iter != _speeches.end())
-	(*_sp_iter)->PrintSpikes(info);
+        (*_sp_iter)->PrintSpikes(info);
 }
 
 /***********************************************************************************************
  * Collect the max/min of EP/EN/IP/IN and max active # of pre spikes for different neuron group
  ***********************************************************************************************/
 void Network::CollectEPENStat(const char * type){
-  NeuronGroup * ngPtr = NULL;
-  int ep_max=INT_MIN,ep_min=INT_MAX,ip_max=INT_MIN,ip_min=INT_MAX;
-  int en_max=INT_MIN,en_min=INT_MAX,in_max=INT_MIN,in_min=INT_MAX;
-  int pre_active_max = 0;
-  if(strcmp(type, "input") == 0 || strcmp(type, "readout") == 0){
-    ngPtr = !strcmp(type, "input") ? SearchForNeuronGroup(type) : SearchForNeuronGroup("output");
-    assert(ngPtr);
-    ngPtr->Collect4State(ep_max, ep_min, ip_max, ip_min, en_max, en_min, in_max, in_min, pre_active_max);
-  }
-  else if(strcmp(type, "reservoir") == 0){
-    for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-      assert(ngPtr = (*it));
-      ngPtr->Collect4State(ep_max, ep_min, ip_max, ip_min, en_max, en_min, in_max, in_min, pre_active_max);
+    NeuronGroup * ngPtr = NULL;
+    int ep_max=INT_MIN,ep_min=INT_MAX,ip_max=INT_MIN,ip_min=INT_MAX;
+    int en_max=INT_MIN,en_min=INT_MAX,in_max=INT_MIN,in_min=INT_MAX;
+    int pre_active_max = 0;
+    if(strcmp(type, "input") == 0 || strcmp(type, "readout") == 0){
+        ngPtr = !strcmp(type, "input") ? SearchForNeuronGroup(type) : SearchForNeuronGroup("output");
+        assert(ngPtr);
+        ngPtr->Collect4State(ep_max, ep_min, ip_max, ip_min, en_max, en_min, in_max, in_min, pre_active_max);
     }
-  }  
-  
-  cout<<"\n ***********************************************************"
-      <<"\n * Max/Min for EP/EN/IP/IN and max prefire count for "<<type
-      <<"\n ***********************************************************"
-      <<"\nMax for EP: "<<ep_max<<" -> "<<(ep_max == INT_MIN ? 0 : ceil(log2(ep_max)))<<" bits"
-      <<"\nMin for EP: "<<ep_min<<" -> "<<(ep_min == INT_MAX ? 0 : ceil(log2(abs(ep_min))))<<" bits"
-      <<"\nMax for EN: "<<en_max<<" -> "<<(en_max == INT_MIN ? 0 : ceil(log2(en_max)))<<" bits"
-      <<"\nMin for EN: "<<en_min<<" -> "<<(en_min == INT_MAX ? 0 : ceil(log2(abs(en_min))))<<" bits"
-      <<"\nMax for IP: "<<ip_max<<" -> "<<(ip_max == INT_MIN ? 0 : ceil(log2(ip_max)))<<" bits"
-      <<"\nMin for IP: "<<ip_min<<" -> "<<(ip_min == INT_MAX ? 0 : ceil(log2(abs(ip_min))))<<" bits"
-      <<"\nMax for IN: "<<in_max<<" -> "<<(in_max == INT_MIN ? 0 : ceil(log2(in_max)))<<" bits"
-      <<"\nMin for IN: "<<in_min<<" -> "<<(in_min == INT_MAX ? 0 : ceil(log2(abs(in_min))))<<" bits"
-      <<"\nMax prespike count: "<<pre_active_max
-      <<endl;
+    else if(strcmp(type, "reservoir") == 0){
+        for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+            assert(ngPtr = (*it));
+            ngPtr->Collect4State(ep_max, ep_min, ip_max, ip_min, en_max, en_min, in_max, in_min, pre_active_max);
+        }
+    }  
+
+    cout<<"\n ***********************************************************"
+        <<"\n * Max/Min for EP/EN/IP/IN and max prefire count for "<<type
+        <<"\n ***********************************************************"
+        <<"\nMax for EP: "<<ep_max<<" -> "<<(ep_max == INT_MIN ? 0 : ceil(log2(ep_max)))<<" bits"
+        <<"\nMin for EP: "<<ep_min<<" -> "<<(ep_min == INT_MAX ? 0 : ceil(log2(abs(ep_min))))<<" bits"
+        <<"\nMax for EN: "<<en_max<<" -> "<<(en_max == INT_MIN ? 0 : ceil(log2(en_max)))<<" bits"
+        <<"\nMin for EN: "<<en_min<<" -> "<<(en_min == INT_MAX ? 0 : ceil(log2(abs(en_min))))<<" bits"
+        <<"\nMax for IP: "<<ip_max<<" -> "<<(ip_max == INT_MIN ? 0 : ceil(log2(ip_max)))<<" bits"
+        <<"\nMin for IP: "<<ip_min<<" -> "<<(ip_min == INT_MAX ? 0 : ceil(log2(abs(ip_min))))<<" bits"
+        <<"\nMax for IN: "<<in_max<<" -> "<<(in_max == INT_MIN ? 0 : ceil(log2(in_max)))<<" bits"
+        <<"\nMin for IN: "<<in_min<<" -> "<<(in_min == INT_MAX ? 0 : ceil(log2(abs(in_min))))<<" bits"
+        <<"\nMax prespike count: "<<pre_active_max
+        <<endl;
 }
 
 /***************************************************************************
-* This function is to collect the pre-synaptic neuron firing actvities.
-* It will gather the pre-synaptic neuron prob, avg interval and max interval
-* between any two pre-synaptic spikes for each neuron.
-* @param1: type (only resr is supported) @param2-4 prob, avg intv and max intv
-***************************************************************************/
+ * This function is to collect the pre-synaptic neuron firing actvities.
+ * It will gather the pre-synaptic neuron prob, avg interval and max interval
+ * between any two pre-synaptic spikes for each neuron.
+ * @param1: type (only resr is supported) @param2-4 prob, avg intv and max intv
+ ***************************************************************************/
 void Network::PreActivityStat(const char * type, vector<double>& prob, vector<double>& avg_intvl, vector<int>& max_intvl){
-   synapsetype_t  syn_type = INVALID;
-   DetermineSynType( type, syn_type, "PreActivityStat()");
-   assert(syn_type == RESERVOIR_SYN);
-   if(_allReservoirs.empty()){
-     cout<<"No reservoir is in the list: _allReservoirs !"<<endl;
-     assert(!_allReservoirs.empty());
-   }
-   
-   double p = 0.0, avg_i = 0.0;
-   int max_i = 0;
-   // Collect the presynaptic firing activity from the neurongroup level:
-   for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-       double p_r = 0.0, avg_i_r = 0.0;
-       int max_i_r = 0;
-       assert(*it);
-       (*it)->CollectPreSynAct(p_r, avg_i_r, max_i_r);
-       p += p_r, avg_i += avg_i_r, max_i = max( max_i, max_i_r);
-   }
-   p = _allReservoirs.empty() ? 0 : p/((double)_allReservoirs.size());
-   avg_i = _allReservoirs.empty() ? 0 : avg_i/((double)_allReservoirs.size());
+    synapsetype_t  syn_type = INVALID;
+    DetermineSynType( type, syn_type, "PreActivityStat()");
+    assert(syn_type == RESERVOIR_SYN);
+    if(_allReservoirs.empty()){
+        cout<<"No reservoir is in the list: _allReservoirs !"<<endl;
+        assert(!_allReservoirs.empty());
+    }
 
-   prob.push_back(p), avg_intvl.push_back(avg_i), max_intvl.push_back(max_i);
+    double p = 0.0, avg_i = 0.0;
+    int max_i = 0;
+    // Collect the presynaptic firing activity from the neurongroup level:
+    for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+        double p_r = 0.0, avg_i_r = 0.0;
+        int max_i_r = 0;
+        assert(*it);
+        (*it)->CollectPreSynAct(p_r, avg_i_r, max_i_r);
+        p += p_r, avg_i += avg_i_r, max_i = max( max_i, max_i_r);
+    }
+    p = _allReservoirs.empty() ? 0 : p/((double)_allReservoirs.size());
+    avg_i = _allReservoirs.empty() ? 0 : avg_i/((double)_allReservoirs.size());
+
+    prob.push_back(p), avg_intvl.push_back(avg_i), max_intvl.push_back(max_i);
 }
 
 //* this function is to collect the firing fq from speech for each neuron:
 void Network::CollectSpikeFreq(const char * type, vector<double>& fs, int end_t){
     synapsetype_t  syn_type = INVALID;
     DetermineSynType( type, syn_type, "CollectSpikeFreq()");
-    
+
     if(_sp_iter == _speeches.end()){
         cout<<"In Network::CollectSpikeFreq(), you are trying to access the "
-	    <<"current speech. But you have hit the _speeches.end()!"<<endl;
-	cout<<"Abort the problem";
-	assert(_sp_iter != _speeches.end());  
+            <<"current speech. But you have hit the _speeches.end()!"<<endl;
+        cout<<"Abort the problem";
+        assert(_sp_iter != _speeches.end());  
     }
 
     // collect the firing fq from the speech:
@@ -1473,9 +1486,9 @@ void Network::CollectSpikeFreq(const char * type, vector<double>& fs, int end_t)
 void Network::ScatterSpikeFreq(const char * type, vector<double>& fs){
     synapsetype_t  syn_type = INVALID;
     DetermineSynType(type, syn_type, "ScatterSpikeFreq()");
-    
+
     assert(syn_type == RESERVOIR_SYN);
-    
+
     size_t bias = 0, cnt = 0;
     for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
         assert(*it);
@@ -1489,8 +1502,8 @@ void Network::ScatterSpikeFreq(const char * type, vector<double>& fs){
 //* the second param: the output file stream for collecting the firing freq.
 void Network::SpeechSpikeFreq(const char * type, ofstream & f_out, ofstream & f_label){
     if(_sp_iter != _speeches.end()){
-	assert(f_out.is_open() && f_label.is_open());
-	f_label<<(*_sp_iter)->PrintSpikeFreq(type, f_out)<<"\t";
+        assert(f_out.is_open() && f_label.is_open());
+        f_label<<(*_sp_iter)->PrintSpikeFreq(type, f_out)<<"\t";
     }
 }
 
@@ -1498,82 +1511,82 @@ void Network::SpeechSpikeFreq(const char * type, ofstream & f_out, ofstream & f_
 void Network::VarBasedSparsify(const char * type){
     synapsetype_t  syn_type = INVALID;
     DetermineSynType(type, syn_type, "VarBasedSparsify()"); 
-    
+
     // compute the variance of the firing rate for each neuron:
     multimap<double, Neuron*> my_map;
     for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
         assert(*it);
         (*it)->CollectVariance(my_map);
     }
-    
+
     // apply var-based sparisfication to the neurons with low variance :
     int cnt_limit = _TOP_PERCENT*my_map.size(), cnt = 0;
 #ifdef _DEBUG_VARBASE
     cout<<"The lower "<<cnt_limit<<" neurons are applied with sparification."
-	<<endl;
+        <<endl;
 #endif
     for(multimap<double, Neuron*>::iterator it = my_map.begin(); it != my_map.end(); ++it){
         if(cnt < cnt_limit){
 #ifdef _DEBUG_VARBASE
-	    cout<<"Low "<<cnt+1<<"th "<<(*it).second->Name()<<" with var: "<<(*it).first<<endl;
+            cout<<"Low "<<cnt+1<<"th "<<(*it).second->Name()<<" with var: "<<(*it).first<<endl;
 #endif
-	    // Apply the sparsification here:
-	    (*it).second->DisableOutputSyn(syn_type);
+            // Apply the sparsification here:
+            (*it).second->DisableOutputSyn(syn_type);
         }
-	++cnt;
+        ++cnt;
     }
 }
 
 // Correlation-based sparsification, only applied to the reservoir!
 void Network::CorBasedSparsify(){
-  // only support for reservoir now
-  for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it)
-    (*it)->MergeCorrelatedNeurons(_speeches.size());
+    // only support for reservoir now
+    for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it)
+        (*it)->MergeCorrelatedNeurons(_speeches.size());
 
 
 #ifdef _DEBUG_CORBASE
-  NeuronGroup * output = SearchForNeuronGroup("output");
-  ofstream f_out("readout_input_connections.txt");
-  assert(f_out.is_open());
-  output->LSMPrintInputSyns(f_out);
-  f_out.close();
+    NeuronGroup * output = SearchForNeuronGroup("output");
+    ofstream f_out("readout_input_connections.txt");
+    assert(f_out.is_open());
+    output->LSMPrintInputSyns(f_out);
+    f_out.close();
 
-  LSMPrintAllLiquidSyns(0);
+    LSMPrintAllLiquidSyns(0);
 #endif
 
 }    
 
 void Network::LSMChannelDecrement(channelmode_t channelmode){
-  if(channelmode == INPUTCHANNEL) _lsm_input--;
-  else if(channelmode == RESERVOIRCHANNEL) _lsm_reservoir--;
-  else if(channelmode == READOUTCHANNEL) _lsm_readout--;
-  else assert(0); // you code should never go here!
+    if(channelmode == INPUTCHANNEL) _lsm_input--;
+    else if(channelmode == RESERVOIRCHANNEL) _lsm_reservoir--;
+    else if(channelmode == READOUTCHANNEL) _lsm_readout--;
+    else assert(0); // you code should never go here!
 }
 
 //* calculate the error: # spike/max{spike}, and prop it back to modify the weights
-void Network::BackPropError(){
-  assert(_lsm_output_layer);
+void Network::BackPropError(int iteration){
+    assert(_lsm_output_layer);
 #ifdef CV
-  assert(*_cv_train_sp_iter);
-  _lsm_output_layer->BpError((*_cv_train_sp_iter)->Class());
+    assert(*_cv_train_sp_iter);
+    _lsm_output_layer->BpError((*_cv_train_sp_iter)->Class(), iteration);
 #else
-  assert(*_sp_iter);
-  _lsm_output_layer->BpError((*_sp_iter)->Class());
+    assert(*_sp_iter);
+    _lsm_output_layer->BpError((*_sp_iter)->Class(), iteration);
 #endif
 }
 
 //* update the learning weight in the end of each sample
 void Network::UpdateLearningWeights(){
-  assert(_lsm_output_layer);
-  _lsm_output_layer->UpdateLearningWeights();
+    assert(_lsm_output_layer);
+    _lsm_output_layer->UpdateLearningWeights();
 }
 
 //* collect the test error for a single sample
 void Network::CollectErrorPerSample(vector<double>& each_sample_errors){
     assert(_lsm_output_layer);
 #ifdef CV
-    assert(*_cv_train_sp_iter);
-    double error = _lsm_output_layer->ComputeRatioError((*_cv_train_sp_iter)->Class());
+    assert(*_cv_test_sp_iter);
+    double error = _lsm_output_layer->ComputeRatioError((*_cv_test_sp_iter)->Class());
 #else
     assert(*_sp_iter);
     double error = _lsm_output_layer->ComputeRatioError((*_sp_iter)->Class());
@@ -1581,82 +1594,100 @@ void Network::CollectErrorPerSample(vector<double>& each_sample_errors){
     each_sample_errors.push_back(error);
 }
 
+//* print the fire spike count of a specific layer 
+void Network::PrintSpikeCount(string layer){
+    NeuronGroup * ng = NULL;
+    if(layer == "readout")  ng = _lsm_output_layer;
+    else{
+        cout<<"Unrecognized layer: "<<layer<<endl;
+    }
+    assert(ng);
+#ifdef CV
+    assert(*_cv_test_sp_iter);
+    ng->PrintSpikeCount((*_cv_test_sp_iter)->Class());
+#else
+    assert(*_sp_iter);
+    ng->PrintSpikeCount((*_sp_iter)->Class());
+#endif
+
+}
+
 //* judge the readout result:
 void Network::ReadoutJudge(int& correct, int& wrong, int& even){
-  int res = this->LSMJudge();
+    int res = this->LSMJudge();
 
-  if(res == 1) ++correct;
-  else if(res == -1) ++wrong;
-  else if(res == 0) ++even;
-  else{
-    cout<<"In Network::ReadoutJudge(int&, int&, int&)\n"
-        <<"Undefined return type: "<<res<<" returned by Network::LSMJudge()"
-        <<endl;
-  }
+    if(res == 1) ++correct;
+    else if(res == -1) ++wrong;
+    else if(res == 0) ++even;
+    else{
+        cout<<"In Network::ReadoutJudge(int&, int&, int&)\n"
+            <<"Undefined return type: "<<res<<" returned by Network::LSMJudge()"
+            <<endl;
+    }
 }
 
 /*************************************************************************************
-* this function is to find the readout neuron with maximum firing frequency and see 
-* if it is the desired one with correct label. @ret: +1 ->correct,-1 -> wrong, 0: even
-**************************************************************************************/
+ * this function is to find the readout neuron with maximum firing frequency and see 
+ * if it is the desired one with correct label. @ret: +1 ->correct,-1 -> wrong, 0: even
+ **************************************************************************************/
 int Network::LSMJudge(){
-  assert(_lsm_output_layer); 
+    assert(_lsm_output_layer); 
 #ifdef CV
-  assert(*_cv_test_sp_iter);
-  return _lsm_output_layer->Judge((*_cv_test_sp_iter)->Class());
+    assert(*_cv_test_sp_iter);
+    return _lsm_output_layer->Judge((*_cv_test_sp_iter)->Class());
 #else
-  assert(*_sp_iter);
-  return _lsm_output_layer->Judge((*_sp_iter)->Class());
+    assert(*_sp_iter);
+    return _lsm_output_layer->Judge((*_sp_iter)->Class());
 #endif
 
 }
 
 //* add the active reservoir synapse about to be trained by STDP
 void Network::LSMAddSTDPActiveSyn(Synapse * synapse){
-  assert(synapse->GetActiveStatus() == false);
-  _lsmActiveSTDPLearnSyns.push_back(synapse);
+    assert(synapse->GetActiveStatus() == false);
+    _lsmActiveSTDPLearnSyns.push_back(synapse);
 }
 
 void Network::CrossValidation(int fold){
-  int i, j, k, cls, sample;
-  std::srand(0);
+    int i, j, k, cls, sample;
+    std::srand(0);
 
-  assert(fold>1);
-  _fold = fold;
-  _CVspeeches = new vector<Speech*>*[fold];
-  for(k = 0; k < fold; k++) _CVspeeches[k] = new vector<Speech*>;
-  cls = CLS;
-  sample = _speeches.size();
-  cout<<"sample: "<<sample<<endl;
-  vector<int> ** index;
-  index = new vector<int>*[cls];
-  for(i = 0; i < cls; i++){
-    index[i] = new vector<int>;
-    for(j = 0; j < sample/cls; j++) index[i]->push_back(i+j*cls);
-    random_shuffle(index[i]->begin(),index[i]->end());
-  }
-  
-  for(k = 0; k < fold; k++)
-    for(j = (k*sample)/(cls*fold); j < ((k+1)*sample)/(cls*fold); j++)
-      for(i = 0; i < cls; i++){
-        _CVspeeches[k]->push_back(_speeches[(*index[i])[j]]);
-      }
+    assert(fold>1);
+    _fold = fold;
+    _CVspeeches = new vector<Speech*>*[fold];
+    for(k = 0; k < fold; k++) _CVspeeches[k] = new vector<Speech*>;
+    cls = CLS;
+    sample = _speeches.size();
+    cout<<"sample: "<<sample<<endl;
+    vector<int> ** index;
+    index = new vector<int>*[cls];
+    for(i = 0; i < cls; i++){
+        index[i] = new vector<int>;
+        for(j = 0; j < sample/cls; j++) index[i]->push_back(i+j*cls);
+        random_shuffle(index[i]->begin(),index[i]->end());
+    }
 
-  for(i = 0; i < cls; i++) delete index[i];
-  delete [] index;
+    for(k = 0; k < fold; k++)
+        for(j = (k*sample)/(cls*fold); j < ((k+1)*sample)/(cls*fold); j++)
+            for(i = 0; i < cls; i++){
+                _CVspeeches[k]->push_back(_speeches[(*index[i])[j]]);
+            }
+
+    for(i = 0; i < cls; i++) delete index[i];
+    delete [] index;
 }
 
 
 void Network::IndexSpeech(){
-  for(int i = 0; i < _speeches.size(); i++) _speeches[i]->SetIndex(i);
+    for(int i = 0; i < _speeches.size(); i++) _speeches[i]->SetIndex(i);
 }
 
 //* push the readout results into the corresponding vector:
 void Network::LSMPushResults(int correct, int wrong, int even, int iter_n){
-  assert(iter_n < _readout_correct.size());
-  _readout_correct[iter_n] += correct;
-  _readout_wrong[iter_n] += wrong;
-  _readout_even[iter_n] += even;
+    assert(iter_n < _readout_correct.size());
+    _readout_correct[iter_n] += correct;
+    _readout_wrong[iter_n] += wrong;
+    _readout_even[iter_n] += even;
 }
 
 //* log the test error into the corresponding vector:
@@ -1670,27 +1701,27 @@ void Network::LogTestError(const vector<double>& each_sample_errors, int iter_n)
 
 //* return the most recent results of the readout (correct, wrong, even) in a vector:
 vector<int> Network::LSMViewResults(){
-  vector<int> ret;
-  ret.push_back(_readout_correct.empty()? -1 : _readout_correct.back());
-  ret.push_back(_readout_wrong.empty()? -1 : _readout_wrong.back());
-  ret.push_back(_readout_even.empty()? -1 : _readout_even.back());
-  return ret;
+    vector<int> ret;
+    ret.push_back(_readout_correct.empty()? -1 : _readout_correct.back());
+    ret.push_back(_readout_wrong.empty()? -1 : _readout_wrong.back());
+    ret.push_back(_readout_even.empty()? -1 : _readout_even.back());
+    return ret;
 }
 
 //* merge the readout results from the network
 void Network::MergeReadoutResults(vector<int>& r_correct, vector<int>& r_wrong, vector<int>& r_even){
-  assert(!r_correct.empty() &&
-	 r_correct.size() == _readout_correct.size() &&
-	 r_wrong.size() == _readout_wrong.size() &&
-	 r_even.size() == _readout_even.size() &&
-	 _readout_correct.size() == _readout_wrong.size());
-  
-  for(size_t i = 0; i < r_correct.size(); ++i){
-      r_correct[i] += _readout_correct[i];
-      r_wrong[i] += _readout_wrong[i];
-      r_even[i] += _readout_even[i];
-  }
-  
+    assert(!r_correct.empty() &&
+            r_correct.size() == _readout_correct.size() &&
+            r_wrong.size() == _readout_wrong.size() &&
+            r_even.size() == _readout_even.size() &&
+            _readout_correct.size() == _readout_wrong.size());
+
+    for(size_t i = 0; i < r_correct.size(); ++i){
+        r_correct[i] += _readout_correct[i];
+        r_wrong[i] += _readout_wrong[i];
+        r_even[i] += _readout_even[i];
+    }
+
 }
 
 //* merge the test error from the network:
@@ -1705,17 +1736,17 @@ void Network::MergeTestErrors(vector<double>& test_errors){
 //* determine the syn_type to be returned (ret_syn_type).
 //* The third parameter is the function name used to handle exception.
 void Network::DetermineSynType(const char * syn_type, synapsetype_t & ret_syn_type, const char * func_name){
-  if(strcmp(syn_type, "reservoir") == 0){
-    // Write reservoir syns into the file
-    ret_syn_type = RESERVOIR_SYN;
-  }else if(strcmp(syn_type, "readout") == 0){
-    ret_syn_type = READOUT_SYN;
-  }else if(strcmp(syn_type, "input") == 0){
-    ret_syn_type = INPUT_SYN;
-  }else{
-    cout<<"In Network::"<<func_name<<", undefined synapse type: "<<syn_type<<endl;
-    exit(EXIT_FAILURE);
-  } 
+    if(strcmp(syn_type, "reservoir") == 0){
+        // Write reservoir syns into the file
+        ret_syn_type = RESERVOIR_SYN;
+    }else if(strcmp(syn_type, "readout") == 0){
+        ret_syn_type = READOUT_SYN;
+    }else if(strcmp(syn_type, "input") == 0){
+        ret_syn_type = INPUT_SYN;
+    }else{
+        cout<<"In Network::"<<func_name<<", undefined synapse type: "<<syn_type<<endl;
+        exit(EXIT_FAILURE);
+    } 
 }
 
 /***********************************************************************************
@@ -1729,7 +1760,7 @@ void Network::DetermineSynType(const char * syn_type, synapsetype_t & ret_syn_ty
 void Network::NormalizeContinuousWeights(const char * syn_type){
 #ifdef DIGIAL
     cout<<"You are using the code for digital mode but you call the normalization for "
-	<<"continuous weights!? Abort the problem"<<endl;
+        <<"continuous weights!? Abort the problem"<<endl;
     assert(0);
 #endif
 
@@ -1739,86 +1770,86 @@ void Network::NormalizeContinuousWeights(const char * syn_type){
     vector<Synapse*> tmp;
 
     vector<Synapse*> & synapses = tar_syn_type == RESERVOIR_SYN ? _rsynapses : 
-	(tar_syn_type == READOUT_SYN ? _rosynapses : tmp);
+        (tar_syn_type == READOUT_SYN ? _rosynapses : tmp);
     assert(!synapses.empty()); 
 
     // right now the function should be run for reservoir synapses!
     double g_sum = 0.0;
     for(size_t i = 0; i < synapses.size(); ++i){
-	assert(synapses[i]);
-	double w = synapses[i]->Weight();
-	g_sum += w*w;
+        assert(synapses[i]);
+        double w = synapses[i]->Weight();
+        g_sum += w*w;
     }
 
     // normalize the weight:
     assert(g_sum > 0);
     g_sum = sqrt(g_sum);
     for(size_t i = 0; i < synapses.size(); ++i){
-	// compute the normalized weight:
-	double new_w = synapses[i]->Weight()/g_sum;
-	// set the new weight:
-	synapses[i]->Weight(new_w);
+        // compute the normalized weight:
+        double new_w = synapses[i]->Weight()/g_sum;
+        // set the new weight:
+        synapses[i]->Weight(new_w);
     }
 }
 
 //* this function is to remove the synapses with zero weights:
 void Network::RemoveZeroWeights(const char * type){
-  synapsetype_t  syn_type = INVALID;
-  DetermineSynType(type, syn_type, "RemoveZeroWeights()");
-  assert(syn_type != INVALID);
-  
-  if(syn_type == RESERVOIR_SYN){
-    for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-        assert(*it);
-        (*it)->RemoveZeroSyns(syn_type);
+    synapsetype_t  syn_type = INVALID;
+    DetermineSynType(type, syn_type, "RemoveZeroWeights()");
+    assert(syn_type != INVALID);
+
+    if(syn_type == RESERVOIR_SYN){
+        for(list<NeuronGroup*>::iterator it= _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+            assert(*it);
+            (*it)->RemoveZeroSyns(syn_type);
+        }
     }
-  }
-  else if(syn_type == READOUT_SYN){
-    NeuronGroup * output = SearchForNeuronGroup("output");
-    if(!output){
-      cout<<"In Network::RemoveZeroWeights(), no 'output' layer is found!!"<<endl;
-      assert(output);
+    else if(syn_type == READOUT_SYN){
+        NeuronGroup * output = SearchForNeuronGroup("output");
+        if(!output){
+            cout<<"In Network::RemoveZeroWeights(), no 'output' layer is found!!"<<endl;
+            assert(output);
+        }
+        output->RemoveZeroSyns(syn_type);
     }
-    output->RemoveZeroSyns(syn_type);
-  }
-  else{
-    assert(0); // your code shoule never go here.
-  }
+    else{
+        assert(0); // your code shoule never go here.
+    }
 }
 
 
 //* Dump the v_mem of the network @param2: the speech index
 void Network::DumpWaveForm(string dir, int info){
-  // make the directory if needed
-  size_t end = (dir.find_first_of("/") == string::npos ? dir.length() :dir.find_first_of("/")) ;
-  string path = dir.substr(0, end), cmd;
-  struct stat sb;
-  if(stat(path.c_str(), &sb) != 0){
-    cmd = "mkdir " + path;
-    int i = system(cmd.c_str());
-  }
-  if(stat(dir.c_str(), &sb) != 0){
-    cmd = "mkdir " + dir;
-    int i = system(cmd.c_str());
-  }
-  
+    // make the directory if needed
+    size_t end = (dir.find_first_of("/") == string::npos ? dir.length() :dir.find_first_of("/")) ;
+    string path = dir.substr(0, end), cmd;
+    struct stat sb;
+    if(stat(path.c_str(), &sb) != 0){
+        cmd = "mkdir " + path;
+        int i = system(cmd.c_str());
+    }
+    if(stat(dir.c_str(), &sb) != 0){
+        cmd = "mkdir " + dir;
+        int i = system(cmd.c_str());
+    }
 
-  string filename = dir + "/" + "waveform" + to_string(info) + ".dat";
-  ofstream f_out(filename.c_str());
-  if(!f_out.is_open()){
-    cout<<"Cannot file : "<<filename<<endl;
-    assert(f_out.is_open());
-  }
-  // output file format: 
-  // 1st line : # of reservoir # of readout neuron
-  // the rest : the v_mem value
-  if(_network_mode == READOUT || _network_mode == READOUTSUPV){
-    NeuronGroup * ng = SearchForNeuronGroup("output");
-    assert(ng);
-    f_out<<"0\t"<<ng->Size()<<endl;
-    ng->DumpWaveFormGroup(f_out);
-  }
-  f_out.close();
+
+    string filename = dir + "/" + "waveform" + to_string(info) + ".dat";
+    ofstream f_out(filename.c_str());
+    if(!f_out.is_open()){
+        cout<<"Cannot file : "<<filename<<endl;
+        assert(f_out.is_open());
+    }
+    // output file format: 
+    // 1st line : # of reservoir # of readout neuron
+    // the rest : the v_mem value
+    if(_network_mode == READOUT || _network_mode == READOUTSUPV){
+        NeuronGroup * ng = SearchForNeuronGroup("output");
+        assert(ng);
+        f_out<<"0\t"<<ng->Size()<<endl;
+        ng->DumpWaveFormGroup(f_out);
+    }
+    f_out.close();
 }
 
 
@@ -1851,111 +1882,111 @@ void Network::DumpCalciumLevels(string neuron_group, string dir, string filename
 //* This function is to write the synaptic weights back into a file:
 //* "syn_type" can be reservoir or readout or input
 void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
-  ofstream f_out(filename);
-  if(!f_out.is_open()){
-    cout<<"In Network::WriteSynWeightsToFile(), cannot open the file : "<<filename<<endl;
-    exit(EXIT_FAILURE);
-  }
-  
-  synapsetype_t  wrt_syn_type = INVALID;
-  DetermineSynType(syn_type, wrt_syn_type, "WriteSynWeightsToFile()");
-  assert(wrt_syn_type != INVALID);
-  vector<Synapse*> tmp;
+    ofstream f_out(filename);
+    if(!f_out.is_open()){
+        cout<<"In Network::WriteSynWeightsToFile(), cannot open the file : "<<filename<<endl;
+        exit(EXIT_FAILURE);
+    }
 
-  const vector<Synapse*> & synapses = 
-    wrt_syn_type == RESERVOIR_SYN ? _rsynapses : 
-    wrt_syn_type == READOUT_SYN ? _rosynapses : 
-    wrt_syn_type == INPUT_SYN ? _isynapses : tmp;
-  
-  // write the synapse back to the file:
-  assert(!synapses.empty());
-    
-  for(size_t i = 0; i < synapses.size(); ++i)
-    f_out<<i<<"\t"<<synapses[i]->PreNeuron()->Name()
-	 <<"\t"<<synapses[i]->PostNeuron()->Name()
+    synapsetype_t  wrt_syn_type = INVALID;
+    DetermineSynType(syn_type, wrt_syn_type, "WriteSynWeightsToFile()");
+    assert(wrt_syn_type != INVALID);
+    vector<Synapse*> tmp;
+
+    const vector<Synapse*> & synapses = 
+        wrt_syn_type == RESERVOIR_SYN ? _rsynapses : 
+        wrt_syn_type == READOUT_SYN ? _rosynapses : 
+        wrt_syn_type == INPUT_SYN ? _isynapses : tmp;
+
+    // write the synapse back to the file:
+    assert(!synapses.empty());
+
+    for(size_t i = 0; i < synapses.size(); ++i)
+        f_out<<i<<"\t"<<synapses[i]->PreNeuron()->Name()
+            <<"\t"<<synapses[i]->PostNeuron()->Name()
 #ifdef DIGITAL
-	 <<"\t"<<synapses[i]->DWeight()
+            <<"\t"<<synapses[i]->DWeight()
 #else
-	 <<"\t"<<synapses[i]->Weight()
+            <<"\t"<<synapses[i]->Weight()
 #endif
-	/*
-	 <<"\t"<<synapses[i]->PreNeuron()->IsExcitatory()
-	 <<"\t"<<synapses[i]->PostNeuron()->IsExcitatory()
-	*/
-	 <<endl;
-  f_out.close();
+            /*
+               <<"\t"<<synapses[i]->PreNeuron()->IsExcitatory()
+               <<"\t"<<synapses[i]->PostNeuron()->IsExcitatory()
+               */
+            <<endl;
+    f_out.close();
 }
 
 //* This function is to load the synaptic weights from file and assign it to the synapses:
 //* "syn_type" can be reservoir or readout or input
 void Network::LoadSynWeightsFromFile(const char * syn_type, char * filename){
-  ifstream f_in(filename);
-  if(!f_in.is_open()){
-    cout<<"In Network::LoadSynWeightsFromFile(), cannot open the file: "<<filename<<endl;
-    exit(EXIT_FAILURE);
-  }
-
-  synapsetype_t read_syn_type = INVALID;
-  DetermineSynType(syn_type, read_syn_type, "LoadSynWeightsFromFile()");
-  assert(read_syn_type != INVALID);
-  vector<Synapse*> tmp;
-
-  const vector<Synapse*> & synapses = 
-    read_syn_type == RESERVOIR_SYN ? _rsynapses : 
-    read_syn_type == READOUT_SYN ? _rosynapses :
-    read_syn_type == INPUT_SYN ? _isynapses : tmp;
-
-  assert(!synapses.empty());  
-  // load the synaptic weights from file:
-  // the synaptic weight is stored in the file in the same order as the corresponding synapses store in the vector
-  int index;
-  string pre;
-  string post;
-  /*
-  int pre_ext; // two variables to catch the excitatory information of syn
-  int post_ext;
-  */
-#ifdef DIGITAL
-  int weight;
-#else
-  double weight;
-#endif
-  while(f_in>>index>>pre>>post>>weight){//>>pre_ext>>post_ext){
-    if(index < 0 || index >= synapses.size()){
-	cout<<"In Network::LoadSynWeightsFromFile(), the index of the synapse you read : "<<index<<" is out of bound of the container stores the synapses!!"<<endl;
-	exit(EXIT_FAILURE);
+    ifstream f_in(filename);
+    if(!f_in.is_open()){
+        cout<<"In Network::LoadSynWeightsFromFile(), cannot open the file: "<<filename<<endl;
+        exit(EXIT_FAILURE);
     }
 
-    assert(strcmp(pre.c_str(), synapses[index]->PreNeuron()->Name()) == 0);
-    assert(strcmp(post.c_str(), synapses[index]->PostNeuron()->Name()) == 0);
-    synapses[index]->Weight(weight);
-  }
-  
+    synapsetype_t read_syn_type = INVALID;
+    DetermineSynType(syn_type, read_syn_type, "LoadSynWeightsFromFile()");
+    assert(read_syn_type != INVALID);
+    vector<Synapse*> tmp;
+
+    const vector<Synapse*> & synapses = 
+        read_syn_type == RESERVOIR_SYN ? _rsynapses : 
+        read_syn_type == READOUT_SYN ? _rosynapses :
+        read_syn_type == INPUT_SYN ? _isynapses : tmp;
+
+    assert(!synapses.empty());  
+    // load the synaptic weights from file:
+    // the synaptic weight is stored in the file in the same order as the corresponding synapses store in the vector
+    int index;
+    string pre;
+    string post;
+    /*
+       int pre_ext; // two variables to catch the excitatory information of syn
+       int post_ext;
+       */
+#ifdef DIGITAL
+    int weight;
+#else
+    double weight;
+#endif
+    while(f_in>>index>>pre>>post>>weight){//>>pre_ext>>post_ext){
+        if(index < 0 || index >= synapses.size()){
+            cout<<"In Network::LoadSynWeightsFromFile(), the index of the synapse you read : "<<index<<" is out of bound of the container stores the synapses!!"<<endl;
+            exit(EXIT_FAILURE);
+        }
+
+        assert(strcmp(pre.c_str(), synapses[index]->PreNeuron()->Name()) == 0);
+        assert(strcmp(post.c_str(), synapses[index]->PostNeuron()->Name()) == 0);
+        synapses[index]->Weight(weight);
+    }
+
 }
 
 
 //* This function writes the synaptic activity to the given file:
 //* Right now I am only consider looking at reservoir synapses
 void Network::WriteSynActivityToFile(char * pre_name, char * post_name, char * filename){
-  assert(pre_name && post_name);
+    assert(pre_name && post_name);
 
-  // 1. Open the file:
-  ofstream f_out(filename);
-  if(!f_out.is_open()){
-    cout<<"In function: Network::WriteSynActivityToFile()"
-        <<" cannot open the file: "<<filename<<" to write!"<<endl;
-    exit(EXIT_FAILURE);
-  }
+    // 1. Open the file:
+    ofstream f_out(filename);
+    if(!f_out.is_open()){
+        cout<<"In function: Network::WriteSynActivityToFile()"
+            <<" cannot open the file: "<<filename<<" to write!"<<endl;
+        exit(EXIT_FAILURE);
+    }
 
-  // 2. Find out the target synapse (only consider reservoir synapse) :
-  for(vector<Synapse*>::iterator it = _rsynapses.begin(); it != _rsynapses.end(); ++it){
-    if(strcmp(pre_name, (*it)->PreNeuron()->Name()) == 0 &&
-       strcmp(post_name, (*it)->PostNeuron()->Name()) == 0)
-      (*it)->PrintActivity(f_out);
-  }
+    // 2. Find out the target synapse (only consider reservoir synapse) :
+    for(vector<Synapse*>::iterator it = _rsynapses.begin(); it != _rsynapses.end(); ++it){
+        if(strcmp(pre_name, (*it)->PreNeuron()->Name()) == 0 &&
+                strcmp(post_name, (*it)->PostNeuron()->Name()) == 0)
+            (*it)->PrintActivity(f_out);
+    }
 
-  // 3. Close the file:
-  f_out.close();
+    // 3. Close the file:
+    f_out.close();
 
 }
 
@@ -1968,29 +1999,29 @@ void Network::WriteSynActivityToFile(char * pre_name, char * post_name, char * f
  ************************************************************************************/
 void Network::DestroyReservoirConn(NeuronGroup * reservoir){
     if(reservoir){
-	reservoir->DestroyResConn();
+        reservoir->DestroyResConn();
     }
     else{
-	assert(!_allReservoirs.empty());
-	for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	    (*it)->DestroyResConn();
-	}
+        assert(!_allReservoirs.empty());
+        for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+            (*it)->DestroyResConn();
+        }
     }
 
     // the following code is for debugging purpose:
     // check whether or not the synapses have been deleted:
     ofstream f_out("temp_check_reservoir.txt");
     if(reservoir){
-	reservoir->PrintResSyn(f_out);
+        reservoir->PrintResSyn(f_out);
     }
     else{
-	assert(!_allReservoirs.empty());
-	for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	    (*it)->PrintResSyn(f_out);
-	}
+        assert(!_allReservoirs.empty());
+        for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
+            (*it)->PrintResSyn(f_out);
+        }
     }
     f_out.close();
-    
+
 }
 
 /*************************************************************************************
@@ -2004,17 +2035,17 @@ void Network::TruncateIntermSyns(const char * syn_type){
 
     // Right now only consider the reservoir synapses:
     assert(trunc_syn_type == RESERVOIR_SYN);
-    
+
     const vector<Synapse*> & synapses = trunc_syn_type == RESERVOIR_SYN ? _rsynapses : 
-    (trunc_syn_type == READOUT_SYN ? _rosynapses : vector<Synapse*>());
-  
+        (trunc_syn_type == READOUT_SYN ? _rosynapses : vector<Synapse*>());
+
     assert(!synapses.empty());
     int cnt = 0;
     for(size_t i = 0; i < synapses.size(); ++i){
-	// only consider excitatory synapses:
-	if(synapses[i]->Excitatory()){
-	    cnt += synapses[i]->TruncIntermWeight();
-	}
+        // only consider excitatory synapses:
+        if(synapses[i]->Excitatory()){
+            cnt += synapses[i]->TruncIntermWeight();
+        }
     }
 
     cout<<"Total number of excitatory synapses being removed: "<<cnt<<endl;
@@ -2022,16 +2053,16 @@ void Network::TruncateIntermSyns(const char * syn_type){
 
 
 /**************************************************************************************
-*
-* This function is to visualize the reservoir synapses.
-* It will generate a reservoir_%d.gexf file, which %d is the indictor for the gen order
-* The format of this type of file can be found in 
-* http://graphml.graphdrawing.org/primer/graphml-primer.html#GraphNode
-*
-***************************************************************************************/
+ *
+ * This function is to visualize the reservoir synapses.
+ * It will generate a reservoir_%d.gexf file, which %d is the indictor for the gen order
+ * The format of this type of file can be found in 
+ * http://graphml.graphdrawing.org/primer/graphml-primer.html#GraphNode
+ *
+ ***************************************************************************************/
 void Network::VisualizeReservoirSyns(int indictor){
     assert(!_rsynapses.empty());
-    
+
     char filename[64];
     sprintf(filename, "reservoir_%d.gexf", indictor);
 
@@ -2040,11 +2071,11 @@ void Network::VisualizeReservoirSyns(int indictor){
 
     // put the header first:
     f_out<<"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	 <<"<gexf xmlns:viz=\"http:///www.gexf.net/1.1draft/viz\" version=\"1.1\" xmlns=\"http://www.gexf.net/1.1draft\">\n"
-	 <<"<meta lastmodifieddate=\"2010-03-03+23:44\">\n"
-	 <<"<creator>Gephi 0.7</creator>\n"
-	 <<"</meta>"
-	 <<endl;
+        <<"<gexf xmlns:viz=\"http:///www.gexf.net/1.1draft/viz\" version=\"1.1\" xmlns=\"http://www.gexf.net/1.1draft\">\n"
+        <<"<meta lastmodifieddate=\"2010-03-03+23:44\">\n"
+        <<"<creator>Gephi 0.7</creator>\n"
+        <<"</meta>"
+        <<endl;
 
     // define the graph type:
     f_out<<"<graph defaultedgetype=\"directed\" idtype=\"string\" type=\"static\">\n";
@@ -2053,35 +2084,35 @@ void Network::VisualizeReservoirSyns(int indictor){
     int count_neuron = 0, offset = 0;
     assert(!_allReservoirs.empty());
     for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	(*it)->LSMIndexNeurons(offset);
-	offset += (*it)->Size();
-	for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
-	    if(!neuron->LSMCheckNeuronMode(DEACTIVATED))
-		count_neuron++;
-	}
+        (*it)->LSMIndexNeurons(offset);
+        offset += (*it)->Size();
+        for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
+            if(!neuron->LSMCheckNeuronMode(DEACTIVATED))
+                count_neuron++;
+        }
     }
-    
+
     // count the total number of synapses:
     int count_syn = 0;
     for(vector<Synapse*>::iterator it = _rsynapses.begin(); it != _rsynapses.end(); ++it){
 #ifdef DIGITAL
-	if((*it)->IsValid() && (*it)->DWeight() >= 0)
+        if((*it)->IsValid() && (*it)->DWeight() >= 0)
 #else
-	if((*it)->IsValid() && (*it)->Weight() >= 0)
+            if((*it)->IsValid() && (*it)->Weight() >= 0)
 #endif
-	    count_syn++;
+                count_syn++;
     }
-	
+
     cout<<"total neurons: "<<count_neuron<<"\t total_synapses: "<<count_syn<<endl;
-    
+
     // output the reservoir neuron information:
     f_out<<"<nodes count=\""<<count_neuron<<"\">\n";
     for(list<NeuronGroup*>::iterator it = _allReservoirs.begin(); it != _allReservoirs.end(); ++it){
-	for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
-	    if(!neuron->LSMCheckNeuronMode(DEACTIVATED))
-		// the label here is randomly assigned by me:
-		f_out<<"<node id=\""<<neuron->Index()<<"\" label=\"OldMan\"/>\n";
-	}
+        for(Neuron * neuron = (*it)->First(); neuron != NULL; neuron = (*it)->Next()){
+            if(!neuron->LSMCheckNeuronMode(DEACTIVATED))
+                // the label here is randomly assigned by me:
+                f_out<<"<node id=\""<<neuron->Index()<<"\" label=\"OldMan\"/>\n";
+        }
     }
     f_out<<"</nodes>"<<endl;
 
@@ -2089,28 +2120,30 @@ void Network::VisualizeReservoirSyns(int indictor){
     f_out<<"<edges count=\""<<count_syn<<"\">\n";
     int index_syn = 0;
     for(vector<Synapse*>::iterator it = _rsynapses.begin(); it != _rsynapses.end(); ++it){
-	// for valid and non-inhibitory synapses:
+        // for valid and non-inhibitory synapses:
 #ifdef DIGITAL
-	if((*it)->IsValid() && (*it)->DWeight() >= 0){
+        if((*it)->IsValid() && (*it)->DWeight() >= 0){
 #else
-	if((*it)->IsValid() && (*it)->Weight() >= 0){
+        if((*it)->IsValid() && (*it)->Weight() >= 0){
 #endif
-		int pre_ind = (*it)->PreNeuron()->Index();
-		int post_ind = (*it)->PostNeuron()->Index();
-		f_out<<"<edge id=\""<<index_syn<<"\" source=\""<<pre_ind
-		     <<"\" target=\""<<post_ind<<"\" weight=\""
+            int pre_ind = (*it)->PreNeuron()->Index();
+            int post_ind = (*it)->PostNeuron()->Index();
+            f_out<<"<edge id=\""<<index_syn<<"\" source=\""<<pre_ind
+                <<"\" target=\""<<post_ind<<"\" weight=\""
 #ifdef DIGITAL
-		     <<((*it)->DWeight() == 0 ? 0.00001 : (*it)->DWeight())<<"\"/>\n";
+                <<((*it)->DWeight() == 0 ? 0.00001 : (*it)->DWeight())<<"\"/>\n";
 #else
-		     <<(*it)->Weight()<<"\"/>\n";
+                <<(*it)->Weight()<<"\"/>\n";
 #endif
-		index_syn++;
-	}		
+                index_syn++;
+        }		
     }
-    
+
     f_out<<"</edges>\n"
-	 <<"</graph>\n"
-	 <<"</gexf>"<<endl;
-	
+        <<"</graph>\n"
+        <<"</gexf>"<<endl;
+
     f_out.close();
 }
+
+

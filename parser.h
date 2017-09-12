@@ -5,17 +5,17 @@ class Network;
 
 class Parser{
 private:
-  Network * _network;
+    Network * _network;
 public:
-  Parser(Network *);
-  void Parse(const char *);
-  void ParseNeuron(char *, char *);
-  void ParseNeuronGroup(char *, int, char *);
- 
-  void ParseLSMSynapse(char *, char *, int, int, int, int, char *);
-  void ParseSpeech(int, char*);
-  void ParsePoissonSpeech(int cls, char * path);
-  void ParseMNISTSpeech(int cls, char * path);
+    Parser(Network *);
+    void Parse(const char *);
+    void ParseNeuron(char *, char *);
+    void ParseNeuronGroup(char *, int, char *);
+
+    void ParseLSMSynapse(char *, char *, int, int, int, int, char *);
+    void ParseSpeech(int, char*);
+    void ParsePoissonSpeech(int cls, char * path);
+    void ParseMNISTSpeech(int cls, char * path);
 };
 
 #endif

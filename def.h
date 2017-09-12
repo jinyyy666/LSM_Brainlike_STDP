@@ -86,10 +86,8 @@
 // the new rule(SRM based/reward modulated)
 *******************************************/
 #define _REWARD_MODULATE
-//#define _REWARD_MODULATE_GLOBAL // a global way 1) update at last 2) Discount reward 3) No TS
-//#define _REWARD_MODULATE_2ND_RESP // use the entire 2nd resp as reward modification
+//#define _REWARD_MODULATE_2ND_RESP // use the entire 2nd resp as reward modification, only implement the continuous part
 #define VMEM_DAMPING_FACTOR 1
-#define _UPDATE_AT_LAST // update the learning weight at the end of each speech
 
 #define TAU_REWARD_POS_E 4
 #define TAU_REWARD_NEG_E 8
@@ -102,6 +100,25 @@
 #define D_A_REWARD_POS 144
 #define D_A_REWARD_NEG 144
 
+/*****************************************
+ * Settings for error-backprop rule
+ ****************************************/
+#define BP_BETA_REG 10 // params for the regularization
+#define BP_LAMBDA_REG 0.08
+#define BP_DELTA_POT 0.02 // params for the learning of pos/neg class
+#define BP_DELTA_DEP 0.02
+#define BP_ITER_SEARCH_CONV 50 // search and converge learning rate 
+
+/*****************************************
+ * some available modifications 
+ * to the original Yong's rule
+ *****************************************/
+//#define _UPDATE_AT_LAST // update the learning weight at the end of each speech
+
+
+/*****************************************
+ * Settings for the unsupervised STDP
+ ****************************************/
 // damping factor for long-time potientation (under triplet case):
 // this value should be small (around 0.01) for multiplicative update!
 #define DAMPING 1
@@ -243,7 +260,7 @@
 #define _LEVEL_PERCENT 0.1 // level % of average variance will be considered correlated
 
 #define LOST_RATE 0.0
-#define DIGITAL
+//#define DIGITAL
 //#define DIGITAL_SYN_ORGINAL 1
 #define LIQUID_SYN_MODIFICATION 1
 
@@ -272,8 +289,8 @@
 //#define _UNIT_TEST
 
 enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL,READOUTCHANNEL}; // for allocate speech channels
-enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,NORMALSTDP,NORMALSTDPSUPV,NORMAL}; // for implement network stat.
-enum networkmode_t {TRAINRESERVOIR,TRAININPUT,TRAINREADOUT,TRANSIENTSTATE,READOUT,READOUTSUPV,VOID}; // different network mode
+enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,READCHANNELBP,NORMALSTDP,NORMALBP,NORMAL}; // for implement network stat.
+enum networkmode_t {TRAINRESERVOIR,TRAININPUT,TRAINREADOUT,TRANSIENTSTATE,READOUT,READOUTSUPV,READOUTBP,VOID}; // different network mode
 
 enum synapsetype_t {RESERVOIR_SYN, INPUT_SYN, READOUT_SYN, INVALID}; // different synaptic type
 
