@@ -20,7 +20,7 @@
 //#define _DEBUG_UNSUPERV_TRAINING
 //#define _DEBUG_SUPV_STDP
 //#define _DEBUG_UPDATE_AT_LAST
-
+//#define _DEBUG_BP
 
 using namespace std;
 
@@ -588,8 +588,8 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration){
     lr = lr/( 1 + iteration/BP_ITER_SEARCH_CONV);
     auto pre_calcium_stamp = _pre->GetCalciumStamp();
     for(auto & c : pre_calcium_stamp){
-        if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
 #ifdef _DEBUG_BP
+        if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
             cout<<"error part: "<<error*lr*c<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
 #endif
         _lsm_weight -= error*lr*c + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
