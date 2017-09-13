@@ -107,7 +107,7 @@
 #define BP_LAMBDA_REG 0.08
 #define BP_DELTA_POT 0.02 // params for the learning of pos/neg class
 #define BP_DELTA_DEP 0.02
-#define BP_ITER_SEARCH_CONV 50 // search and converge learning rate 
+#define BP_ITER_SEARCH_CONV 25 // search and converge learning rate 
 
 /*****************************************
  * some available modifications 
