@@ -20,7 +20,7 @@
 //#define _DEBUG_UNSUPERV_TRAINING
 //#define _DEBUG_SUPV_STDP
 //#define _DEBUG_UPDATE_AT_LAST
-//#define _DEBUG_BP
+#define _DEBUG_BP
 
 using namespace std;
 
@@ -586,8 +586,11 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration){
     double presyn_sq_sum = _post->GetInputSynSqSum(_lsm_weight_limit);
     double lr = error < 0 ? BP_DELTA_POT : BP_DELTA_DEP;
     lr = lr/( 1 + iteration/BP_ITER_SEARCH_CONV);
-    auto pre_calcium_stamp = _pre->GetCalciumStamp();
-    for(auto & c : pre_calcium_stamp){
+    //auto pre_calcium_stamp = _pre->GetCalciumStamp();
+    auto synaptic_response = _firing_stamp;
+    //for(auto & c : pre_calcium_stamp){
+    for(auto & p : _firing_stamp){
+        double c = p.second;
 #ifdef _DEBUG_BP
         if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
             cout<<"error part: "<<error*lr*c<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
@@ -640,7 +643,7 @@ double Synapse::LSMFirstOrderCurrent(){
 }
 
 //* two 2nd state variable decay
-void Synapse::LSMRespDecay(int time){
+void Synapse::LSMRespDecay(int time, int end_time){
 #ifdef DIGITAL
     ExpDecay(_D_lsm_state1, _D_lsm_tau1);
     ExpDecay(_D_lsm_state2, _D_lsm_tau2);
@@ -650,6 +653,8 @@ void Synapse::LSMRespDecay(int time){
 #endif
     //if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
     //cout<<"Response for r_0 -> o_0 : "<<LSMSecondOrderResp()<<" @ "<<time<<endl;
+    if(_post->LSMCheckNeuronMode(NORMALBP) && (time % (2*LSM_T_SYNE) == 0 || time == end_time ))
+        _firing_stamp.push_back(make_pair(time, LSMSecondOrderResp()));
 }
 
 //* this function is used to simulate the fired spike:

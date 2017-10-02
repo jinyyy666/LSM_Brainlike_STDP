@@ -19,7 +19,7 @@
 //#define _DEBUG_VARBASE
 //#define _DEBUG_CORBASE
 //#define _SHOW_SPEECH_ORDER
-//#define _PRINT_SPIKE_COUNT
+#define _PRINT_SPIKE_COUNT
 
 using namespace std;
 
@@ -785,8 +785,8 @@ void Network::LSMReservoirTraining(networkmode_t networkmode){
 void Network::LSMNextTimeStep(int t, bool train,int iteration,int end_time, FILE * Foutp, FILE * Fp, NeuronGroup * reservoir){
     _lsm_t = t;
 
-#if defined(_REWARD_MODULATE_2ND_RESP)
-    for(vector<Synapse*>::iterator iter = _rosynapses.begin(); iter != _rosynapses.end(); ++iter) (*iter)->LSMRespDecay(t);
+#if defined(_EACH_SYNAPSE_RESPONSE)
+    for(vector<Synapse*>::iterator iter = _rosynapses.begin(); iter != _rosynapses.end(); ++iter) (*iter)->LSMRespDecay(t, end_time);
 #endif
 
     for(list<Synapse*>::iterator iter = _lsmActiveSyns.begin(); iter != _lsmActiveSyns.end(); iter++) (*iter)->LSMNextTimeStep();

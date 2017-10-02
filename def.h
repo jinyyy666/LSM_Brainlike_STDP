@@ -86,7 +86,7 @@
 // the new rule(SRM based/reward modulated)
 *******************************************/
 #define _REWARD_MODULATE
-//#define _REWARD_MODULATE_2ND_RESP // use the entire 2nd resp as reward modification, only implement the continuous part
+#define _REWARD_MODULATE_2ND_RESP // use the entire 2nd resp as reward modification, only implement the continuous part
 #define VMEM_DAMPING_FACTOR 1
 
 #define TAU_REWARD_POS_E 4
@@ -100,14 +100,16 @@
 #define D_A_REWARD_POS 144
 #define D_A_REWARD_NEG 144
 
+#define _EACH_SYNAPSE_RESPONSE
+
 /*****************************************
  * Settings for error-backprop rule
  ****************************************/
 #define BP_BETA_REG 10 // params for the regularization
 #define BP_LAMBDA_REG 0.08
-#define BP_DELTA_POT 0.02 // params for the learning of pos/neg class
-#define BP_DELTA_DEP 0.02
-#define BP_ITER_SEARCH_CONV 25 // search and converge learning rate 
+#define BP_DELTA_POT 0.06 // params for the learning of pos/neg class
+#define BP_DELTA_DEP 0.01
+#define BP_ITER_SEARCH_CONV 50 // search and converge learning rate 
 
 /*****************************************
  * some available modifications 

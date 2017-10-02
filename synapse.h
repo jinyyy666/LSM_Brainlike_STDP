@@ -186,7 +186,7 @@ public:
     /* ONLY FOR LIQUID STATE MACHINE */
     void LSMPreSpike(int); // argument can only be 0 or 1
     //* conduct the exp decay for the two state vars for 2nd response
-    void LSMRespDecay(int time);
+    void LSMRespDecay(int time, int end_time);
     void LSMNextTimeStep();
     //* keep track of the post synaptic firing times and the corresponding input response
     void LSMFiringStamp(int time);
