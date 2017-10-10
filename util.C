@@ -6,6 +6,7 @@
 #include "util.h"
 #include <assert.h>
 #include <utility>
+#include <cmath>
 
 Timer::Timer(){
     gettimeofday(&m_start, &m_zone);
@@ -107,31 +108,42 @@ void UnionFind::unite(int p, int q){
     _count--;
 }
 
-void UnitTest::testUnionFind(){
-    std::vector<std::pair<int, int>> pairs({{3,4}, {4,9}, {8,0}, {2,3}, {5,6}, {5,9}, {7,3}, {4,8}, {6,1}});
-    UnionFind uf(10);
-    for(int i = 0; i < pairs.size(); ++i){
-        int p = pairs[i].first, q = pairs[i].second;
-        uf.add(p), uf.add(q);
-        uf.unite(p, q);
-    }
-    if(uf.count() != 1){
-        std::cout<<"In UnitTest::testUnionFind(), something wrong with the size counting!"
-            <<"The size you have: "<<uf.count()<<std::endl;
-        exit(EXIT_FAILURE);
-    }
-    std::vector<int> ids = uf.getGroupVec();
-    std::vector<int> szs = uf.getSizeVec();
-    bool pass = true;
-    for(int i = 0; i < ids.size(); ++i){
-        if(i == 0){
-            pass = pass && (ids[i] == 8);
+
+//* Compute the accumulative synapse effect based on the timings 
+//* See the equations in Book: Spiking Neuron Model Page 109
+//* t_ref: the refactory period
+std::vector<double> ComputeAccSRM(const std::vector<int>& pre_times, const std::vector<int>& post_times, const int window, const double ts, const double tm, const double t_ref){
+    std::vector<double> effects;
+    for(int i = 0; i < post_times.size(); ++i){
+        double effect = 0;
+        // notice that the initial time starts from 1
+        // add t_ref to consider the effect of refractory period
+        int last_post = i == 0 ? 1 : post_times[i-1]+t_ref;        
+        int cur_post = post_times[i];
+        auto lb = std::lower_bound(pre_times.begin(), pre_times.end(), std::max(1, cur_post - window));
+        auto ub = std::upper_bound(pre_times.begin(), pre_times.end(), cur_post);
+        for(auto it = lb; it != ub; ++it){
+            int pre_time = (*it) + t_ref;
+            if(pre_time > cur_post) continue;
+            int s = cur_post - last_post;
+            int t = cur_post - pre_time;
+            double factor = exp(-1*std::max(t - s, 0)/ts)/(1 - ts/tm);
+            effect += factor*(exp(-1*std::min(s, t)/tm) - exp(-1*std::min(s, t)/ts));
         }
-        else
-            pass = pass && (ids[i] == 3);
+        effects.push_back(effect);
     }
-    if(pass && szs[3] == 10)
-        std::cout<<"UnionFind successfully passes the test!"<<std::endl;
-    else
-        std::cout<<"In UnitTest::testUnionFind(), wrong group result!"<<std::endl;
+    return effects;
 }
+
+
+//* Build the dummy firing times for the targeted neuron with zero spike cnt
+std::vector<int> BuildDummyTimes(int max_count, int end_time){
+    std::vector<int> v;
+    int interval = end_time/std::max(max_count, 1);
+    for(int i = interval; i < end_time; i += interval){
+        v.push_back(i);
+    }
+    if(v.empty())   v.push_back(end_time/2);
+    return v;
+}
+

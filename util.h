@@ -8,8 +8,13 @@ Date: Sept 8, 2016
 
 #include <sys/time.h>
 #include <iostream>
+#include <ostream>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <functional>
+#include <iterator>
+#include <assert.h>
 
 class Timer{
 private:
@@ -44,11 +49,43 @@ public:
     std::vector<int> getSizeVec(){return _sz;}
 };
 
-class UnitTest{
-public:
-    void testUnionFind();
+std::vector<double> ComputeAccSRM(const std::vector<int>& pre_times, const std::vector<int>& post_times, const int window, const double ts, const double tm, const double t_ref = 0.0);
+std::vector<int> BuildDummyTimes(int max_count, int end_time);
 
-};
+
+//* reload the + for the vectors:
+template<class T> std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
+{
+    if(a.empty())   return b;
+    if(b.empty())   return a;
+    assert(a.size() == b.size());
+    std::vector<T> res;
+    res.reserve(a.size());
+    std::transform(a.begin(), a.end(), b.begin(), std::back_inserter(res), std::plus<T>());
+    return res;
+}
+
+
+//* reload the * for the vectors:
+template<class T> std::vector<T> operator*(const T c, const std::vector<T> & a)
+{
+    std::vector<T> res;
+    res.reserve(a.size());
+    std::transform(a.begin(), a.end(), std::back_inserter(res), std::bind1st(std::multiplies<T>(), c));
+    return res;
+}
+
+
+//* reload the << for print the vector
+template<class T> std::ostream& operator<<(std::ostream& out, const std::vector<T>& v)
+{
+    if(!v.empty()){
+        out << '[';
+        std::copy(v.begin(), v.end(), std::ostream_iterator<T>(out, ", "));
+        out << "\b\b]";
+    }
+    return out;
+}
 
 
 #endif
