@@ -256,25 +256,25 @@ public:
 
     /** Definition for inline functions: **/
     inline 
-        void LSMStaticCurrent(int * pos, double * value){
+    void LSMStaticCurrent(int * pos, double * value){
 #ifdef DIGITAL
-            assert(0);
+        assert(0);
 #endif
-            *pos = _excitatory ? 1 : -1;
-            *value = _lsm_spike == 0 ? 0 : _lsm_weight;
-            _lsm_spike = 0;
-        }
+        *pos = _excitatory ? 1 : -1;
+        *value = _lsm_spike == 0 ? 0 : _lsm_weight;
+        _lsm_spike = 0;
+    }
 
 
     inline 
-        void DLSMStaticCurrent(int* pos,int * value){
+    void DLSMStaticCurrent(int* pos,int * value){
 #ifndef DIGITAL
-            assert(0);
+        assert(0);
 #endif
-            *pos = _excitatory ? 1 : -1;  
-            *value = _D_lsm_spike == 0 ? 0: _D_lsm_weight;
-            _D_lsm_spike = 0;
-        }
+        *pos = _excitatory ? 1 : -1;  
+        *value = _D_lsm_spike == 0 ? 0: _D_lsm_weight;
+        _D_lsm_spike = 0;
+    }
 
     // * read the look-up table for the second order SRM based new rule
     template<class T>

@@ -3,6 +3,7 @@
 #include "synapse.h"
 #include "speech.h"
 #include "network.h"
+#include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
@@ -31,6 +32,7 @@ Network::Network():
 _readout_correct(vector<int>(NUM_ITERS, 0)),
 _readout_wrong(vector<int>(NUM_ITERS, 0)),
 _readout_even(vector<int>(NUM_ITERS, 0)),
+_readout_correct_breakdown(vector<vector<int> >(NUM_ITERS, vector<int>(CLS, 0))),
 _readout_test_error(vector<double>(NUM_ITERS, 0.0)),
 _sp(NULL),
 _fold(0),
@@ -313,7 +315,7 @@ void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int val
                 factor = factor*2/99999-1;
             }else if(random == 0) factor = 0;
             else assert(0);
-            double weight = value*factor;
+            double weight = value*factor/weight_limit;
             // set the sign of the readout weight the same as pre-neuron E/I might be hampful for the performance
             // if((!pre->IsExcitatory() && weight > 0) ||(pre->IsExcitatory() && weight < 0))  weight = -1*weight; 
             //if(weight > 0)  weight = weight*0.5;
@@ -337,6 +339,21 @@ void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int val
     }
 }
 
+//* add the laterial inhibition inside the layer
+void Network::LSMAddSynapse(NeuronGroup * pre, int npre, int npost, int value, int random, bool fixed){
+    assert(npre == -1 && npost == -1);
+    assert(fixed);
+    assert(value > 0);
+    for(Neuron * pre_neuron = pre->First(); pre_neuron != NULL; pre_neuron = pre->Next()){
+        for(int i = 0; i < pre->Size(); ++i){
+            Neuron * post_neuron = pre->Order(i);
+            if(pre_neuron == post_neuron)   continue;
+            // weight_value, fixed, weight_limit, is_in_liquid
+            LSMAddSynapse(pre_neuron, post_neuron, double(-value), fixed, double(value), false);
+        }
+    }
+}
+
 void Network::LSMAddSynapse(NeuronGroup * pre, NeuronGroup * post, int npre, int npost, int value, int random, bool fixed){
     assert((npre == 1)||(npre == -1));
     for(Neuron * neuron = pre->First(); neuron != NULL; neuron = pre->Next()){
@@ -348,9 +365,14 @@ void Network::LSMAddSynapse(char * pre, char * post, int npre, int npost, int va
     NeuronGroup * preNeuronGroup = SearchForNeuronGroup(pre);
     NeuronGroup * postNeuronGroup = SearchForNeuronGroup(post);
     assert((preNeuronGroup != NULL)&&(postNeuronGroup != NULL));
-
+    
     // add synapses
-    LSMAddSynapse(preNeuronGroup, postNeuronGroup, npre, npost, value, random, fixed);
+    if(strcmp(pre, post) != 0) // between layer connections
+        LSMAddSynapse(preNeuronGroup, postNeuronGroup, npre, npost, value, random, fixed);
+    else{ // laterial inhibition
+        assert(preNeuronGroup == postNeuronGroup);
+        LSMAddSynapse(preNeuronGroup, npre, npost, value, random, fixed);
+    } 
 }
 
 
@@ -548,7 +570,8 @@ void Network::LSMHubDetection(){
 //****************************************************************************************
 void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iteration){
     int info = -1;
-    int count = 0, correct = 0, wrong = 0, even = 0;
+    int count = 0;
+    vector<pair<int, int> > correct, wrong, even;
     FILE * Foutp = NULL, * Fp = NULL;
     char filename[64];
     vector<double> each_sample_errors;    
@@ -595,7 +618,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #endif
         // Apply the error bp when the speech is played
         if(_network_mode == READOUTBP)        
-            BackPropError(iteration);
+            BackPropError(iteration, end_time);
 
 #if defined(_UPDATE_AT_LAST)
         UpdateLearningWeights();
@@ -651,7 +674,8 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
         ReadoutJudge(correct, wrong, even); // judge the readout output here
         CollectErrorPerSample(each_sample_errors); // collect the test error for the sample
 #ifdef _PRINT_SPIKE_COUNT
-        PrintSpikeCount("readout"); // print the readout firing counts
+        if(iteration % 10 == 0)
+            PrintSpikeCount("readout"); // print the readout firing counts
 #endif
 
 #ifdef _DUMP_WAVEFORM 
@@ -1334,7 +1358,15 @@ void Network::PrintAllNeuronName(){
     for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) cout<<(*iter)->Name()<<endl;
 }
 
-
+//* count the number of speech from each class
+vector<int> Network::NumEachSpeech(){
+    vector<int> res(CLS, 0);
+    for(auto & sp : _speeches){
+        assert(sp && sp->Class() < CLS);
+        res[sp->Class()]++;
+    }
+    return res;
+}
 
 void Network::AnalogToSpike(){
     int counter = 0;
@@ -1564,14 +1596,14 @@ void Network::LSMChannelDecrement(channelmode_t channelmode){
 }
 
 //* calculate the error: # spike/max{spike}, and prop it back to modify the weights
-void Network::BackPropError(int iteration){
+void Network::BackPropError(int iteration, int end_time){
     assert(_lsm_output_layer);
 #ifdef CV
     assert(*_cv_train_sp_iter);
-    _lsm_output_layer->BpError((*_cv_train_sp_iter)->Class(), iteration);
+    _lsm_output_layer->BpError((*_cv_train_sp_iter)->Class(), iteration, end_time);
 #else
     assert(*_sp_iter);
-    _lsm_output_layer->BpError((*_sp_iter)->Class(), iteration);
+    _lsm_output_layer->BpError((*_sp_iter)->Class(), iteration, end_time);
 #endif
 }
 
@@ -1613,33 +1645,35 @@ void Network::PrintSpikeCount(string layer){
 }
 
 //* judge the readout result:
-void Network::ReadoutJudge(int& correct, int& wrong, int& even){
-    int res = this->LSMJudge();
+void Network::ReadoutJudge(vector<pair<int, int> >& correct, vector<pair<int, int> >& wrong, vector<pair<int, int> >& even){
+    pair<int, int> res = this->LSMJudge(); // +/- 1, true cls
 
-    if(res == 1) ++correct;
-    else if(res == -1) ++wrong;
-    else if(res == 0) ++even;
+    if(res.first == 1) correct.push_back(res);
+    else if(res.first == -1) wrong.push_back(res);
+    else if(res.first == 0) even.push_back(res);
     else{
-        cout<<"In Network::ReadoutJudge(int&, int&, int&)\n"
-            <<"Undefined return type: "<<res<<" returned by Network::LSMJudge()"
+        cout<<"In Network::ReadoutJudge(vector<pair<int, int> >&, vector<pair<int, int> >&, vector<pair<int, int> >&)\n"
+            <<"Undefined return type: "<<res.first<<" returned by Network::LSMJudge()"
             <<endl;
     }
 }
 
 /*************************************************************************************
  * this function is to find the readout neuron with maximum firing frequency and see 
- * if it is the desired one with correct label. @ret: +1 ->correct,-1 -> wrong, 0: even
+ * if it is the desired one with correct label. 
+ * @ret: pair <first, second>; first: +1 ->correct,-1 -> wrong, 0: even
+ *                             second: the true class index 
  **************************************************************************************/
-int Network::LSMJudge(){
+pair<int, int> Network::LSMJudge(){
     assert(_lsm_output_layer); 
 #ifdef CV
     assert(*_cv_test_sp_iter);
-    return _lsm_output_layer->Judge((*_cv_test_sp_iter)->Class());
+    int cls = (*_cv_test_sp_iter)->Class();
 #else
     assert(*_sp_iter);
-    return _lsm_output_layer->Judge((*_sp_iter)->Class());
+    int cls = (*_sp_iter)->Class();
 #endif
-
+    return {_lsm_output_layer->Judge(cls), cls};
 }
 
 //* add the active reservoir synapse about to be trained by STDP
@@ -1683,11 +1717,16 @@ void Network::IndexSpeech(){
 }
 
 //* push the readout results into the corresponding vector:
-void Network::LSMPushResults(int correct, int wrong, int even, int iter_n){
+void Network::LSMPushResults(const vector<pair<int, int> >& correct, const vector<pair<int, int> >& wrong, const vector<pair<int, int> >& even, int iter_n){
     assert(iter_n < _readout_correct.size());
-    _readout_correct[iter_n] += correct;
-    _readout_wrong[iter_n] += wrong;
-    _readout_even[iter_n] += even;
+    _readout_correct[iter_n] += correct.size();
+    _readout_wrong[iter_n] += wrong.size();
+    _readout_even[iter_n] += even.size();
+
+    for(auto & p : correct){
+        assert(p.second < _readout_correct_breakdown[iter_n].size());
+        _readout_correct_breakdown[iter_n][p.second]++;
+    }
 }
 
 //* log the test error into the corresponding vector:
@@ -1709,17 +1748,19 @@ vector<int> Network::LSMViewResults(){
 }
 
 //* merge the readout results from the network
-void Network::MergeReadoutResults(vector<int>& r_correct, vector<int>& r_wrong, vector<int>& r_even){
+void Network::MergeReadoutResults(vector<int>& r_correct, vector<int>& r_wrong, vector<int>& r_even, vector<vector<int> >& r_correct_bd){
     assert(!r_correct.empty() &&
             r_correct.size() == _readout_correct.size() &&
             r_wrong.size() == _readout_wrong.size() &&
             r_even.size() == _readout_even.size() &&
-            _readout_correct.size() == _readout_wrong.size());
+            _readout_correct.size() == _readout_wrong.size() &&
+            _readout_correct.size() == _readout_correct_breakdown.size());
 
     for(size_t i = 0; i < r_correct.size(); ++i){
         r_correct[i] += _readout_correct[i];
         r_wrong[i] += _readout_wrong[i];
         r_even[i] += _readout_even[i];
+        r_correct_bd[i] = r_correct_bd[i] + _readout_correct_breakdown[i];  
     }
 
 }
@@ -1843,7 +1884,7 @@ void Network::DumpWaveForm(string dir, int info){
     // output file format: 
     // 1st line : # of reservoir # of readout neuron
     // the rest : the v_mem value
-    if(_network_mode == READOUT || _network_mode == READOUTSUPV){
+    if(_network_mode == READOUT || _network_mode == READOUTSUPV || _network_mode == READOUTBP){
         NeuronGroup * ng = SearchForNeuronGroup("output");
         assert(ng);
         f_out<<"0\t"<<ng->Size()<<endl;

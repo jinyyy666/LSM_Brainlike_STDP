@@ -105,11 +105,15 @@
 /*****************************************
  * Settings for error-backprop rule
  ****************************************/
-#define BP_BETA_REG 10 // params for the regularization
+#define BP_BETA_REG 0.0 // params for the regularization
 #define BP_LAMBDA_REG 0.08
-#define BP_DELTA_POT 0.06 // params for the learning of pos/neg class
-#define BP_DELTA_DEP 0.01
+#define BP_DELTA_POT 0.0002 // params for the learning of pos/neg class
+#define BP_DELTA_DEP 0.0001
 #define BP_ITER_SEARCH_CONV 50 // search and converge learning rate 
+
+//#define BP_OBJ_RATIO 
+#define BP_OBJ_COUNT // current best
+//#define BP_OBJ_SOFTMAX  // remember to make DELTA_POT == DELTA_DEP for this case
 
 /*****************************************
  * some available modifications 
@@ -210,7 +214,7 @@
 #define LSM_T_M_C 64 // time constant for continuous case v_mem
 #define LSM_T_SYNE 8
 #define LSM_T_SYNI 2
-#define LSM_T_FO 4
+#define LSM_T_FO 8
 #define LSM_T_REFRAC 2
 #define LSM_V_REST 0
 #define LSM_V_RESET 0
@@ -266,8 +270,8 @@
 //#define DIGITAL_SYN_ORGINAL 1
 #define LIQUID_SYN_MODIFICATION 1
 
-#define SYN_ORDER_2 1 
-#define SYN_ORDER_1 0 
+//#define SYN_ORDER_2 0 
+#define SYN_ORDER_1 1 
 #define SYN_ORDER_0 0 
 
 #define CV
@@ -284,11 +288,12 @@
 
 //* visualize the readout response
 //#define _VISUALIZE_READOUT_RESPONSE
+//#define _VISUALIZE_INPUT_RESERVOIR_RESPONSE
 
 //#define _DUMP_WAVEFORM
 //#define _DUMP_CALCIUM
 
-//#define _UNIT_TEST
+//#define _TEST_
 
 enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL,READOUTCHANNEL}; // for allocate speech channels
 enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,READCHANNELBP,NORMALSTDP,NORMALBP,NORMAL}; // for implement network stat.

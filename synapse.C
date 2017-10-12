@@ -2,6 +2,7 @@
 #include "synapse.h"
 #include "neuron.h"
 #include "network.h"
+#include "util.h"
 #include <cmath>
 #include <cstring>
 #include <cstdlib>
@@ -20,7 +21,7 @@
 //#define _DEBUG_UNSUPERV_TRAINING
 //#define _DEBUG_SUPV_STDP
 //#define _DEBUG_UPDATE_AT_LAST
-#define _DEBUG_BP
+//#define _DEBUG_BP
 
 using namespace std;
 
@@ -76,9 +77,8 @@ Synapse::Synapse(Neuron * pre, Neuron * post, double lsm_weight, bool fixed, dou
 
     _lsm_tau2 = _excitatory ? LSM_T_SYNE*2 : LSM_T_SYNI*2;
     _D_lsm_tau2 = _excitatory ? LSM_T_SYNE*2 : LSM_T_SYNI*2;
-    char * name = pre->Name();
-    // be careful, this might hamper the performance : (
-    // if(name[0] == 'i')  _excitatory = _lsm_weight >= 0; 
+    char * name = post->Name();
+    if(name[0] == 'o')  _excitatory = _lsm_weight >= 0; 
 
     cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<_excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
 
@@ -138,8 +138,7 @@ Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int 
     _lsm_tau2 = _excitatory ? LSM_T_SYNE*2 : LSM_T_SYNI*2;
     _D_lsm_tau2 = _excitatory ? LSM_T_SYNE*2 : LSM_T_SYNI*2;
 
-    char * pre_name;
-    pre_name = pre->Name();
+    char * pre_name = pre->Name();
     assert(pre_name != NULL);
     // be careful.. that might hamper the performance : ( 
     // if(pre_name[0] == 'i')  _excitatory = _D_lsm_weight >= 0; 
@@ -367,10 +366,12 @@ void Synapse::SetPostNeuron(Neuron * post){
 }
 
 bool Synapse::IsReadoutSyn(){
+    char * name_pre = _pre->Name();
     char * name_post = _post->Name();
     // if the post neuron is the readout neuron:
     if(name_post[0] == 'o' && name_post[6] == '_'){
-        assert(_fixed == false);
+        if(name_pre[0] != 'o')  assert(_fixed == false);
+        else    assert(fixed);
         return true;
     }
     else{
@@ -587,12 +588,16 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration){
     double lr = error < 0 ? BP_DELTA_POT : BP_DELTA_DEP;
     lr = lr/( 1 + iteration/BP_ITER_SEARCH_CONV);
     //auto pre_calcium_stamp = _pre->GetCalciumStamp();
-    auto synaptic_response = _firing_stamp;
+    vector<int> post_times, pre_times;
+    _pre->GetSpikeTimes(pre_times);
+    _post->GetSpikeTimes(post_times);
+    auto synaptic_effects = ComputeAccSRM(pre_times, post_times, 4*LSM_T_M_C, LSM_T_FO, LSM_T_M_C, LSM_T_REFRAC);
+    double size = synaptic_effects.size();
     //for(auto & c : pre_calcium_stamp){
-    for(auto & p : _firing_stamp){
-        double c = p.second;
+    for(auto & p : synaptic_effects){
+        double c = p;
 #ifdef _DEBUG_BP
-        if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
+        if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0 || (strcmp(_pre->Name(), "reservoir_1") == 0 && strcmp(_post->Name(), "output_24") == 0))
             cout<<"error part: "<<error*lr*c<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
 #endif
         _lsm_weight -= error*lr*c + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));

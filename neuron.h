@@ -26,6 +26,7 @@ private:
     std::vector<double> _fire_freq;
     std::vector<bool> _presyn_act;
     std::map<Neuron*, int> _correlation;
+    std::vector<int> _fire_timings;
 #ifdef DIGITAL
     std::vector<int> _vmems;
     std::vector<int> _calcium_stamp;
@@ -129,7 +130,7 @@ public:
 
     bool Fired(){return _fired;}
 
-    template <typename T> void GetWaveForm(std::vector<T>& v){v = _vmems;}
+    template<typename T> void GetWaveForm(std::vector<T>& v){v = _vmems;}
     // set the neuron index under the separated reservoir cases:
     void Index(int ind){_ind = ind;}
 
@@ -182,6 +183,8 @@ public:
     int  DLSMSumAbsInputWeights();
     void LSMSetChannel(Channel*,channelmode_t);
     void LSMRemoveChannel();
+    void GetSpikeTimes(std::vector<int>& times);
+    void SetSpikeTimes(const std::vector<int>& times);
     void LSMSetNeuronMode(neuronmode_t neuronmode){_mode = neuronmode;}
     bool LSMCheckNeuronMode(neuronmode_t neuronmode){return _mode == neuronmode;}
 
@@ -266,8 +269,9 @@ public:
     void MergeCorrelatedNeurons(int num_sample);
 
     int Judge(int cls);
+    double SoftMax(int max_count);
     int MaxFireCount();
-    void BpError(int cls, int iteration);
+    void BpError(int cls, int iteration, int end_time);
     double ComputeRatioError(int cls);
     void UpdateLearningWeights();
 

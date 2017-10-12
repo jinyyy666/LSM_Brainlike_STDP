@@ -204,8 +204,10 @@ void Simulator::LSMRun(long tid){
             _network->LSMNextTimeStep(++time,false,1, 1, NULL,NULL);
         }
 
-        //cout<<"Speech "<<count<<endl;
-        //_network->SpeechPrint(info);
+#ifdef _VISUALIZE_INPUT_RESERVOIR_SPEECHES
+        cout<<"Speech "<<count<<endl;
+        _network->SpeechPrint(info);
+#endif
         // print the firing frequency into the file:
         //_network->SpeechSpikeFreq("input", f1, f2);
 #ifdef _RES_FIRING_CHR

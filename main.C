@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <algorithm>
+#include <iterator>
 
 using namespace std;
 int file[4142];
@@ -65,15 +66,20 @@ void PrintResultsToFile(const vector<int>& r_correct, const vector<int>& r_wrong
 void CollectResultsFromNetwork(Network array_network[]){
     int num_speeches = array_network[0].NumSpeech();
     int num_iters = array_network[0].NumIteration();
+    vector<int> num_each_speech = array_network[0].NumEachSpeech();
+
     vector<int> r_correct(num_iters, 0);
     vector<int> r_wrong(num_iters, 0);
     vector<int> r_even(num_iters, 0);
+    vector<vector<int> > r_correct_bd(num_iters, vector<int>(CLS, 0)); 
 
     for(int i = 0; i < NUM_THREADS; ++i)
-        array_network[i].MergeReadoutResults(r_correct, r_wrong, r_even);
+        array_network[i].MergeReadoutResults(r_correct, r_wrong, r_even, r_correct_bd);
 
-    int max_rate = *max_element(r_correct.begin(),r_correct.end());
-    cout<<"Best performance = "<<max_rate<<"/"<<num_speeches<<" = "<<double(max_rate)*100/double(num_speeches)<<'%'<<endl;
+    auto max_rate_iter = max_element(r_correct.begin(),r_correct.end());
+    int max_rate = *max_rate_iter;
+    int max_ind = distance(r_correct.begin(), max_rate_iter);
+    cout<<"Best performance achieved @"<<max_ind<<" = "<<max_rate<<"/"<<num_speeches<<" = "<<double(max_rate)*100/double(num_speeches)<<'%'<<endl;
     if(r_correct.size() >= 50)
         cout<<"Performance at 50th iteration = "<<double(r_correct[49])*100/double(num_speeches)<<'%'<<endl;
     if(r_correct.size() >= 100)
@@ -83,6 +89,11 @@ void CollectResultsFromNetwork(Network array_network[]){
     if(r_correct.size() >= 300)
         cout<<"Performance at 300th iteration = "<<double(r_correct[299])*100/double(num_speeches)<<'%'<<endl;
 
+    assert(num_each_speech.size() == r_correct_bd[max_ind].size());
+    for(int i = 0; i < num_each_speech.size(); ++i){
+        if(num_each_speech[i] != 0)
+            cout<<"Performance for "<<i<<"th class = "<<r_correct_bd[max_ind][i]*100/double(num_each_speech[i])<<'%'<<endl;
+    }
     PrintResultsToFile(r_correct, r_wrong, r_even, num_speeches);
 }
 
@@ -113,12 +124,6 @@ int main(int argc, char * argv[]){
     int i;
     void * status;
     long t;
-
-#ifdef _UNIT_TEST
-    UnitTest test;
-    test.testUnionFind();
-    return 0;
-#endif
 
     gettimeofday(&val1,&zone);
     //  srand(time(NULL));

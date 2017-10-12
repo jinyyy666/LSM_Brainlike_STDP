@@ -9,6 +9,7 @@
 #include "def.h"
 #include <cstdio>
 #include <fstream>
+#include <utility>
 
 class Neuron;
 class Synapse;
@@ -36,6 +37,7 @@ private:
     std::vector<int> _readout_correct; // sign : +1
     std::vector<int> _readout_wrong;   // sign: -1
     std::vector<int> _readout_even;    // sign: 0
+    std::vector<std::vector<int> > _readout_correct_breakdown; // the break down for each class
     std::vector<double> _readout_test_error; // test error: (o - y)^2
 
     // for LSM
@@ -75,6 +77,7 @@ public:
     void LSMAddSynapse(char*,char*,int,int,int,int,bool);
     void LSMAddSynapse(Neuron*,NeuronGroup*,int,int,int,bool);
     void LSMAddSynapse(NeuronGroup*,NeuronGroup*,int,int,int,int,bool);
+    void LSMAddSynapse(NeuronGroup * pre, int npre, int npost, int value, int random, bool fixed);
 
     void PrintSize();
     void PrintAllNeuronName();
@@ -132,18 +135,19 @@ public:
 
     int NumSpeech(){return _speeches.size();}
     int NumIteration(){return _readout_correct.size();}
+    std::vector<int> NumEachSpeech();
     void AnalogToSpike();
     void RateToSpike();
     void LSMClearSignals();
     void LSMClearWeights();
     bool LSMEndOfSpeech(networkmode_t);
     void LSMChannelDecrement(channelmode_t);
-    void BackPropError(int iteration);
+    void BackPropError(int iteration, int end_time);
     void UpdateLearningWeights();
     void CollectErrorPerSample(std::vector<double>& each_sample_error);
     void PrintSpikeCount(std::string layer);
-    void ReadoutJudge(int& correct, int& wrong, int& even);
-    int  LSMJudge();
+    void ReadoutJudge(std::vector<std::pair<int, int> >& correct, std::vector<std::pair<int, int> >& wrong, std::vector<std::pair<int, int> >& even);
+    std::pair<int, int>  LSMJudge();
     //* this function is to add the active learning readout synapses:
     void LSMAddActiveLearnSyn(Synapse*synapse){_lsmActiveLearnSyns.push_back(synapse);}
     void LSMAddActiveSyn(Synapse*synapse){_lsmActiveSyns.push_back(synapse);}
@@ -168,9 +172,9 @@ public:
 
     // supporting functions:
     // the push/view readout results:
-    void LSMPushResults(int correct, int wrong, int even, int n_iter);
+    void LSMPushResults(const std::vector<std::pair<int, int> >& correct, const std::vector<std::pair<int, int> >& wrong, const std::vector<std::pair<int, int> >& even, int n_iter);
     std::vector<int> LSMViewResults();
-    void MergeReadoutResults(std::vector<int>& r_correct, std::vector<int>& r_wrong, std::vector<int>& r_even);
+    void MergeReadoutResults(std::vector<int>& r_correct, std::vector<int>& r_wrong, std::vector<int>& r_even, std::vector<std::vector<int> >& r_correct_bd);
     void MergeTestErrors(std::vector<double>& test_errors);
 
     // log the test errors:

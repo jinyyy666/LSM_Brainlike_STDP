@@ -4,6 +4,7 @@
 #include "network.h"
 #include "speech.h"
 #include "channel.h"
+#include "util.h"
 #include <stdlib.h>
 #include <iostream>
 #include <utility>
@@ -328,6 +329,7 @@ void Neuron::LSMClear(){
     _fired = false;
     _vmems.clear();
     _calcium_stamp.clear();
+    _fire_timings.clear();
 
     _lsm_ref = 0;
 
@@ -416,12 +418,12 @@ inline void Neuron::AccumulateSynapticResponse(const int pos, double value){
         _lsm_state_IP += value;
         _lsm_state_IN += value;
     }
-#elif SYN_ORDSER_1
+#elif SYN_ORDER_1
     if(pos > 0) _lsm_state_EP += value;
-    else _lsm_state_EP -= value;
+    else _lsm_state_EP += value;
 #else
     if(pos > 0) _lsm_state_EP += value;
-    else _lsm_state_EP -= value;
+    else _lsm_state_EP += value;
 #endif
 
 }
@@ -492,7 +494,7 @@ inline double Neuron::NOrderSynapticResponse(){
 #ifdef SYN_ORDER_2
     return (_lsm_state_EP-_lsm_state_EN)/(_lsm_tau_EP-_lsm_tau_EN)+(_lsm_state_IP-_lsm_state_IN)/(_lsm_tau_IP-_lsm_tau_IN);
 #elif SYN_ORDER_1
-    return _lsm_state_EP/_lsm_tau_FO;
+    return _lsm_state_EP/_lsm_tau_EP;
 #else
     return _lsm_state_EP;
 #endif
@@ -675,6 +677,11 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
                         (*iter)->LSMActivate(_network, false, train);
                 }
             }
+        }
+        else if(_mode == NORMALBP){
+            // for readout - readout laterial inihibiton in bp rule!
+            if((*iter)->GetActiveStatus() == false)
+                (*iter)->LSMActivate(_network, false, train);
         }
         else{
             // for reservoir-reservoir and reservoir-output in TRANSIENT STATE
@@ -942,7 +949,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
         _lsm_ref = LSM_T_REFRAC;
 
 #ifdef _VISUALIZE_READOUT_RESPONSE
-        if((_mode == NORMAL || _mode == NORMALSTDP) && Foutp != NULL && _name[0] == 'o')
+        if((_mode == NORMAL || _mode == NORMALSTDP || _mode == NORMALBP) && Foutp != NULL && _name[0] == 'o')
             fprintf(Foutp, "%d\t%d\n", atoi(_name+7), t);
 #endif
 #ifdef  _WRITE_STAT
@@ -954,6 +961,8 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
         if(_name[0] == 'o'){
             if(t <= end_time/2) _f_count += 1;
             else  ++_f_count;
+            assert(t > (_fire_timings.empty() ? -1 : _fire_timings.back()));
+            _fire_timings.push_back(t);
         }
 
         if(_mode == WRITECHANNEL){
@@ -992,6 +1001,23 @@ void Neuron::LSMSetChannel(Channel * channel, channelmode_t channelmode){
 
 void Neuron::LSMRemoveChannel(){
     _lsm_channel = NULL;
+}
+
+//* Get the timing of the spikes
+void Neuron::GetSpikeTimes(vector<int>& times){
+    if(_name[0] == 'o'){
+        times = _fire_timings;
+    }
+    else{
+        assert(_lsm_channel);
+        _lsm_channel->GetAllSpikes(times);
+    }
+}
+
+//* Set the timing of the spikes, only valid for the readout neurons
+void Neuron::SetSpikeTimes(const vector<int>& times){
+    assert(_name[0] == 'o');
+    _fire_timings = times;
 }
 
 //* Collect the presynaptic neuron firing activity:
@@ -1114,6 +1140,20 @@ void Neuron::MergeNeuron(Neuron * target){
 
 //* Back prop the final error back
 void Neuron::BpError(double error, int iteration){
+#ifdef _TEST_
+    // for testing the accumulative effect of each synapse:
+    vector<double> A_k(this->FireCount(), 0.0);
+    for(auto it = _inputSyns.begin(); it != _inputSyns.end(); ++it){
+        vector<int> post_times, pre_times;
+        (*it)->PreNeuron()->GetSpikeTimes(pre_times);
+        (*it)->PostNeuron()->GetSpikeTimes(post_times);
+        vector<double> a_k = ComputeAccSRM(pre_times, post_times, 10*LSM_T_M_C, LSM_T_FO, LSM_T_M_C, LSM_T_REFRAC);
+        A_k = A_k + (*it)->Weight()*a_k;
+    }
+    for(double a : A_k){
+        cout<<"For "<<_name<<", the sum of effects: "<<a<<endl; 
+    }
+#endif
     for(auto it = _inputSyns.begin(); it != _inputSyns.end(); ++it){
         assert((*it));
 #ifdef DIGITAL
@@ -1831,6 +1871,17 @@ int NeuronGroup::Judge(int cls){
     else return -1;  // wrong case
 }
 
+
+//* compute the softmax of the readout neurons:
+double NeuronGroup::SoftMax(int max_count){
+    double sum = 0;
+    for(int i = 0; i < _neurons.size(); ++i){
+        double f_cnt = _neurons[i]->FireCount();
+        sum += exp(f_cnt - max_count);
+    }
+    return sum;
+}
+
 int NeuronGroup::MaxFireCount(){
     int max_count = -1;
     for(int i = 0; i < _neurons.size(); ++i){
@@ -1841,26 +1892,49 @@ int NeuronGroup::MaxFireCount(){
 }
 
 //* compute and backprop the error in terms of the spike count/time-discounted reward
-void NeuronGroup::BpError(int cls, int iteration){
+void NeuronGroup::BpError(int cls, int iteration, int end_time){
     int max_count = MaxFireCount();
 
     double error = 0;
     double sum_error = 0;
+    double soft_max_sum = SoftMax(max_count);
 #ifdef _DEBUG_BP
     cout<<"True class label: "<<cls<<endl;
 #endif
     for(int i = 0; i < _neurons.size(); ++i){
         int f_cnt = _neurons[i]->FireCount();
+        // simple ratio based obj
+#if     defined(BP_OBJ_RATIO)
         if(max_count != 0)
             error = (i == cls) ? (f_cnt == max_count ? 0 : double(f_cnt)/max_count - 2): 
                 //_neurons[i]->FireCount()/double(max_count);
                 max(_neurons[i]->FireCount()/double(max_count) - 0.5, 0.0);
         else
             error = (i == cls) ? - 1: 0;
+#elif   defined(BP_OBJ_COUNT)
+        // simple count based obj
+        if(i == cls)
+            error = (f_cnt >= 50 && f_cnt <= 60) ? 0 : f_cnt - 55;
+        else
+            error = (f_cnt >= 10 && f_cnt <= 20) ? 0 : f_cnt - 15;
+#elif   defined(BP_OBJ_SOFTMAX)
+        // soft max based obj
+        if(i == cls)
+            error = exp(f_cnt - max_count)/soft_max_sum - 1;
+        else
+            error = exp(f_cnt - max_count)/soft_max_sum;
+#endif
+
         sum_error += error*error;
 #ifdef _DEBUG_BP
         cout<<"The backprop error for neuron "<<i<<" : "<<error<<" with fc: "<<_neurons[i]->FireCount()<<endl;
 #endif
+        // build a dummmy firing timings for the targeted neuron when there is no spikes
+        if(i == cls && f_cnt == 0){
+            vector<int> dummy_f_seq = BuildDummyTimes(max_count, end_time);
+            _neurons[i]->SetSpikeTimes(dummy_f_seq); 
+        }
+        if(error == 0)  continue;
         _neurons[i]->BpError(error, iteration);
     }
 #ifdef _DEBUG_BP
