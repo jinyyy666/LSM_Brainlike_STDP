@@ -51,7 +51,7 @@ public:
 
 std::vector<double> ComputeAccSRM(const std::vector<int>& pre_times, const std::vector<int>& post_times, const int window, const double ts, const double tm, const double t_ref = 0.0);
 std::vector<int> BuildDummyTimes(int max_count, int end_time);
-
+void MakeDirs(std::string dir);
 
 //* reload the + for the vectors:
 template<class T> std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)

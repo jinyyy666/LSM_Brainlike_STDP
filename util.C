@@ -7,6 +7,8 @@
 #include <assert.h>
 #include <utility>
 #include <cmath>
+#include <sys/stat.h>
+#include <sstream>
 
 Timer::Timer(){
     gettimeofday(&m_start, &m_zone);
@@ -147,3 +149,22 @@ std::vector<int> BuildDummyTimes(int max_count, int end_time){
     return v;
 }
 
+
+//* Make the directories using system function
+void MakeDirs(std::string dir){
+    struct stat sb;
+    std::string base = ".";
+    std::stringstream iss(dir);
+    std::string sub_dir;
+    // decode the string:
+    while(std::getline(iss, sub_dir, '/')){
+        std::string cmd;
+        std::string path = base + "/" + sub_dir;
+        if(stat(path.c_str(), &sb) != 0){
+            cmd = "mkdir " + path;
+            std::cout<<"Creating path: "<<path<<std::endl;
+            int i = system(cmd.c_str());
+        }
+        base = base + "/" + sub_dir;
+    }
+}

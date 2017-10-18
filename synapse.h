@@ -63,8 +63,8 @@ private:
     int _lsm_delay;
 
     double _lsm_c;
-    double _lsm_weight_last;
     double _lsm_weight;
+    double _lsm_weight_old;
     double _lsm_weight_limit;
 
     int _D_lsm_c;
@@ -190,6 +190,8 @@ public:
     void LSMNextTimeStep();
     //* keep track of the post synaptic firing times and the corresponding input response
     void LSMFiringStamp(int time);
+    //* Prop back the weighted error from l+1 layer
+    double LSMErrorBack();
     //* back prop the error wrt each syn
     void LSMBpSynError(double error, double vth, int iteration);
     //* perform an accumulated update at the end:

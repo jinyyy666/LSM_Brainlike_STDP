@@ -2,6 +2,7 @@
 #define SPEECH
 
 #include <vector>
+#include <string>
 #include <fstream>
 #include "def.h"
 
@@ -20,7 +21,7 @@ public:
     Speech(int);
     ~Speech();
     void SetNumReservoirChannel(int);
-    void SetNumReadoutChannel(int);
+    void SetNumOutputChannel(int);
     Channel * AddChannel(int, int);
     Channel * GetChannel(int,channelmode_t);
     void ClearChannel(channelmode_t channelmode);
@@ -37,6 +38,7 @@ public:
     int NumConnections(){return _input_connections;}
 
     void Info();
+    void PrintSpikesPerChannels(const std::vector<Channel*>& channels, const std::string& filename);
     void PrintSpikes(int info);
     int PrintSpikeFreq(const char * type, std::ofstream & f_out);
     void SpikeFreq(std::ofstream & f_out, const std::vector<Channel*> & channels);

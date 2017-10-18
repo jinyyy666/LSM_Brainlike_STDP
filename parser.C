@@ -41,8 +41,10 @@ void Parser::Parse(const char * filename){
             assert(token[1] != NULL);
             token[2] = strtok(NULL," \t\n");
             assert(token[2] != NULL);
+            token[3] = strtok(NULL," \t\n");
 
-            ParseNeuron(token[1],token[2]);
+            double v_mem = token[3] == NULL ? LSM_V_THRESH : atof(token[3]);
+            ParseNeuron(token[1],token[2], v_mem);
         }else if(strcmp(token[0],"neurongroup")==0){
             // neurongroup name number
             token[1] = strtok(NULL," \t\n");
@@ -51,7 +53,10 @@ void Parser::Parse(const char * filename){
             assert(token[2] != NULL);
             token[3] = strtok(NULL," \t\n");
             assert(token[3] != NULL);
-            ParseNeuronGroup(token[1],atoi(token[2]),token[3]);
+            // read the v_mem from the netlist if applicable
+            token[4] = strtok(NULL," \t\n");
+            double v_mem = token[4] == NULL ? LSM_V_THRESH : atof(token[4]);
+            ParseNeuronGroup(token[1], atoi(token[2]), token[3], v_mem);
         }else if(strcmp(token[0],"column")==0){
             token[1] = strtok(NULL," \t\n");
             assert(token[1] != NULL);
@@ -151,23 +156,22 @@ void Parser::Parse(const char * filename){
     fclose(fp);
 }
 
-void Parser::ParseNeuron(char * name, char * e_i){
+void Parser::ParseNeuron(char * name, char * e_i, double v_mem){
     assert(_network->CheckExistence(name) == false);
     assert((strcmp(e_i,"excitatory")==0)||(strcmp(e_i,"inhibitory")==0));
-    bool excitatory;
-    if(strcmp(e_i,"excitatory") == 0) excitatory = true;
-    else excitatory = false;
-    _network->AddNeuron(name,excitatory);
+    
+    bool excitatory = strcmp(e_i,"excitatory") == 0 ? true : false;
+    _network->AddNeuron(name, excitatory, v_mem);
 }
 
-void Parser::ParseNeuronGroup(char * name, int num, char * e_i){
+void Parser::ParseNeuronGroup(char * name, int num, char * e_i, double v_mem){
     assert(_network->CheckExistence(name) == false);
     assert(num > 1);
     assert((strcmp(e_i,"excitatory")==0)||(strcmp(e_i,"inhibitory")==0));
     bool excitatory;
     if(strcmp(e_i,"excitatory") == 0) excitatory = true;
     else excitatory = false;
-    _network->AddNeuronGroup(name,num,excitatory);
+    _network->AddNeuronGroup(name, num, excitatory, v_mem);
 }
 
 

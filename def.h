@@ -17,13 +17,10 @@
 // this control variable is to enable the simple STDP update rule
 // NEED TO ENABLE _LUT_HARDWARE_APPROACH and DIGITAL first!
 //#define _SIMPLE_STDP
-// this control variable is defined to test my thought of separate
-// the reservoir into several parts and stimulate each part with 
-// speeches that are similar to each other under STDP training:
-//#define _SEPARATE_RESERVOIR
 
 // this control variable enable the pure random connection in the reservoir
 //#define PURE_RANDOM_RES_CONNECTION
+
 // this is the prob. for the random connections
 #define CONNECTION_PROB 0.2
 
@@ -107,8 +104,8 @@
  ****************************************/
 #define BP_BETA_REG 0.0 // params for the regularization
 #define BP_LAMBDA_REG 0.08
-#define BP_DELTA_POT 0.0002 // params for the learning of pos/neg class
-#define BP_DELTA_DEP 0.0001
+#define BP_DELTA_POT 0.00001 // params for the learning of pos/neg class
+#define BP_DELTA_DEP 0.00001
 #define BP_ITER_SEARCH_CONV 50 // search and converge learning rate 
 
 //#define BP_OBJ_RATIO 
@@ -286,16 +283,14 @@
 //* Control variable to enable print max/min for 4 state variables of synaptic response
 //#define _RES_EPEN_CHR
 
-//* visualize the readout response
-//#define _VISUALIZE_READOUT_RESPONSE
-//#define _VISUALIZE_INPUT_RESERVOIR_RESPONSE
+//* visualize the spikes response and the v_mem
+//#define _DUMP_RESPONSE
 
-//#define _DUMP_WAVEFORM
 //#define _DUMP_CALCIUM
 
 //#define _TEST_
 
-enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL,READOUTCHANNEL}; // for allocate speech channels
+enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL, OUTPUTCHANNEL}; // for allocate speech channels
 enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,READCHANNELBP,NORMALSTDP,NORMALBP,NORMAL}; // for implement network stat.
 enum networkmode_t {TRAINRESERVOIR,TRAININPUT,TRAINREADOUT,TRANSIENTSTATE,READOUT,READOUTSUPV,READOUTBP,VOID}; // different network mode
 

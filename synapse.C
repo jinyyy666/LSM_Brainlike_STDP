@@ -47,8 +47,8 @@ Synapse::Synapse(Neuron * pre, Neuron * post, double lsm_weight, bool fixed, dou
     _D_lsm_spike(0),
     _lsm_delay(0),
     _lsm_c(0),
-    _lsm_weight_last(lsm_weight),
     _lsm_weight(lsm_weight),
+    _lsm_weight_old(_lsm_weight),
     _lsm_weight_limit(fabs(lsm_weight_limit)),
     _Unit(1),
     _D_lsm_c(0),
@@ -107,8 +107,8 @@ Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int 
     _D_lsm_spike(0),
     _lsm_delay(0),
     _lsm_c(0),
-    _lsm_weight_last(0),
     _lsm_weight(0),
+    _lsm_weight_old(_lsm_weight),
     _lsm_weight_limit(0),
     _D_lsm_c(0),
     _D_lsm_weight(D_lsm_weight),
@@ -211,11 +211,11 @@ void Synapse::_init_lookup_table(bool isSupv){
 
     // time consts for the reward modulated rule
     /*
-       const int c_tau_syn_pos_e = _pre->GetTauEP()/2;
-       const int c_tau_syn_neg_e = _pre->GetTauEN()/2;
-       const int c_tau_syn_pos_i = _pre->GetTauIP()/2;
-       const int c_tau_syn_neg_i = _pre->GetTauIN()/2;
-       */
+    const int c_tau_syn_pos_e = _pre->GetTauEP()/2;
+    const int c_tau_syn_neg_e = _pre->GetTauEN()/2;
+    const int c_tau_syn_pos_i = _pre->GetTauIP()/2;
+    const int c_tau_syn_neg_i = _pre->GetTauIN()/2;
+    */
     const int c_tau_syn_pos_e = TAU_REWARD_POS_E;
     const int c_tau_syn_neg_e = TAU_REWARD_NEG_E;
     const int c_tau_syn_pos_i = TAU_REWARD_POS_I;
@@ -366,12 +366,9 @@ void Synapse::SetPostNeuron(Neuron * post){
 }
 
 bool Synapse::IsReadoutSyn(){
-    char * name_pre = _pre->Name();
     char * name_post = _post->Name();
-    // if the post neuron is the readout neuron:
-    if(name_post[0] == 'o' && name_post[6] == '_'){
-        if(name_pre[0] != 'o')  assert(_fixed == false);
-        else    assert(fixed);
+    // if the post neuron is the readout/hidden neuron:
+    if((name_post[0] == 'o' && name_post[6] == '_') || (name_post[0] == 'h' && name_post[6] == '_')){
         return true;
     }
     else{
@@ -577,11 +574,17 @@ void Synapse::LSMFiringStamp(int time){
 #endif
 }
 
+//* Prop back the weighted error from l+1 layer
+double Synapse::LSMErrorBack(){
+   return _post->GetError()*_lsm_weight_old; 
+}
+
 //* back prop the error w.r.t each synapse:
 void Synapse::LSMBpSynError(double error, double vth, int iteration){
 #ifdef DIGITAL
     assert(0);
 #endif
+    _lsm_weight_old = _lsm_weight;
     double beta = BP_BETA_REG;
     double lambda = BP_LAMBDA_REG;
     double presyn_sq_sum = _post->GetInputSynSqSum(_lsm_weight_limit);
@@ -597,7 +600,7 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration){
     for(auto & p : synaptic_effects){
         double c = p;
 #ifdef _DEBUG_BP
-        if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0 || (strcmp(_pre->Name(), "reservoir_1") == 0 && strcmp(_post->Name(), "output_24") == 0))
+        if(strcmp(_pre->Name(), "hidden_0_0") == 0 && strcmp(_post->Name(), "output_0") == 0 || (strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "hidden_0_0)") == 0))
             cout<<"error part: "<<error*lr*c<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
 #endif
         _lsm_weight -= error*lr*c + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
@@ -1336,9 +1339,10 @@ void Synapse::LSMClearLearningSynWeights(){
 }
 
 //**  Add the active firing synapses (reservoir/readout synapses) into the network
-//**  Add the active readout synapses into the network
+//**  Add the active synapses into the network for learning if needed
+//**  @param2: need to tune the synapse at the current step;   
 //**  _lsm_active is only used for indication of the active learning synapses
-void Synapse::LSMActivate(Network * network, bool stdp_flag, bool train){
+void Synapse::LSMActivate(Network * network, bool need_learning, bool train){
     if(_lsm_active)
         cout<<_pre->Name()<<"\t"<<_post->Name()<<endl;
 
@@ -1350,7 +1354,7 @@ void Synapse::LSMActivate(Network * network, bool stdp_flag, bool train){
     // 2. For the readout synapses, if we are using stdp training in reservoir/input,
     //  just ignore the learning in the readout:
     //  But Make sure that we are going to train this readout synapse if not:
-    if(stdp_flag == false && _fixed == false && train == true){
+    if(need_learning == true && _fixed == false && train == true){
         network->LSMAddActiveLearnSyn(this);
         // 3. Mark the readout synapse active state:
         _lsm_active = true;

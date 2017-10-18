@@ -8,6 +8,7 @@ public:
     void testUnionFind();
     void testComputeAccSRM();  
     void testBuildDummyTimes(); 
+    void testMakeDirs();
 };
 
 

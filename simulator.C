@@ -61,17 +61,6 @@ void Simulator::LSMRun(long tid){
 #endif
 #endif
 
-#ifdef _VISUALIZE_READOUT_RESPONSE
-    if(tid == 0){
-        for(int count = 0; count < _network->NumSpeech(); count++){
-            sprintf(filename,"Readout_Response_Supv/train/readout_spikes_%d.dat",count);
-            InitializeFile(filename);
-            sprintf(filename,"Readout_Response_Supv/test/readout_spikes_%d.dat",count);
-            InitializeFile(filename);
-        }
-    }
-#endif
-
     // visualize the reservoir synapses before stdp training:
     // _network->VisualizeReservoirSyns(0);
 
@@ -201,11 +190,10 @@ void Simulator::LSMRun(long tid){
         count++;
         int time = 0;
         while(!_network->LSMEndOfSpeech(networkmode)){
-            _network->LSMNextTimeStep(++time,false,1, 1, NULL,NULL);
+            _network->LSMNextTimeStep(++time,false,1, 1, NULL);
         }
 
-#ifdef _VISUALIZE_INPUT_RESERVOIR_SPEECHES
-        cout<<"Speech "<<count<<endl;
+#ifdef _DUMP_RESPONSE
         _network->SpeechPrint(info);
 #endif
         // print the firing frequency into the file:
@@ -259,14 +247,7 @@ void Simulator::LSMRun(long tid){
      *****************************************************************/
     networkmode = TRAINREADOUT;
     _network->LSMSetNetworkMode(networkmode);
-#ifdef _VISUALIZE_READOUT_RESPONSE
-    if(tid == 0){
-        for(int i = 0; i < _network->NumSpeech(); i++){
-            sprintf(filename,"Readout_Response_Unsupv/readout_spikes_%d.dat",i);
-            InitializeFile(filename);
-        }
-    }
-#endif
+
     myTimer.Start();
     for(int i = 0; i < 20; ++i){
         cout<<"\n************************"
@@ -303,6 +284,7 @@ void Simulator::LSMRun(long tid){
         cout<<"Tid:"<<Tid<<endl;
         _network->Fold(Tid);
 #endif
+
 #ifdef _WRITE_STAT
         info = _network->LoadFirstSpeechTestCV(networkmode);
         while(info != -1){
@@ -317,6 +299,9 @@ void Simulator::LSMRun(long tid){
 #endif
         int correct = 0, wrong = 0, even = 0;
         for(int iii = 0; iii < NUM_ITERS; iii++){
+            if(tid == 0)    cout<<"Run the iteration: "<<iii<<endl;
+            // random shuffle the training samples for better generalization
+            _network->ShuffleTrainingSamples();
             _network->LSMSupervisedTraining(networkmode, tid, iii);
 #ifdef _DUMP_READOUT_WEIGHTS
             if(tid == 0){

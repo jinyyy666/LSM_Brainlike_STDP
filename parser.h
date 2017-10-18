@@ -9,8 +9,8 @@ private:
 public:
     Parser(Network *);
     void Parse(const char *);
-    void ParseNeuron(char *, char *);
-    void ParseNeuronGroup(char *, int, char *);
+    void ParseNeuron(char * name, char * e_i, double v_mem);
+    void ParseNeuronGroup(char * name, int num, char * e_i, double v_mem);
 
     void ParseLSMSynapse(char *, char *, int, int, int, int, char *);
     void ParseSpeech(int, char*);

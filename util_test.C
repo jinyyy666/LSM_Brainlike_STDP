@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <assert.h>
+#include <sys/stat.h>
 #include "util_test.h"
 
 using namespace std;
@@ -66,6 +67,24 @@ void UtilTest::testBuildDummyTimes(){
 }
 
 
+void UtilTest::testMakeDirs(){
+    string path = "tmp/tmp/tmp/train/";
+    struct stat sb;
+    if(stat(path.c_str(), &sb) == 0){
+        string cmd = "rm -r " + path;
+        int i = system(cmd.c_str()); 
+    }
+    MakeDirs(path); 
+    assert(stat(path.c_str(), &sb) == 0);
+    path = "./tmp";
+    if(stat(path.c_str(), &sb) == 0){
+        string cmd = "rm -r " + path;
+        int i = system(cmd.c_str()); 
+    }
+    cout<<"Function::MakeDirs passes the simple test!"<<endl;
+    
+}
+
 int main(int argc, char** argv){
     UtilTest ut;
     cout<<"======================= Begin testing ====================== "<<endl;
@@ -79,6 +98,12 @@ int main(int argc, char** argv){
     cout<<"*********************************"<<endl;
     cout<<"Test the union find: "<<endl;
     ut.testUnionFind();
+    
+    cout<<"*********************************"<<endl;
+    cout<<"Test the MakeDirs: "<<endl;
+    ut.testMakeDirs();
+    
+
     
     return 0;
 }

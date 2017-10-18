@@ -38,7 +38,7 @@ void Speech::SetNumReservoirChannel(int size){
 
 
 //* intialize the channels attached to readout neurons
-void Speech::SetNumReadoutChannel(int size){
+void Speech::SetNumOutputChannel(int size){
     assert(size >= 0 || _oChannels.empty());
     while(_oChannels.size() < size){
         Channel * channel = new Channel;
@@ -66,7 +66,7 @@ Channel * Speech::GetChannel(int index, channelmode_t channelmode){
         }
         return _rChannels[index];
     }
-    else if(channelmode == READOUTCHANNEL){
+    else if(channelmode == OUTPUTCHANNEL){
         if(index < 0 && index >= _oChannels.size()){
             cout<<"Invalid channel index: "<<index
                 <<" seen in aquiring readout channels!\n"
@@ -77,7 +77,8 @@ Channel * Speech::GetChannel(int index, channelmode_t channelmode){
         return _oChannels[index]; 
     }
     else{
-        cout<<"Invalid channel mode: "<<channelmode<<endl;
+        cout<<"No channel is initialized for: "<<channelmode<<endl;
+        cout<<"Please do not call GetChannel for hidden neurons!"<<endl;
         exit(EXIT_FAILURE);
     }
 }
@@ -87,7 +88,7 @@ void Speech::ClearChannel(channelmode_t channelmode){
     vector<Channel*> tmp;
     vector<Channel*>& ch = channelmode == INPUTCHANNEL ? _channels : 
         channelmode == RESERVOIRCHANNEL ? _rChannels :
-        channelmode == READOUTCHANNEL ? _oChannels : tmp;
+        channelmode == OUTPUTCHANNEL ? _oChannels : tmp;
     if(ch.empty()){
         cout<<"Invalid channel type: "<<channelmode<<endl;
         exit(EXIT_FAILURE);
@@ -132,39 +133,28 @@ void Speech::Info(){
     cout<<endl;
 }
 
+//* dump the spike times for each channel in the speech
+void Speech::PrintSpikesPerChannels(const vector<Channel*>& channels, const string & filename){
+    ofstream f_out(filename.c_str());
+    if(!f_out.is_open()){
+        cout<<"Cannot open file : "<<filename<<" for dumping the spikes!"<<endl;
+        assert(f_out.is_open());
+    }
+    for(int i = 0; i < channels.size(); i++){ 
+        f_out<<"-1"<<endl;
+        channels[i]->Print(f_out);
+    }
+    f_out<<"-1"<<endl;
+    f_out.close();
+}
+
 void Speech::PrintSpikes(int info){
-    FILE * Fp_input;
-    FILE * Fp_reservoir;
-    char filename[64];
-    sprintf(filename,"Input_Response/input_spikes_%d.dat",info);
-    ofstream f_input(filename);
-    assert(f_input.is_open());
-    for(int i = 0; i < _channels.size(); i++){ 
-        f_input<<"-1"<<endl;
-        _channels[i]->Print(f_input);
-    }
-    f_input<<"-1"<<endl;
-    f_input.close();
+    string input = "spikes/Input_Response/input_spikes_" + to_string(info) + ".dat";
+    PrintSpikesPerChannels(_channels, input);
 
-    sprintf(filename,"Reservoir_Response/reservoir_spikes_%d.dat",info);
-    ofstream f_reservoir(filename);
-    assert(f_reservoir.is_open());
-    for(int i = 0; i < _rChannels.size(); i++){
-        f_reservoir<<"-1"<<endl;
-        _rChannels[i]->Print(f_reservoir);
-    }
-    f_reservoir<<"-1"<<endl;
-    f_reservoir.close();
-
-    sprintf(filename, "Readout_Response_Trans/readout_spikes_%d.dat", info);
-    ofstream f_readout(filename);
-    assert(f_readout.is_open());
-    for(int i = 0; i < _oChannels.size(); i++){
-        f_readout<<"-1"<<endl;
-        _oChannels[i]->Print(f_readout);
-    }
-    f_readout<<"-1"<<endl;
-    f_readout.close();
+    string reservoir = "spikes/Reservoir_Response/reservoir_spikes_" + to_string(info) + ".dat";
+    PrintSpikesPerChannels(_rChannels, reservoir);
+       
 }
 
 //* this function read each channel and output the firing frequency into a matrix

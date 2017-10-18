@@ -42,6 +42,7 @@ private:
     int _ind;
     int _f_count; // counter for firing activity
     bool _fired;
+    double _error; // error used in the back-prop
 
     // collect ep/en/ip/in stat for resolution
     int _EP_max, _EP_min, _EN_max, _EN_min, _IP_max, _IP_min, _IN_max, _IN_min;
@@ -93,7 +94,7 @@ private:
     const int _D_lsm_v_readout_min;
     const int _Unit;
 public:
-    Neuron(char*, Network*);
+    Neuron(char* name, bool excitatory, Network* network, double v_mem);
     Neuron(char*, bool, Network*); // only for liquid state machine
     ~Neuron();
     char * Name();
@@ -104,14 +105,14 @@ public:
     void LSMPrintInputSyns(std::ofstream& f_out);
 
     // return EP/EN/IP/IN max/min
-    int GetEPMax(){return _EP_max;};
-    int GetENMax(){return _EN_max;};
-    int GetIPMax(){return _IP_max;};
-    int GetINMax(){return _IN_max;};
-    int GetEPMin(){return _EP_min;};
-    int GetENMin(){return _EN_min;};
-    int GetIPMin(){return _IP_min;};
-    int GetINMin(){return _IN_min;};
+    int GetEPMax(){return _EP_max;}
+    int GetENMax(){return _EN_max;}
+    int GetIPMax(){return _IP_max;}
+    int GetINMax(){return _IN_max;}
+    int GetEPMin(){return _EP_min;}
+    int GetENMin(){return _EN_min;}
+    int GetIPMin(){return _IP_min;}
+    int GetINMin(){return _IN_min;}
     int GetPreActiveMax(){return _pre_fire_max;}
 
     // return the tau for EP/EN/IP/IN
@@ -144,6 +145,8 @@ public:
     void SetTeacherSignalStrength(double val, bool isPos){isPos? _ts_strength_p = val : _ts_strength_n = val;}
     void SetTeacherSignalFreq(int freq){_ts_freq = freq;}
     int GetTeacherSignal(){return _teacherSignal;}
+    void SetError(double error){_error = error;}
+    double GetError(){return _error;}
     void PrintTeacherSignal();
     void PrintMembranePotential();
     Network * GetNetwork(){return _network;}
@@ -178,7 +181,7 @@ public:
     void SetPostNeuronSpikeT(int t);
     void HandleFiringActivity(bool isInput, int time, bool train);
 
-    void LSMNextTimeStep(int t , FILE * Foutp, FILE * Fp, bool train, int end_time);
+    void LSMNextTimeStep(int t , FILE * Foutp, bool train, int end_time);
     double LSMSumAbsInputWeights();
     int  DLSMSumAbsInputWeights();
     void LSMSetChannel(Channel*,channelmode_t);
@@ -195,6 +198,7 @@ public:
     void CollectCorrelation(int& sum, int& cnt, int num_sample);
     void GroupCorrelated(UnionFind &uf, int pre_ind, int nsamples);
     void MergeNeuron(Neuron * target); // merge the this into target neuron
+    double GatherError();
     //* Bp the error for each neuron
     void BpError(double error, int iteration);
     void UpdateLWeight();
@@ -230,7 +234,7 @@ private:
     int ** _lsm_coordinates;
     Network * _network;
 public:
-    NeuronGroup(char*,int,Network*);
+    NeuronGroup(char* name, int num, Network* network, bool excitatory, double v_mem);
     NeuronGroup(char*,int,int,int,Network*); // only for liquid state machine
     NeuronGroup(char*,char*,char*,Network*); // for brain-like structure
     ~NeuronGroup();
@@ -257,8 +261,7 @@ public:
     Network * GetNetwork(){return _network;}
 
     void LSMLoadSpeech(Speech*,int*,neuronmode_t,channelmode_t);
-    void LSMSetNeurons(Speech* speech, neuronmode_t neuronmode, channelmode_t channelmode, int offset);
-    void LSMIndexNeurons(int offset);
+    void LSMSetNeurons(neuronmode_t neuronmode);
 
     void Collect4State(int& ep_max, int& ep_min, int& ip_max, int& ip_min, 
             int& en_max, int& en_min, int& in_max, int& in_min, int& pre_active_max);
@@ -271,12 +274,14 @@ public:
     int Judge(int cls);
     double SoftMax(int max_count);
     int MaxFireCount();
-    void BpError(int cls, int iteration, int end_time);
+    void BpOutputError(int cls, int iteration, int end_time);
+    void BpHiddenError(int iteration, int end_time);
     double ComputeRatioError(int cls);
     void UpdateLearningWeights();
 
+    void DumpSpikeTimes(const std::string& filename);
     void DumpCalciumLevels(std::ofstream & f_out);
-    void DumpWaveFormGroup(std::ofstream & f_out);
+    void DumpVMems(std::ofstream & f_out);
     void PrintSpikeCount(int cls);
     void LSMRemoveSpeech();
     void LSMTuneVth(int index);

@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <fstream>
 #include <utility>
+#include <unordered_map>
 
 class Neuron;
 class Synapse;
@@ -19,13 +20,12 @@ class Speech;
 class Network{
 private:
     std::list<Neuron*> _individualNeurons;
-    std::list<NeuronGroup*> _groupNeurons;
+    std::unordered_map<std::string, NeuronGroup*> _groupNeurons;
     std::list<Neuron*> _allNeurons;
     std::list<Neuron*> _allExcitatoryNeurons;
     std::list<Neuron*> _allInhibitoryNeurons;
     std::list<Neuron*> _inputNeurons;
     std::list<Neuron*> _outputNeurons;
-    std::list<NeuronGroup*> _allReservoirs;
     std::list<Synapse*> _synapses;
     std::vector<Synapse*> _rsynapses;       
     std::vector<Synapse*> _rosynapses;
@@ -46,16 +46,18 @@ private:
     int _fold;
     int _fold_ind;
     int _train_fold_ind;
-    std::vector<Speech*> ** _CVspeeches;
+    std::vector<std::vector<Speech*> > _CVspeeches;
     std::vector<Speech*>::iterator _cv_train_sp_iter, _cv_test_sp_iter;
     Speech * _sp;
     void RemoveCVSpeeches();
     NeuronGroup * _lsm_input_layer;
     NeuronGroup * _lsm_reservoir_layer;
+    std::vector<std::string> _hidden_layer_names;
+    std::vector<NeuronGroup*> _lsm_hidden_layers;
     NeuronGroup * _lsm_output_layer;
     int _lsm_input;
     int _lsm_reservoir;
-    int _lsm_readout;
+    int _lsm_output;
     int _lsm_t;
     networkmode_t _network_mode;
 
@@ -66,8 +68,8 @@ public:
     networkmode_t LSMGetNetworkMode(){return _network_mode;}
 
     bool CheckExistence(char *);
-    void AddNeuron(char*,bool);
-    void AddNeuronGroup(char*,int,bool);
+    void AddNeuron(char* name, bool excitatory, double v_mem);
+    void AddNeuronGroup(char* name, int num, bool excitatory, double v_mem);
     void LSMDeleteNeuronGroup(char * name);
     void InitializeInputLayer(int num_inputs, int num_connections);
     void LSMAddLabelToReservoirs(const char * name, std::set<int> labels);
@@ -98,7 +100,7 @@ public:
     void LSMSupervisedTraining(networkmode_t networkmode, int tid, int iteration);
     void LSMUnsupervisedTraining(networkmode_t networkmode, int tid);
     void LSMReservoirTraining(networkmode_t networkmode);
-    void LSMNextTimeStep(int t, bool train, int iteration, int end_time, FILE* Foutp, FILE* fp, NeuronGroup* reservoir = NULL);
+    void LSMNextTimeStep(int t, bool train, int iteration, int end_time, FILE* Foutp);
 
     Neuron * SearchForNeuron(const char*);
     Neuron * SearchForNeuron(const char*, const char*);
@@ -110,24 +112,20 @@ public:
     int  SpeechEndTime();
     void AddSpeech(Speech*);
     void LoadSpeeches(Speech      * sp_iter, 
-            NeuronGroup * input,
-            NeuronGroup * reservoir,
-            NeuronGroup * output,
             neuronmode_t neuronmode_input,
             neuronmode_t neuronmode_reservoir,
             neuronmode_t neuronmode_readout,
-            bool train,
-            bool ignore_reservoir
+            bool train
             );
-    void LoadSpeechToAllReservoirs(Speech *sp, neuronmode_t neuronmode_reservoir);
     void LSMNetworkRemoveSpeech();
-    void LSMLoadLayers(NeuronGroup * reservoir_group);
+    void InitializeHiddenLayers();
+    void LSMLoadLayers();
     void DetermineNetworkNeuronMode(const networkmode_t &, neuronmode_t &, neuronmode_t &, neuronmode_t&);
 
-    int LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup* group = NULL);
-    int LoadFirstSpeech(bool train, networkmode_t networkmode, NeuronGroup* group, bool inputExist);
-    int LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup* group = NULL);
-    int LoadNextSpeech(bool train, networkmode_t networkmode, NeuronGroup* group, bool inputExist);
+    int LoadFirstSpeech(bool train, networkmode_t networkmode);
+    int LoadFirstSpeech(bool train, networkmode_t networkmode, bool inputExist);
+    int LoadNextSpeech(bool train, networkmode_t networkmode);
+    int LoadNextSpeech(bool train, networkmode_t networkmode, bool inputExist);
     int LoadFirstSpeechTrainCV(networkmode_t);
     int LoadNextSpeechTrainCV(networkmode_t);
     int LoadFirstSpeechTestCV(networkmode_t);
@@ -179,17 +177,20 @@ public:
 
     // log the test errors:
     void LogTestError(const std::vector<double>& each_sample_errors, int iter_n);
-
+    
+    void ShuffleTrainingSamples();
+    
     // this first parameter is used to indicate which neurongroup does the syn belongs to.
     void DetermineSynType(const char * syn_type, synapsetype_t & ret_syn_type, const char * func_name);
     void NormalizeContinuousWeights(const char * syn_type);
     void RemoveZeroWeights(const char * type);
-    void DumpWaveForm(std::string dir, int info);
+
+    void DumpHiddenOutputResponse(const std::string& status, int sp);
+    void DumpVMems(std::string dir, int info);
     void DumpCalciumLevels(std::string neuron_group, std::string dir, std::string filename);
     void WriteSynWeightsToFile(const char * syn_type, char * filename);
     void LoadSynWeightsFromFile(const char * syn_type, char * filename);
     void WriteSynActivityToFile(char * pre_name, char * post_name, char * filename);
-    void DestroyReservoirConn(NeuronGroup * reservoir);
     void TruncateIntermSyns(const char * syn_type);
 
     void VisualizeReservoirSyns(int indicator);

@@ -23,6 +23,7 @@
 //#define _DEBUG_RM_ZERO_W
 //#define _DEBUG_INPUT_TRAINING
 //#define _DEBUG_BP
+//#define _DEBUG_BP_HIDDEN
 
 // NOTE: The time constants have been changed to 2*original settings 
 //       optimized performance for letter recognition.
@@ -96,12 +97,13 @@ Neuron::Neuron(char * name, bool excitatory, Network * network):
     _del = false;
     _f_count = 0;
     _fired = false;
+    _error = 0;
 }
 
 //FOR INPUT AND OUTPUT
-Neuron::Neuron(char * name, Network * network):
+Neuron::Neuron(char * name, bool excitatory, Network * network, double v_mem):
     _mode(NORMAL),
-    _excitatory(false),
+    _excitatory(excitatory),
     _EP_max(INT_MIN), _EP_min(INT_MAX), _EN_max(INT_MIN), _EN_min(INT_MAX), 
     _IP_max(INT_MIN), _IP_min(INT_MAX), _IN_max(INT_MIN), _IN_min(INT_MAX),
     _pre_fire_max(0),
@@ -118,7 +120,7 @@ Neuron::Neuron(char * name, Network * network):
     _lsm_tau_IP(4.0*2),
     _lsm_tau_IN(LSM_T_SYNI*2),
     _lsm_tau_FO(LSM_T_FO),
-    _lsm_v_thresh(LSM_V_THRESH),
+    _lsm_v_thresh(v_mem),
     _ts_strength_p(0),
     _ts_strength_n(0),
     _ts_freq(DEFAULT_TS_FREQ),
@@ -148,7 +150,7 @@ Neuron::Neuron(char * name, Network * network):
     _teacherSignal(-1),
     _ind(-1)
 {
-    _D_lsm_v_thresh = _Unit*LSM_V_THRESH;
+    _D_lsm_v_thresh = _Unit*v_mem;
 
     _name = new char[strlen(name)+2];
     strcpy(_name,name);
@@ -157,6 +159,7 @@ Neuron::Neuron(char * name, Network * network):
     _del = false;
     _f_count = 0;
     _fired = false;
+    _error = 0;
 }
 
 Neuron::~Neuron(){
@@ -327,6 +330,7 @@ bool Neuron::IsHubChild(const char * name){
 void Neuron::LSMClear(){
     _f_count = 0;
     _fired = false;
+    _error = 0;
     _vmems.clear();
     _calcium_stamp.clear();
     _fire_timings.clear();
@@ -341,7 +345,6 @@ void Neuron::LSMClear(){
     _lsm_state_EN = 0;
     _lsm_state_IP = 0;
     _lsm_state_IN = 0;
-    _lsm_v_thresh = LSM_V_THRESH;
 
     _t_next_spike = -1;
     _teacherSignal = 0;
@@ -356,7 +359,6 @@ void Neuron::LSMClear(){
     _D_lsm_state_EN = 0;
     _D_lsm_state_IP = 0;
     _D_lsm_state_IN = 0;
-    _D_lsm_v_thresh = _Unit*LSM_V_THRESH;
 }
 
 //* function wrapper for ExpDecay:
@@ -591,6 +593,10 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
 
         // need to get rid of the deactivated synapse !
         if((*iter)->DisableStatus())  continue;
+    
+        // no need to activate/learning the synapse if the post neuron is deactivated
+        if((*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == true)  continue;
+        
 
         (*iter)->LSMPreSpike(1);  
         (*iter)->SetPreSpikeT(time);
@@ -599,12 +605,11 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
             // for reservoir-reservoir synapse in TRAINRESERVOIR STATE:
             if((*iter)->IsLiquidSyn() == true){
                 // if the synapse is not yet active, push it into the to-be-processed list
-                // @param2: stdp training;   @param3: indicating train or no
-                (*iter)->LSMActivate(_network, true, train);
+                // param2 = false , just to trigger a spike
+                (*iter)->LSMActivate(_network, false, train);
 
                 // active this reservoir for STDP training, ignore when post deactivated
-                if((*iter)->GetActiveSTDPStatus() == false && 
-                        (*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false)
+                if((*iter)->GetActiveSTDPStatus() == false)
                     (*iter)->LSMActivateSTDPSyns(_network, "reservoir");	  
             }
         }
@@ -617,24 +622,16 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
                     assert((*iter)->PostNeuron()->LSMCheckNeuronMode(NORMALSTDP) == true||
                             (*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == true);
 
-                    if((*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false){
-                        // activate the synapse to delivery spike
-                        (*iter)->LSMActivate(_network, true, train);
-                        // add the input synapses for STDP training
-                        if((*iter)->GetActiveSTDPStatus() == false)
-                            (*iter)->LSMActivateSTDPSyns(_network, "input");
-                    }
+                    // activate the synapse to delivery spike
+                    (*iter)->LSMActivate(_network, false, train);
+                    // add the input synapses for STDP training
+                    if((*iter)->GetActiveSTDPStatus() == false)
+                        (*iter)->LSMActivateSTDPSyns(_network, "input");
                 }
                 else{
                     // TRANSIENT/TRAINRESERVOIR STATE, just activate the input synapses
-                    assert(_mode == READCHANNEL &&
-                            (*iter)->PostNeuron()->LSMCheckNeuronMode(WRITECHANNEL) == true||
-                            (*iter)->PostNeuron()->LSMCheckNeuronMode(STDP) == true ||
-                            (*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == true );
-
-                    // simply add thefired input synapses to the active synapses list when no training
-                    if((*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false)
-                        (*iter)->LSMActivate(_network, false, train);
+                    assert(_mode == READCHANNEL); 
+                    (*iter)->LSMActivate(_network, false, train);
                 }
             }
             else{
@@ -642,51 +639,41 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
                 if(_mode == READCHANNELSTDP){
                     // ignore the reservoir->reservoir synapses
                     if((*iter)->PostNeuron()->LSMCheckNeuronMode(READCHANNELSTDP))  continue;
-                    // TRAINREADOUT(reservoir->READCHANNELSTDP, readout->NORMALSTDP) train readout unsupervisedly
-                    // READOUTSUPV(reservoir->READCHANNELSTDP, readout->NORMALSTDP) train supervisedly 
-                    assert((*iter)->PostNeuron()->LSMCheckNeuronMode(NORMALSTDP) == true|| 
-                            (*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == true);
-
-                    if((*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false){
-                        // activate the synapse for delivering spike
-                        (*iter)->LSMActivate(_network, true, train);
+                    // TRAINREADOUT(r->READCHANNELSTDP, o->NORMALSTDP) train readout unsupervisedly
+                    // READOUTSUPV(r->READCHANNELSTDP, o->NORMALSTDP) train supervisedly 
+                    
+                    (*iter)->LSMActivate(_network, false, train);
 #if defined(_REWARD_MODULATE)
-                        // ignore the training of the r->o synapses when the pre-synaptic neuron fires
-                        if(_network->LSMGetNetworkMode() == READOUTSUPV)   continue;
+                    // ignore the training of the r->o synapses when the pre-synaptic neuron fires
+                    if(_network->LSMGetNetworkMode() == READOUTSUPV)   continue;
 #endif
- 
-                        // add the synapse for STDP training
-                        if((*iter)->GetActiveSTDPStatus() == false)
-                            (*iter)->LSMActivateSTDPSyns(_network, "readout");
-                    }
+
+                    // add the synapse for STDP training
+                    if((*iter)->GetActiveSTDPStatus() == false)
+                        (*iter)->LSMActivateSTDPSyns(_network, "readout");
                 }
                 // for reservoir->reservoir/output synapse in READOUTBP STATE:
                 else if(_mode == READCHANNELBP){ 
                     if((*iter)->PostNeuron()->LSMCheckNeuronMode(READCHANNELBP))  continue;
-                    assert((*iter)->PostNeuron()->LSMCheckNeuronMode(NORMALBP) == true || 
-                            (*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == true);
 
-                    if((*iter)->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false)
-                        // activate the synapse for delivering spike
-                        (*iter)->LSMActivate(_network, true, train);
+                    (*iter)->LSMActivate(_network, false, train);
  
                 }
-                // for reservoir->reservoir/output synapse in READOUTSUPV STATE:
+                // for reservoir->reservoir/output synapse in READOUT STATE:
                 else{
                     if((*iter)->IsReadoutSyn())
-                        (*iter)->LSMActivate(_network, false, train);
-                }
+                        (*iter)->LSMActivate(_network, true, train);
+                }    
             }
         }
         else if(_mode == NORMALBP){
-            // for readout - readout laterial inihibiton in bp rule!
-            if((*iter)->GetActiveStatus() == false)
-                (*iter)->LSMActivate(_network, false, train);
+            // for readout - readout laterial inihibiton in bp rule
+            // and hidden - hidden / readout in bp rule
+            (*iter)->LSMActivate(_network, false, train);
         }
         else{
-            // for reservoir-reservoir and reservoir-output in TRANSIENT STATE
-            // for possible future synapses coming out from readout in READOUT STATE:
-            if((*iter)->GetActiveStatus() == false && (*iter)->IsReadoutSyn() == false)
+            // for reservoir-reservoir in TRANSIENT STATE
+            if((*iter)->IsReadoutSyn() == false)
                 (*iter)->LSMActivate(_network, false, train);
         }
 
@@ -694,7 +681,7 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
 
 }
 
-void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end_time){
+void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
 
     if(_mode == DEACTIVATED) return;
     if(_mode == READCHANNEL || _mode == READCHANNELSTDP || _mode == READCHANNELBP){
@@ -879,13 +866,13 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
     else{
         UpdateVmem(temp,NUM_DEC_DIGIT_READOUT_MEM,NBT_STD_SYN,NUM_BIT_SYN); 
     }
-#ifdef _DUMP_WAVEFORM
+#ifdef _DUMP_RESPONSE
     _vmems.push_back(_D_lsm_v_mem);
 #endif
 #else
     double temp = NOrderSynapticResponse();
     _lsm_v_mem += temp;
-#ifdef _DUMP_WAVEFORM
+#ifdef _DUMP_RESPONSE
     _vmems.push_back(_lsm_v_mem);
 #endif
 #endif
@@ -948,17 +935,11 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, FILE * Fp, bool train, int end
 
         _lsm_ref = LSM_T_REFRAC;
 
-#ifdef _VISUALIZE_READOUT_RESPONSE
-        if((_mode == NORMAL || _mode == NORMALSTDP || _mode == NORMALBP) && Foutp != NULL && _name[0] == 'o')
-            fprintf(Foutp, "%d\t%d\n", atoi(_name+7), t);
-#endif
 #ifdef  _WRITE_STAT
-        if((_name[0]=='r')&&(_name[9]=='_')){
-            if(Fp != NULL) fprintf(Fp,"%d\t%d\n",atoi(_name+10),t);
-        }else if(Foutp != NULL)
-            fprintf(Foutp,"%d\t%d\n",atoi(_name+7),t); 
+        if(Foutp != NULL && _name[0] == 'o')
+            fprintf(Foutp, "%d\t%d\n", _indexInGroup, t); 
 #endif
-        if(_name[0] == 'o'){
+        if(_name[0] == 'o' || _name[0] == 'h'){
             if(t <= end_time/2) _f_count += 1;
             else  ++_f_count;
             assert(t > (_fire_timings.empty() ? -1 : _fire_timings.back()));
@@ -1005,7 +986,7 @@ void Neuron::LSMRemoveChannel(){
 
 //* Get the timing of the spikes
 void Neuron::GetSpikeTimes(vector<int>& times){
-    if(_name[0] == 'o'){
+    if(_name[0] == 'o' || _name[0] == 'h'){
         times = _fire_timings;
     }
     else{
@@ -1138,6 +1119,17 @@ void Neuron::MergeNeuron(Neuron * target){
 
 }
 
+//* Gather the back-proped error
+double Neuron::GatherError(){
+    double error = 0;
+    for(Synapse * synapse : _outputSyns){
+        char * name = synapse->PostNeuron()->Name();
+        assert(name[0] == 'o' || name[0] == 'h');
+        error += synapse->LSMErrorBack();
+    }
+    return error;
+}
+
 //* Back prop the final error back
 void Neuron::BpError(double error, int iteration){
 #ifdef _TEST_
@@ -1156,6 +1148,7 @@ void Neuron::BpError(double error, int iteration){
 #endif
     for(auto it = _inputSyns.begin(); it != _inputSyns.end(); ++it){
         assert((*it));
+        if((*it)->Fixed())  continue; 
 #ifdef DIGITAL
         (*it)->LSMBpSynError(error, _D_lsm_v_thresh, iteration);
 #else
@@ -1222,18 +1215,18 @@ void Neuron::LSMPrintLiquidSyns(FILE * fp){
     Neuron * post;
     char * _name_post;
 
-    if((_name[0] == 'r')&&(_name[9] == '_'))
+    if((_name[0] == 'r')&&(_name[9] == '_')){
         for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++){
             post = (*iter)->PostNeuron();
             _name_post = post->Name();
             if((_name_post[0] == 'r')&&(_name_post[9] == '_')){  
                 assert(fp != NULL);
-                fprintf(fp,"%d\t%d\n",atoi(_name+10),atoi(_name_post+10));
+                fprintf(fp,"%d\t%d\n", _indexInGroup, post->IndexInGroup());
             }
             else
                 continue;
         }
-    return;
+    }
 }
 
 //* this function is to disable the output synapses whose type is syn_t
@@ -1419,7 +1412,7 @@ double Neuron::GetInputSynSqSum(double weight_limit){
 
 ///////////////////////////////////////////////////////////////////////////
 
-NeuronGroup::NeuronGroup(char * name, int num, Network * network):
+NeuronGroup::NeuronGroup(char * name, int num, Network * network, bool excitatory, double v_mem):
     _firstCalled(false),
     _s_firstCalled(false),
     _lsm_coordinates(0),
@@ -1432,13 +1425,12 @@ NeuronGroup::NeuronGroup(char * name, int num, Network * network):
     char * neuronName = new char[1024];
     for(int i = 0; i < num; i++){
         sprintf(neuronName,"%s_%d",name,i);
-        Neuron * neuron = new Neuron(neuronName,network);
+        Neuron * neuron = new Neuron(neuronName, excitatory, network, v_mem);
         neuron->SetIndexInGroup(i);
         _neurons[i] = neuron;
     }
 
     delete [] neuronName;
-    neuronName = 0;
 }
 
 NeuronGroup::NeuronGroup(char * name, char * path_neuron, char * path_synapse, Network * network):
@@ -1711,52 +1703,31 @@ void NeuronGroup::PrintMembranePotential(double t){
 }
 
 //* this function is to load speech into the neuron group:
-//* channel mode can be INPUT/RESERVOIR/READOUTCHANNEL, which is a way to tell the types of the neuron:
+//* channel mode can be INPUT/RESERVOIR, which is a way to tell the types of the neuron:
 void NeuronGroup::LSMLoadSpeech(Speech * speech, int * n_channel, neuronmode_t neuronmode, channelmode_t channelmode){
+    assert(speech);
     if(_neurons.size() != speech->NumChannels(channelmode)){
-        if(!((channelmode == RESERVOIRCHANNEL && (speech->NumChannels(channelmode) == 0)) ||((channelmode == READOUTCHANNEL) && speech->NumChannels(channelmode) == 0))){
+        if(!(channelmode == RESERVOIRCHANNEL && (speech->NumChannels(channelmode) == 0))){
             cout<<"channelmode: "<<channelmode<<" has "<<speech->NumChannels(channelmode)<<" channels!"<<endl;
-            assert(((channelmode == RESERVOIRCHANNEL && (speech->NumChannels(channelmode) == 0)) ||((channelmode == READOUTCHANNEL) && speech->NumChannels(channelmode) == 0)));
+            assert(channelmode == RESERVOIRCHANNEL && speech->NumChannels(channelmode) == 0);
         }
         if(channelmode == RESERVOIRCHANNEL)
             speech->SetNumReservoirChannel(_neurons.size());
-        else if(channelmode == READOUTCHANNEL)
-            speech->SetNumReadoutChannel(_neurons.size());
         else
             assert(0); // your code should never go here
     }
     *n_channel = speech->NumChannels(channelmode);
-    // assign the channel ptr to each neuron & set the neuron mode:
-    LSMSetNeurons(speech, neuronmode, channelmode, 0);
-}
-
-//* this function is to assign the channel ptr to each neuron in the neurongroup
-//* and also set the neuron mode
-//* the offset here is to help to add speeches to all reservoirs (for the separate resv)
-//* the offset simply indicates the offset of the channel index!!
-void NeuronGroup::LSMSetNeurons(Speech * speech, neuronmode_t neuronmode, channelmode_t channelmode, int offset){
+    // assign the channel ptr to each neuron:
     for(int i = 0; i < _neurons.size(); i++){
-        // pass the non-null ptr to set the channel
-        if(speech)
-            _neurons[i]->LSMSetChannel(speech->GetChannel(i+offset,channelmode),channelmode);
-        // set the neuron mode if the neuron is not previously deactivated:
-        if(_neurons[i]->LSMCheckNeuronMode(DEACTIVATED) == false)
-            _neurons[i]->LSMSetNeuronMode(neuronmode);
-
+        _neurons[i]->LSMSetChannel(speech->GetChannel(i,channelmode),channelmode);
     }
+    LSMSetNeurons(neuronmode);
 }
 
-//* index each neuron of the neurongroup within the neurongroup
-//* here I consider the case of separated reservoirs:
-void NeuronGroup::LSMIndexNeurons(int offset){
-    // index the valid neuorns:
-    int ind = 0;
+//* Set the neuron mode for each neuron in the group
+void NeuronGroup::LSMSetNeurons(neuronmode_t neuronmode){
     for(int i = 0; i < _neurons.size(); i++){
-        if(_neurons[i]->LSMCheckNeuronMode(DEACTIVATED) == false &&
-                _neurons[i]->Index() == -1){
-            _neurons[i]->Index(ind+offset);
-            ind++;
-        }
+        _neurons[i]->LSMSetNeuronMode(neuronmode);
     }
 }
 
@@ -1892,7 +1863,7 @@ int NeuronGroup::MaxFireCount(){
 }
 
 //* compute and backprop the error in terms of the spike count/time-discounted reward
-void NeuronGroup::BpError(int cls, int iteration, int end_time){
+void NeuronGroup::BpOutputError(int cls, int iteration, int end_time){
     int max_count = MaxFireCount();
 
     double error = 0;
@@ -1934,12 +1905,30 @@ void NeuronGroup::BpError(int cls, int iteration, int end_time){
             vector<int> dummy_f_seq = BuildDummyTimes(max_count, end_time);
             _neurons[i]->SetSpikeTimes(dummy_f_seq); 
         }
+        // set the error for further bp to other layers
+        _neurons[i]->SetError(error);
+
         if(error == 0)  continue;
         _neurons[i]->BpError(error, iteration);
     }
 #ifdef _DEBUG_BP
     cout<<"Current accumulative error: "<<sum_error/2<<endl;
 #endif
+}
+
+//* back-prop the error down to other layers:
+void NeuronGroup::BpHiddenError(int iteration, int end_time){
+    for(int i = 0; i < _neurons.size(); ++i){
+        // Gather the back-proped error from l+1 layer
+        double error = _neurons[i]->GatherError();
+#ifdef _DEBUG_BP_HIDDEN
+        cout<<"The gather error for "<<_neurons[i]->Name()<<" : "<<error<<endl;
+#endif
+        // Set the error for further use
+        _neurons[i]->SetError(error);
+        // update the weight given the error
+        _neurons[i]->BpError(error, iteration);
+    }
 }
 
 //* compute the back-prop error and print out:
@@ -1964,6 +1953,25 @@ void NeuronGroup::UpdateLearningWeights(){
 }
 
 
+//* dump the spike times for the neurons in the group:
+void NeuronGroup::DumpSpikeTimes(const string& filename){
+    ofstream f_out(filename.c_str());
+    if(!f_out.is_open()){
+        cout<<"Cannot file : "<<filename<<endl;
+        assert(f_out.is_open());
+    }
+    f_out<<"-1\t-1"<<endl;
+    for(int i = 0; i < _neurons.size(); ++i){
+        vector<int> spike_times;
+        _neurons[i]->GetSpikeTimes(spike_times);
+        for(int time : spike_times) 
+            f_out<<i<<"\t"<<time<<endl;    
+    }
+    f_out<<"-1\t-1"<<endl;
+    f_out.close();
+}
+
+
 //* dump the calcium levels of each neuron in the group:
 void NeuronGroup::DumpCalciumLevels(ofstream & f_out){
     for(size_t i = 0; i < _neurons.size(); ++i){
@@ -1975,7 +1983,7 @@ void NeuronGroup::DumpCalciumLevels(ofstream & f_out){
     }
 }
 
-void NeuronGroup::DumpWaveFormGroup(ofstream & f_out){
+void NeuronGroup::DumpVMems(ofstream & f_out){
     size_t size = 0;
     for(int i = 0; i < _neurons.size(); ++i){
 #ifdef DIGITAL
