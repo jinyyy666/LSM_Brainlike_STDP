@@ -22,7 +22,7 @@
 //#define _DEBUG_CORBASE
 //#define _DEBUG_RM_ZERO_W
 //#define _DEBUG_INPUT_TRAINING
-//#define _DEBUG_BP
+#define _DEBUG_BP
 //#define _DEBUG_BP_HIDDEN
 
 // NOTE: The time constants have been changed to 2*original settings 
@@ -867,13 +867,13 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
         UpdateVmem(temp,NUM_DEC_DIGIT_READOUT_MEM,NBT_STD_SYN,NUM_BIT_SYN); 
     }
 #ifdef _DUMP_RESPONSE
-    _vmems.push_back(_D_lsm_v_mem);
+    _vmems.push_back(_lsm_ref > 0 ? 0 : _D_lsm_v_mem);
 #endif
 #else
     double temp = NOrderSynapticResponse();
     _lsm_v_mem += temp;
 #ifdef _DUMP_RESPONSE
-    _vmems.push_back(_lsm_v_mem);
+    _vmems.push_back(_lsm_ref > 0 ? 0 : _lsm_v_mem);
 #endif
 #endif
 
@@ -1205,6 +1205,23 @@ void Neuron::ResizeSyn(){
     }
 }
 
+
+//* write the output synaptic weigths to the file
+void Neuron::WriteOutputWeights(ofstream& f_out, int& index, const string& post_g){
+    for(Synapse* synapse : _outputSyns){
+        assert(synapse);
+        string post_name(synapse->PostNeuron()->Name());
+        assert(post_name.length() > post_g.length());
+
+        if(post_name.substr(0, post_g.length()) != post_g)   continue;
+        f_out<<index++<<"\t"<<_name<<"\t"<<synapse->PostNeuron()->Name()<<"\t"
+#ifdef DIGITAL
+             <<synapse->DWeight()<<endl;
+#else
+             <<synapse->Weight()<<endl;
+#endif
+    }
+}
 
 void Neuron::LSMPrintOutputSyns(FILE * fp){
     for(list<Synapse*>::iterator iter = _outputSyns.begin(); iter != _outputSyns.end(); iter++) (*iter)->LSMPrintSyns(fp);
@@ -1949,6 +1966,15 @@ void NeuronGroup::UpdateLearningWeights(){
     for(int i = 0; i < _neurons.size(); ++i){
         assert(_neurons[i]);
         _neurons[i]->UpdateLWeight();
+    }
+}
+
+
+//* write the output synapse weights to the file
+void NeuronGroup::WriteSynWeightsToFile(ofstream& f_out, int& index, const string& post_g){
+    for(Neuron* neuron : _neurons){
+        assert(neuron);
+        neuron->WriteOutputWeights(f_out, index, post_g);
     }
 }
 

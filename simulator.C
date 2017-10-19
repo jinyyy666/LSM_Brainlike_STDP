@@ -70,19 +70,24 @@ void Simulator::LSMRun(long tid){
 
 #if NUM_THREADS == 1
     sprintf(filename, "reservoir_weights_%ld_org.txt", tid);
-    _network->WriteSynWeightsToFile("reservoir",filename);
+    _network->WriteSynWeightsToFile("reservoir", "reservoir", filename);
 #endif
 
-#ifdef STDP_TRAINING
     if(tid == 0){
         sprintf(filename, "i_weights_info.txt");
-        _network->WriteSynWeightsToFile("input", filename);
+        _network->WriteSynWeightsToFile("input", "reservoir", filename);
         sprintf(filename, "r_weights_info.txt");
-        _network->WriteSynWeightsToFile("reservoir", filename);
+        _network->WriteSynWeightsToFile("reservoir", "reservoir", filename);
+        sprintf(filename, "h_weights_info.txt");
+        _network->WriteSynWeightsToFile("reservoir", "hidden_0", filename);
         sprintf(filename, "o_weights_info.txt");
-        _network->WriteSynWeightsToFile("readout", filename);
+        _network->WriteSynWeightsToFile("hidden_0", "output", filename);
+
+        sprintf(filename, "o_weights_info_all.txt");
+        _network->WriteSelectedSynToFile("readout", filename); 
     }
 
+#ifdef STDP_TRAINING
     myTimer.Start();
 #ifdef STDP_TRAINING_RESERVOIR
     // train the reservoir using STDP rule:
@@ -96,7 +101,7 @@ void Simulator::LSMRun(long tid){
 #if NUM_THREADS == 1  
         // Write the weight back to file after training the reservoir with STDP:
         sprintf(filename, "reservoir_weights_%d.txt", i);
-        _network->WriteSynWeightsToFile("reservoir",filename);
+        _network->WriteSelectedSynToFile("reservoir", filename);
 #endif       
     }
     myTimer.Report("training the reservoir");
@@ -117,7 +122,7 @@ void Simulator::LSMRun(long tid){
 #if NUM_THREADS == 1
         // Write the weight back to file after training the input with STDP:
         sprintf(filename, "input_weights_%d.txt", i);
-        _network->WriteSynWeightsToFile("input",filename);
+        _network->WriteSelectedSynToFile("input", filename);
 #endif
     }
     myTimer.Report("training the input");
@@ -152,9 +157,9 @@ void Simulator::LSMRun(long tid){
     // Write the weight back to file after training the reservoir with STDP:
     if(tid == 0){
         sprintf(filename, "r_weights_info_trained.txt");
-        _network->WriteSynWeightsToFile("reservoir", filename);
+        _network->WriteSelectedSynToFile("reservoir", filename);
         sprintf(filename, "i_weights_info_trained.txt");
-        _network->WriteSynWeightsToFile("input", filename);
+        _network->WriteSelectedSynToFile("input", filename);
     }
 
 #ifdef _RM_ZERO_RES_WEIGHT
@@ -168,7 +173,7 @@ void Simulator::LSMRun(long tid){
     // _network->LoadSynWeightsFromFile("reservoir", filename);
     // _network->TruncateIntermSyns("reservoir");
     // sprintf(filename, "r_weights_info_best_tmp.txt");
-    // _network->WriteSynWeightsToFile("reservoir", filename);
+    // _network->WriteSelectedSynToFile("reservoir", filename);
     //ofstream f1("spike_freq.txt"), f2("spike_speech_label.txt");
     //assert(f1.is_open() && f2.is_open());
     ////////////////////////////////////////////////////////////////////////
@@ -188,13 +193,16 @@ void Simulator::LSMRun(long tid){
         Fp = NULL;
         Foutp = NULL;
         count++;
-        int time = 0;
-        while(!_network->LSMEndOfSpeech(networkmode)){
-            _network->LSMNextTimeStep(++time,false,1, 1, NULL);
+        int time = 0, end_time = _network->SpeechEndTime();
+        while(!_network->LSMEndOfSpeech(networkmode, end_time)){
+            _network->LSMNextTimeStep(++time,false,1, end_time, NULL);
         }
 
 #ifdef _DUMP_RESPONSE
-        _network->SpeechPrint(info);
+        if(tid == 0){
+            _network->SpeechPrint(info);
+            _network->DumpVMems("Waveform/transient", info, "reservoir");
+        }
 #endif
         // print the firing frequency into the file:
         //_network->SpeechSpikeFreq("input", f1, f2);
@@ -257,12 +265,12 @@ void Simulator::LSMRun(long tid){
 #if NUM_THREADS == 1
         // Write the weight back to file
         sprintf(filename, "readout_weights_%d.txt", i);
-        _network->WriteSynWeightsToFile("readout", filename);
+        _network->WriteSelectedSynToFile("readout", filename);
 #endif
     }
     if(tid == 0){
         sprintf(filename, "o_weights_info_trained.txt");
-        _network->WriteSynWeightsToFile("readout", filename);
+        _network->WriteSelectedSynToFile("readout", filename);
     }
     _network->RemoveZeroWeights("readout");
     myTimer.End("training the readout");
@@ -306,7 +314,7 @@ void Simulator::LSMRun(long tid){
 #ifdef _DUMP_READOUT_WEIGHTS
             if(tid == 0){
                 sprintf(filename, "o_weights_info_trained_intern_%d.txt",iii);
-                _network->WriteSynWeightsToFile("readout", filename);
+                _network->WriteSelectedSynToFile("readout", filename);
             }
 #endif
 
@@ -322,7 +330,7 @@ void Simulator::LSMRun(long tid){
 
     if(tid == 0){
         sprintf(filename, "o_weights_info_trained_final.txt");
-        _network->WriteSynWeightsToFile("readout", filename);
+        _network->WriteSelectedSynToFile("readout", filename); 
     }
 
 }

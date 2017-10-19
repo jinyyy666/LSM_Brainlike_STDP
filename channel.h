@@ -13,10 +13,11 @@ private:
     std::vector<int>::iterator _iter_spikeT;
     int _step_analog;
     int _step_spikeT;
+    int _index;
     channelmode_t _mode;
 public:
-    Channel(int,int);
-    Channel();
+    Channel(int step_analog, int step_spikeT, int index);
+    Channel(int index);
     void AddAnalog(double);
     void AddSpike(int);
     int FirstSpikeT();
@@ -30,7 +31,6 @@ public:
     void GetAllSpikes(std::vector<int>& v){v = _spikeT;}
     channelmode_t Mode(){return _mode;}
     void Clear();
-    void Print(FILE *);
     void Print(std::ofstream& f_out);
 };
 

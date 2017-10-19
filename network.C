@@ -582,13 +582,14 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #ifdef _SHOW_SPEECH_ORDER
         cout<<"************* Speech : "<<info<<" ****************"<<endl;
 #endif
-        while(!LSMEndOfSpeech(networkmode)){
+        while(!LSMEndOfSpeech(networkmode, end_time)){
             LSMNextTimeStep(++time, true, iteration, end_time, NULL); 
         }
 
 #ifdef _DUMP_RESPONSE
         if(tid == 0 && iteration == 0){
-            DumpVMems("Waveform/train", info);
+            DumpVMems("Waveform/train", info, "output");
+            DumpVMems("Waveform/train", info, "hidden_0");
             DumpHiddenOutputResponse("train", info);
         }
 #endif
@@ -628,7 +629,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #endif
 
         int time = 0, end_time = this->SpeechEndTime();
-        while(!LSMEndOfSpeech(networkmode)){
+        while(!LSMEndOfSpeech(networkmode, end_time)){
             LSMNextTimeStep(++time, false, 1, end_time, Foutp);
         }
 #if defined(_WRITE_STAT)
@@ -647,7 +648,8 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 
 #ifdef _DUMP_RESPONSE 
         if(tid == 0 && iteration == 0){
-            DumpVMems("Waveform/test", info);
+            DumpVMems("Waveform/test", info, "output");
+            DumpVMems("Waveform/test", info, "hidden_0");
             DumpHiddenOutputResponse("test", info);
         }
 #endif
@@ -704,7 +706,7 @@ void Network::LSMUnsupervisedTraining(networkmode_t networkmode, int tid){
             assert(Foutp != NULL);
         }
 #endif
-        while(!LSMEndOfSpeech(networkmode)){
+        while(!LSMEndOfSpeech(networkmode, end_time)){
             LSMNextTimeStep(++time, false, 1, end_time, Foutp); 
         }
 #ifdef _DUMP_RESPONSE
@@ -740,7 +742,7 @@ void Network::LSMReservoirTraining(networkmode_t networkmode){
             <<"Loading speech: "<<info
             <<"\n===============================================\n"<<endl;
 #endif
-        while(!LSMEndOfSpeech(networkmode)){
+        while(!LSMEndOfSpeech(networkmode, end_time)){
             // the 6th parameter is the pointer to the individual reservoir,
             // if the 6th parameter is NULL meaning we are using all reservoirs.
             LSMNextTimeStep(++time, false, 1, end_time, NULL); 
@@ -1270,14 +1272,15 @@ void Network::LSMClearSignals(){
 void Network::LSMClearWeights(){
     for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClearLearningSynWeights();
 }
-bool Network::LSMEndOfSpeech(networkmode_t networkmode){
+bool Network::LSMEndOfSpeech(networkmode_t networkmode, int end_time){
     /*
-       if(_lsm_t < 1000) return false;
-       else{
-       _lsm_t = 0;
-       return true;
-       }
-       */
+    if(_lsm_t <= end_time + 10) return false;
+    else{
+        _lsm_t = 0;
+        return true;
+    }
+    */   
+    
     if((networkmode == TRAINRESERVOIR||networkmode ==TRAININPUT)&&(_lsm_input>0)){
         return false;
     }
@@ -1289,6 +1292,7 @@ bool Network::LSMEndOfSpeech(networkmode_t networkmode){
         return false;
     }
     return true;
+    
 }
 
 void Network::SpeechInfo(){
@@ -1769,11 +1773,17 @@ void Network::DumpHiddenOutputResponse(const string & status, int sp){
 
 
 //* Dump the v_mem of the network @param2: the speech index
-void Network::DumpVMems(string dir, int info){
+void Network::DumpVMems(string dir, int info, const string& group_name){
     // make the directory if needed
     MakeDirs(dir);
+    NeuronGroup * ng = SearchForNeuronGroup(group_name.c_str());
+    if(ng == NULL){
+        cout<<"Warning::Cannot find the neuron group: "<<group_name<<endl;
+        return;
+    }
+    assert(ng);
 
-    string filename = dir + "/" + "waveform" + to_string(info) + ".dat";
+    string filename = dir + "/" + group_name + "_" + to_string(info) + ".dat";
     ofstream f_out(filename.c_str());
     if(!f_out.is_open()){
         cout<<"Cannot file : "<<filename<<endl;
@@ -1782,12 +1792,8 @@ void Network::DumpVMems(string dir, int info){
     // output file format: 
     // 1st line : # of reservoir # of readout neuron
     // the rest : the v_mem value
-    if(_network_mode == READOUT || _network_mode == READOUTSUPV || _network_mode == READOUTBP){
-        NeuronGroup * ng = SearchForNeuronGroup("output");
-        assert(ng);
-        f_out<<"0\t"<<ng->Size()<<endl;
-        ng->DumpVMems(f_out);
-    }
+
+    ng->DumpVMems(f_out);
     f_out.close();
 }
 
@@ -1812,17 +1818,16 @@ void Network::DumpCalciumLevels(string neuron_group, string dir, string filename
     f_out.close();
 }
 
-//* This function is to write the synaptic weights back into a file:
-//* "syn_type" can be reservoir or readout or input
-void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
+//* write the weights of the selected synaptic type
+void Network::WriteSelectedSynToFile(const string& syn_type, char * filename){
     ofstream f_out(filename);
     if(!f_out.is_open()){
-        cout<<"In Network::WriteSynWeightsToFile(), cannot open the file : "<<filename<<endl;
+        cout<<"In Network::WriteSelectedSynToFile(), cannot open the file : "<<filename<<endl;
         exit(EXIT_FAILURE);
     }
 
     synapsetype_t  wrt_syn_type = INVALID;
-    DetermineSynType(syn_type, wrt_syn_type, "WriteSynWeightsToFile()");
+    DetermineSynType(syn_type.c_str(), wrt_syn_type, "WriteSelectedSynToFile()");
     assert(wrt_syn_type != INVALID);
     vector<Synapse*> tmp;
 
@@ -1830,23 +1835,41 @@ void Network::WriteSynWeightsToFile(const char * syn_type, char * filename){
         wrt_syn_type == RESERVOIR_SYN ? _rsynapses : 
         wrt_syn_type == READOUT_SYN ? _rosynapses : 
         wrt_syn_type == INPUT_SYN ? _isynapses : tmp;
-
-    // write the synapse back to the file:
     assert(!synapses.empty());
-
     for(size_t i = 0; i < synapses.size(); ++i)
         f_out<<i<<"\t"<<synapses[i]->PreNeuron()->Name()
             <<"\t"<<synapses[i]->PostNeuron()->Name()
 #ifdef DIGITAL
-            <<"\t"<<synapses[i]->DWeight()
+            <<"\t"<<synapses[i]->DWeight()<<endl;
 #else
-            <<"\t"<<synapses[i]->Weight()
+            <<"\t"<<synapses[i]->Weight()<<endl;
 #endif
-            /*
-               <<"\t"<<synapses[i]->PreNeuron()->IsExcitatory()
-               <<"\t"<<synapses[i]->PostNeuron()->IsExcitatory()
-               */
-            <<endl;
+    f_out.close();
+}
+
+
+//* write the weights of output synapses of the neurons in the group into a file:
+void Network::WriteSynWeightsToFile(const string& pre_g, const string& post_g, char * filename){
+    NeuronGroup * pre = SearchForNeuronGroup(pre_g.c_str());
+    NeuronGroup * post = SearchForNeuronGroup(post_g.c_str());
+    if(pre == NULL){
+        cout<<"Warning::Cannot find neuron group named: "<<pre_g
+            <<" for writing the weights"<<endl;
+        return;
+    }
+    if(post == NULL){
+        cout<<"Warning::Cannot find neuron group named: "<<post_g
+            <<" for writing the weights"<<endl;
+        return;
+    }
+    ofstream f_out(filename);
+    if(!f_out.is_open()){
+        cout<<"WriteSynWeightsToFile(), cannot open the file : "<<filename<<endl;
+        exit(EXIT_FAILURE);
+    }
+
+    int index = 0;
+    pre->WriteSynWeightsToFile(f_out, index, post_g);
     f_out.close();
 }
 

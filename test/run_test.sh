@@ -1,3 +1,3 @@
 #!/bin/bash
 
-octave -q SimpleThreeLayersSim.m
+octave -q VectorizedSNNSim.m

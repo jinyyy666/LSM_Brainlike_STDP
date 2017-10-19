@@ -204,6 +204,8 @@ public:
     void UpdateLWeight();
 
     void ResizeSyn();
+    
+    void WriteOutputWeights(std::ofstream& f_out, int& index, const std::string& post_g); 
     void LSMPrintOutputSyns(FILE*);
     void LSMPrintLiquidSyns(FILE*);
     int SizeOutputSyns(){return _outputSyns.size();} //Calculate # of output synapses for verfication
@@ -279,6 +281,7 @@ public:
     double ComputeRatioError(int cls);
     void UpdateLearningWeights();
 
+    void WriteSynWeightsToFile(std::ofstream & f_out, int& index, const std::string& post_g);
     void DumpSpikeTimes(const std::string& filename);
     void DumpCalciumLevels(std::ofstream & f_out);
     void DumpVMems(std::ofstream & f_out);

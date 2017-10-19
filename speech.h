@@ -20,9 +20,9 @@ private:
 public:
     Speech(int);
     ~Speech();
-    void SetNumReservoirChannel(int);
-    void SetNumOutputChannel(int);
-    Channel * AddChannel(int, int);
+    void SetNumReservoirChannel(int size);
+    void SetNumOutputChannel(int size);
+    Channel * AddChannel(int step_analog, int step_spikeT, int index);
     Channel * GetChannel(int,channelmode_t);
     void ClearChannel(channelmode_t channelmode);
     void AnalogToSpike();

@@ -9,14 +9,16 @@ using namespace std;
 std::default_random_engine generator;
 
 // input channel
-Channel::Channel(int step_analog, int step_spikeT):
+Channel::Channel(int step_analog, int step_spikeT, int index):
     _step_analog(step_analog),
     _step_spikeT(step_spikeT),
+    _index(index),
     _mode(INPUTCHANNEL)
 {} 
 
 // reservoir channel
-Channel::Channel():
+Channel::Channel(int index):
+    _index(index),
     _mode(RESERVOIRCHANNEL)
 {}
 
@@ -118,18 +120,10 @@ void Channel::Clear(){
     _spikeT.clear();
 }
 
-void Channel::Print(FILE * fp){
-    if(_spikeT.empty() == true) fprintf(fp,"%d\n",-99);
-    for(_iter_spikeT = _spikeT.begin(); _iter_spikeT != _spikeT.end(); _iter_spikeT++) 
-        if(fp != NULL){
-            int t = *_iter_spikeT;
-            fprintf(fp,"%d\n",t);
-        }
-}
 
 void Channel::Print(ofstream& f_out){
     assert(f_out.is_open());
-    if(_spikeT.empty() == true) f_out<<"-99"<<endl;
+    if(_spikeT.empty() == true) return;
     for(_iter_spikeT = _spikeT.begin(); _iter_spikeT != _spikeT.end(); _iter_spikeT++) 
-        f_out<<*_iter_spikeT<<"\n";
+        f_out<<_index<<"\t"<<*_iter_spikeT<<endl;
 }

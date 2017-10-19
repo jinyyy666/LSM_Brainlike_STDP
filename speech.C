@@ -22,8 +22,8 @@ Speech::~Speech(){
     for(vector<Channel*>::iterator iter = _oChannels.begin(); iter != _oChannels.end(); iter++) delete *iter;
 }
 
-Channel * Speech::AddChannel(int step_analog, int step_spikeT){
-    Channel * channel = new Channel(step_analog, step_spikeT);
+Channel * Speech::AddChannel(int step_analog, int step_spikeT, int index){
+    Channel * channel = new Channel(step_analog, step_spikeT, index);
     _channels.push_back(channel);
     return channel;
 }
@@ -31,7 +31,7 @@ Channel * Speech::AddChannel(int step_analog, int step_spikeT){
 void Speech::SetNumReservoirChannel(int size){
     assert(size >= 0);
     while(_rChannels.size() < size){
-        Channel * channel = new Channel;
+        Channel * channel = new Channel(_rChannels.size());
         _rChannels.push_back(channel);
     }
 }
@@ -41,7 +41,7 @@ void Speech::SetNumReservoirChannel(int size){
 void Speech::SetNumOutputChannel(int size){
     assert(size >= 0 || _oChannels.empty());
     while(_oChannels.size() < size){
-        Channel * channel = new Channel;
+        Channel * channel = new Channel(_oChannels.size());
         _oChannels.push_back(channel);
     }
 }
@@ -140,11 +140,11 @@ void Speech::PrintSpikesPerChannels(const vector<Channel*>& channels, const stri
         cout<<"Cannot open file : "<<filename<<" for dumping the spikes!"<<endl;
         assert(f_out.is_open());
     }
+    f_out<<"-1\t-1"<<endl;
     for(int i = 0; i < channels.size(); i++){ 
-        f_out<<"-1"<<endl;
         channels[i]->Print(f_out);
     }
-    f_out<<"-1"<<endl;
+    f_out<<"-1\t-1"<<endl;
     f_out.close();
 }
 
@@ -180,7 +180,7 @@ int Speech::PrintSpikeFreq(const char * type, ofstream & f_out){
 //* Print the spike rate to the target file:
 void Speech::SpikeFreq(ofstream & f_out, const vector<Channel*> & channels){
     // find out the stop time for each speech:
-    int stop_t = EndTime();INT_MIN;
+    int stop_t = EndTime();
 
     for(int i = 0; i < channels.size(); i++){ 
         //f_out<<(double)channels[i]->SizeSpikeT()/stop_t<<"\t";

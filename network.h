@@ -138,7 +138,7 @@ public:
     void RateToSpike();
     void LSMClearSignals();
     void LSMClearWeights();
-    bool LSMEndOfSpeech(networkmode_t);
+    bool LSMEndOfSpeech(networkmode_t networkmode, int end_time);
     void LSMChannelDecrement(channelmode_t);
     void BackPropError(int iteration, int end_time);
     void UpdateLearningWeights();
@@ -186,9 +186,11 @@ public:
     void RemoveZeroWeights(const char * type);
 
     void DumpHiddenOutputResponse(const std::string& status, int sp);
-    void DumpVMems(std::string dir, int info);
+    void DumpVMems(std::string dir, int info, const std::string& group_name);
     void DumpCalciumLevels(std::string neuron_group, std::string dir, std::string filename);
-    void WriteSynWeightsToFile(const char * syn_type, char * filename);
+    
+    void WriteSelectedSynToFile(const std::string& syn_type, char * filename);
+    void WriteSynWeightsToFile(const std::string& pre_g, const std::string& post_g, char * filename);
     void LoadSynWeightsFromFile(const char * syn_type, char * filename);
     void WriteSynActivityToFile(char * pre_name, char * post_name, char * filename);
     void TruncateIntermSyns(const char * syn_type);

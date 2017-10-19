@@ -195,11 +195,11 @@ void Parser::ParseSpeech(int cls, char* path){
     //cout<<path<<endl;
     FILE * fp = fopen(path,"r");
     assert(fp != NULL);
-
+    int index = 0;
     _network->AddSpeech(speech);
     while(fgets(linestring,8191,fp)!=NULL){
         if(strlen(linestring) <= 1) continue;
-        channel = speech->AddChannel(10,1);
+        channel = speech->AddChannel(10, 1, index++);
         token = strtok(linestring," \t\n");
         while(token != NULL){
             channel->AddAnalog(atof(token));
@@ -249,10 +249,10 @@ void Parser::ParsePoissonSpeech(int cls, char* path){
         cout<<"File :"<<path<<" is completely empty!"<<endl;
         exit(-1);
     }
-
+    int index = 0;
     while(fgets(linestring,8191,fp)!=NULL){
         if(strlen(linestring) <= 1) continue;
-        channel = speech->AddChannel(10,1);
+        channel = speech->AddChannel(10, 1, index++);
         token = strtok(linestring," \t\n");
         while(token != NULL){
             //channel->AddAnalog(atof(token));
@@ -278,13 +278,14 @@ void Parser::ParseMNISTSpeech(int cls, char* path){
     FILE * fp = fopen(path,"r");
     assert(fp != NULL);
 
+    int index = 0;
     _network->AddSpeech(speech);
     while(fgets(linestring,8191,fp)!=NULL){
         if(strlen(linestring) <= 1) continue;
         token = strtok(linestring," \t\n,");
         while(token != NULL){
             //cout<<atof(token)<<endl;
-            channel = speech->AddChannel(10,1); // Here we read the spike rate for this channel.
+            channel = speech->AddChannel(10, 1, index++); // Here we read the spike rate for this channel.
             channel->AddAnalog(atof(token));
             token = strtok(NULL," \t\n,");
         }
