@@ -10,4 +10,6 @@ To initialize the test:
 
 3) Disable CV and set one thread to run for one iteration.
 
-4) Run the script: "run_test.sh"
+4) Compile the simulator and run it.
+
+5) Run the script: "run_test.sh" to start the test
