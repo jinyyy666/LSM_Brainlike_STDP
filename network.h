@@ -86,11 +86,8 @@ public:
 
     int LSMSumAllOutputSyns();
     int LSMSizeAllNeurons();
-    void LSMTruncSyns(int);
+    
     void LSMTruncNeurons(int);
-    void LSMPrintAllSyns(int);
-    void LSMPrintAllLiquidSyns(int);
-    void LSMPrintAllNeurons(int);
 
     // Supporting functions for enhanced analysis
     void LSMAdaptivePowerGating();

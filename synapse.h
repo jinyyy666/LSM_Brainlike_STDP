@@ -180,11 +180,11 @@ public:
     void SetPostNeuron(Neuron * post);
 
     void LSMPrint(FILE*);
-    void LSMPrintSyns(FILE*);
     bool Excitatory();
     bool Fixed();
     /* ONLY FOR LIQUID STATE MACHINE */
-    void LSMPreSpike(int); // argument can only be 0 or 1
+    //* deliver the spike effect to the post neuron
+    void LSMDeliverSpike(); 
     //* conduct the exp decay for the two state vars for 2nd response
     void LSMRespDecay(int time, int end_time);
     void LSMNextTimeStep();
@@ -193,7 +193,7 @@ public:
     //* Prop back the weighted error from l+1 layer
     double LSMErrorBack();
     //* back prop the error wrt each syn
-    void LSMBpSynError(double error, double vth, int iteration);
+    void LSMBpSynError(double error, double vth, int iteration, const std::vector<int>& post_times);
     //* perform an accumulated update at the end:
     void LSMUpdateLearningWeight();
     //* the second order response (no w.r.t to weight)

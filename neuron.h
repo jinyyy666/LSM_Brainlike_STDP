@@ -21,8 +21,8 @@ private:
     neuronmode_t _mode;
     char * _name;
 
-    std::list<Synapse*> _outputSyns; 
-    std::list<Synapse*> _inputSyns; 
+    std::vector<Synapse*> _outputSyns; 
+    std::vector<Synapse*> _inputSyns; 
     std::vector<double> _fire_freq;
     std::vector<bool> _presyn_act;
     std::map<Neuron*, int> _correlation;
@@ -30,9 +30,25 @@ private:
 #ifdef DIGITAL
     std::vector<int> _vmems;
     std::vector<int> _calcium_stamp;
+    int _prev_delta_ep;
+    int _prev_delta_en;
+    int _prev_delta_ip;
+    int _prev_delta_in;
+    int _curr_delta_ep;
+    int _curr_delta_en;
+    int _curr_delta_ip;
+    int _curr_delta_in;
 #else
     std::vector<double> _vmems;
     std::vector<double> _calcium_stamp;
+    double _prev_delta_ep;
+    double _prev_delta_en;
+    double _prev_delta_ip;
+    double _prev_delta_in;
+    double _curr_delta_ep;
+    double _curr_delta_en;
+    double _curr_delta_ip;
+    double _curr_delta_in;
 #endif
     bool _excitatory; 
     int _teacherSignal;
@@ -101,7 +117,6 @@ public:
     void AddPostSyn(Synapse*);
     void AddPreSyn(Synapse*);
 
-    void LSMPrintInputSyns();
     void LSMPrintInputSyns(std::ofstream& f_out);
 
     // return EP/EN/IP/IN max/min
@@ -159,6 +174,12 @@ public:
     int DLSMGetCalcium(){return _D_lsm_calcium;}
     void SetExcitatory(){_excitatory = true;}
     bool IsExcitatory(){return _excitatory;}
+
+    template<typename T> void IncreaseEP(T effect){_curr_delta_ep += effect;}
+    template<typename T> void IncreaseEN(T effect){_curr_delta_en += effect;}
+    template<typename T> void IncreaseIP(T effect){_curr_delta_ip += effect;}
+    template<typename T> void IncreaseIN(T effect){_curr_delta_in += effect;}
+
 #ifdef DIGITAL
     std::vector<int> GetCalciumStamp(){return _calcium_stamp;}
 #else
@@ -181,6 +202,7 @@ public:
     void SetPostNeuronSpikeT(int t);
     void HandleFiringActivity(bool isInput, int time, bool train);
 
+    void UpdateDeltaEffect();
     void LSMNextTimeStep(int t , FILE * Foutp, bool train, int end_time);
     double LSMSumAbsInputWeights();
     int  DLSMSumAbsInputWeights();
@@ -203,14 +225,12 @@ public:
     void BpError(double error, int iteration);
     void UpdateLWeight();
 
-    void ResizeSyn();
-    
+    void DebugFunc(int t);
+
     void WriteOutputWeights(std::ofstream& f_out, int& index, const std::string& post_g); 
-    void LSMPrintOutputSyns(FILE*);
-    void LSMPrintLiquidSyns(FILE*);
     int SizeOutputSyns(){return _outputSyns.size();} //Calculate # of output synapses for verfication
     void DisableOutputSyn(synapsetype_t syn_t);
-    std::list<Synapse*> * LSMDisconnectNeuron();
+    std::vector<Synapse*> * LSMDisconnectNeuron();
     void LSMDeleteInputSynapse(char* pre_name);
     int RMZeroSyns(synapsetype_t syn_t, const char * t);
     void DeleteSyn(const char * t, const char s);
@@ -220,6 +240,7 @@ public:
     void DeleteBrokenSyns();
     bool GetStatus();
     double GetInputSynSqSum(double weight_limit);
+    
 };
 
 class NeuronGroup{
@@ -291,7 +312,6 @@ public:
     void LSMSetTeacherSignal(int);
     void LSMSetTeacherSignalStrength(const double pos, const double neg, int freq);
     void LSMRemoveTeacherSignal(int);
-    void LSMPrintInputSyns();
     void LSMPrintInputSyns(std::ofstream& f_out);
 
     void DestroyResConn();

@@ -531,32 +531,28 @@ bool Synapse::Fixed(){
 }
 
 
-void Synapse::LSMPrint(FILE * fp){
+//* delivery the spike response
+//* set the curr_inputs_pos/curr_inputs_neg field of the post neuron
+void Synapse::LSMDeliverSpike(){
 #ifdef DIGITAL
-    fprintf(fp,"%d",_D_lsm_weight);
+    int effect = _D_lsm_weight;
 #else
-    fprintf(fp,"%f",_lsm_weight);
+    double effect = _lsm_weight;
 #endif
-}
 
-void Synapse::LSMPrintSyns(FILE * fp){
-    //  if(_post->GetStatus() == true) return;
-    if(fp != NULL) fprintf(fp,"%s\t%s\n",_pre->Name(),_post->Name());
-}
-
-// argument can only be 0 or 1
-void Synapse::LSMPreSpike(int delay){
-    if(delay <= 0){
-#ifdef DIGITAL
-        _D_lsm_spike = 1;
-#else
-        _lsm_spike = 1;
-#endif
+#ifdef SYN_ORDER_2
+    if(excitatory){
+        _post->IncreaseEP(effect);
+        _post->IncreaseEN(effect);
     }
     else{
-        //cout<<_pre->Name()<<" fired!"<<endl;
-        _lsm_delay = delay;
+        _post->IncreaseIP(effect);
+        _post->IncreaseIN(effect);
     }
+#else
+    _post->IncreaseEP(effect);
+#endif
+
 }
 
 //* keep track of the firing timing of the synapses and do the weight update at the end
@@ -580,7 +576,7 @@ double Synapse::LSMErrorBack(){
 }
 
 //* back prop the error w.r.t each synapse:
-void Synapse::LSMBpSynError(double error, double vth, int iteration){
+void Synapse::LSMBpSynError(double error, double vth, int iteration, const vector<int>& post_times){
 #ifdef DIGITAL
     assert(0);
 #endif
@@ -591,9 +587,8 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration){
     double lr = error < 0 ? BP_DELTA_POT : BP_DELTA_DEP;
     lr = lr/( 1 + iteration/BP_ITER_SEARCH_CONV);
     //auto pre_calcium_stamp = _pre->GetCalciumStamp();
-    vector<int> post_times, pre_times;
+    vector<int> pre_times;
     _pre->GetSpikeTimes(pre_times);
-    _post->GetSpikeTimes(post_times);
     auto synaptic_effects = ComputeAccSRM(pre_times, post_times, 4*LSM_T_M_C, LSM_T_FO, LSM_T_M_C, LSM_T_REFRAC);
     double size = synaptic_effects.size();
     //for(auto & c : pre_calcium_stamp){
@@ -876,21 +871,14 @@ void Synapse::LSMSTDPSupvHardwareLearn(int t, int iteration){
 #ifdef _REWARD_MODULATE
     if(t == _t_spike_pre && _t_spike_pre != _t_spike_post)  return;
 
-#ifdef _REWARD_MODULATE_2ND_RESP
-    double resp = LSMSecondOrderResp();
-    resp *= 0.005;
 
 #ifdef _DEBUG_SUPV_REWARD
     if(strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
         cout<<"Current: "<<resp<<" @"<<time<<endl;
 #endif
 
-    if(resp >= 0)  delta_w_pos = resp;
-    else delta_w_neg = resp;
-#else
     // Read the reward modulated rule @param4: isSupv?
     LSMReadRewardLUT(t, delta_w_pos, delta_w_neg, true);
-#endif
 #else
     // Read the look-up table for the supervised STDP @param4: isSupv?
     LSMReadLUT(t, delta_w_pos, delta_w_neg, true);
@@ -1349,7 +1337,7 @@ void Synapse::LSMActivate(Network * network, bool need_learning, bool train){
     assert(_lsm_active == false);
     // 1. Add the synapses for firing processing
 
-    network->LSMAddActiveSyn(this);
+    //network->LSMAddActiveSyn(this);
 
     // 2. For the readout synapses, if we are using stdp training in reservoir/input,
     //  just ignore the learning in the readout:

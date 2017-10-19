@@ -47,15 +47,15 @@ disp('Begin simulating the input -- reservoir layer')
 vth = 20;
 [vmem, reservoir_spikes, n_reservoir_spikes, A_k, h, a_k] = VectorizedSNN(input, input_weights, reservoir_weights, vth, tm, ts);
 % match the vmem and output spike times
-assert(sum(sum(abs(vmem - wave_r)))/(input_size*reservoir_size) < 1e-2, 'Reservoir vmem does not match!');
-assert(sum(sum(abs(reservoir_spikes - reservoir))) < 1e-2, 'Reservoir spike timing does not match!');
+assert(sum(sum(abs(vmem - wave_r)))/(input_size*reservoir_size) < 1e-3, 'Reservoir vmem does not match!');
+assert(sum(sum(abs(reservoir_spikes - reservoir))) < 1e-4, 'Reservoir spike timing does not match!');
 disp('Simulation done! The result is correct!')
 
 % 2. reservoir - hidden
 disp('Begin simulating the reservoir -- hidden layer')
 [vmem, hidden_spikes, n_hidden_spikes, A_k, h, a_k] = VectorizedSNN(reservoir, hidden_weights, [], vth, tm, ts);
-assert(sum(sum(abs(vmem - wave_h)))/(reservoir_size*hidden_size) < 1e-2, 'Hidden vmem does not match!');
-assert(sum(sum(abs(hidden_spikes - hidden))) < 1e-2, 'Hidden spike timing does not match!');
+assert(sum(sum(abs(vmem - wave_h)))/(reservoir_size*hidden_size) < 1e-3, 'Hidden vmem does not match!');
+assert(sum(sum(abs(hidden_spikes - hidden))) < 1e-4, 'Hidden spike timing does not match!');
 disp('Simulation done! The result is correct!')
 
 
@@ -63,6 +63,6 @@ disp('Simulation done! The result is correct!')
 vth = 5;
 disp('Begin simulating the hidden -- output layer')
 [vmem, output_spikes, n_output_spikes, A_k, h, a_k] = VectorizedSNN(hidden, output_weights, [], vth, tm, ts);
-assert(sum(sum(abs(vmem - wave_o)))/(hidden_size*output_size) < 1e-2, 'Output vmem does not match!');
-assert(sum(sum(abs(output_spikes - output))) < 1e-2, 'Output spike timing does not match!');
+assert(sum(sum(abs(vmem - wave_o)))/(hidden_size*output_size) < 1e-3, 'Output vmem does not match!');
+assert(sum(sum(abs(output_spikes - output))) < 1e-4, 'Output spike timing does not match!');
 disp('Simulation done! The result is correct!')

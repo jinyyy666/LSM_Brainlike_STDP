@@ -123,10 +123,10 @@ void Network::LSMDeleteNeuronGroup(char * name){
     vector<char*> post_names;
 
     for(Neuron * neuron = to2del->First(); neuron != NULL; neuron = to2del->Next()){
-        list<Synapse*>* outputSyns = neuron->LSMDisconnectNeuron(); // This is just to disconnect the neuron from the network. 
+        vector<Synapse*>* outputSyns = neuron->LSMDisconnectNeuron(); // This is just to disconnect the neuron from the network. 
 
         // record those synapses:
-        for(list<Synapse*>::iterator iter = (*outputSyns).begin(); iter != (*outputSyns).end(); iter++){
+        for(auto iter = (*outputSyns).begin(); iter != (*outputSyns).end(); iter++){
             Neuron * pre = (*iter)->PreNeuron();
             Neuron * post = (*iter)->PostNeuron();
             pre_names.push_back(pre->Name());
@@ -390,32 +390,6 @@ int Network::LSMSumAllOutputSyns(){
     return sum;
 }
 
-void Network::LSMTruncSyns(int loss_synapse){
-    int i,j,k;
-    char *_name;
-
-    LSMPrintAllSyns(0);
-    for(i = 0; i < loss_synapse; i++){
-        j = 0;
-        cout<<"# of all neurons:"<<_allNeurons.size()<<endl;
-        k = rand()%(_allNeurons.size()-109) + 83; //Only select synapse in liquid
-        cout<<"# of Neurons in liquid: "<< (_allNeurons.size()-87)<<endl;
-        cout<<"k = "<<k<<endl;
-        for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++){
-            if(j == k){
-                _name = (*iter)->Name();
-                assert((_name[0] == 'r')&&(_name[1] == 'e')&&(_name[2] == 's'));
-                (*iter)->ResizeSyn();
-                break;
-            }
-            else j++;
-        }
-    }
-
-    //Print all synapses to double check
-    LSMPrintAllSyns(1);
-
-} 
 
 void Network::LSMTruncNeurons(int loss_neuron){
     int i,j,k;
@@ -444,46 +418,11 @@ void Network::LSMTruncNeurons(int loss_neuron){
     }
 }
 
-void Network::LSMPrintAllLiquidSyns(int count){
-    FILE * Fp_liquid = NULL;
-    char filename[64];
-    sprintf(filename,"reservoir_synapse_%d.txt",count);
-    Fp_liquid = fopen(filename,"w");
-    assert(Fp_liquid != NULL);
-    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++) (*iter)->LSMPrintLiquidSyns(Fp_liquid);
-    fclose(Fp_liquid);
-}
-
 
 int Network::LSMSizeAllNeurons(){
     return _allNeurons.size();
 }
 
-void Network::LSMPrintAllSyns(int count){
-    FILE * Fp_syn = NULL;
-    char filename[64]; 
-    sprintf(filename,"all_synapse_%d.txt",count);
-    Fp_syn = fopen(filename,"w");
-    assert(Fp_syn != NULL);
-
-    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++) (*iter)->LSMPrintOutputSyns(Fp_syn);
-    fclose(Fp_syn);
-}
-
-void Network::LSMPrintAllNeurons(int count){
-    FILE * Fp_neuron = NULL;
-    char filename[64];
-    char * _name; 
-    sprintf(filename,"l_neuron_%d.txt",count);
-    Fp_neuron = fopen(filename,"w");
-    assert(Fp_neuron != NULL);
-
-    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter !=_allNeurons.end(); iter++){
-        _name = (*iter)->Name();
-        if(Fp_neuron != NULL) fprintf(Fp_neuron,"%s\n",_name);
-    }
-    fclose(Fp_neuron);
-}
 
 //***********************************************************************************
 //
@@ -763,56 +702,49 @@ void Network::LSMReservoirTraining(networkmode_t networkmode){
 void Network::LSMNextTimeStep(int t, bool train,int iteration,int end_time, FILE * Foutp){
     _lsm_t = t;
 
+/*
 #if defined(_EACH_SYNAPSE_RESPONSE)
     for(vector<Synapse*>::iterator iter = _rosynapses.begin(); iter != _rosynapses.end(); ++iter) (*iter)->LSMRespDecay(t, end_time);
 #endif
 
     for(list<Synapse*>::iterator iter = _lsmActiveSyns.begin(); iter != _lsmActiveSyns.end(); iter++) (*iter)->LSMNextTimeStep();
+*/
     _lsmActiveSyns.clear();
 
     // Please remember that the neuron firing activity will change the list: 
     // _lsmActiveSyns, _lsmActiveSTDPLearnSyns, and _lsmActiveLearnSyns:
-    for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMNextTimeStep(t, Foutp, train, end_time);
-    
+    for(Neuron * neuron : _allNeurons)  neuron->LSMNextTimeStep(t, Foutp, train, end_time);
+
+    // Update the previous delta effect with the current delta effect
+    for(Neuron * neuron : _allNeurons)  neuron->UpdateDeltaEffect();
+ 
     // train the reservoir/input/readout using STDP (unsupervised):
     if(_network_mode == TRAINRESERVOIR || _network_mode == TRAININPUT || _network_mode == TRAINREADOUT){
         assert(train == false);
 #ifndef _LUT_HARDWARE_APPROACH
         // using state variable to implement the STDP mechanism
-        // for training the reservoir synapse 
         if(_network_mode == TRAINRESERVOIR){
-            for(vector<Synapse*>::iterator iter = _rsynapses.begin(); iter != _rsynapses.end(); ++iter){
-                // Update the local variable implememnting STDP:
-                (*iter)->LSMUpdate(t);        
-            }
+            // Update the local variable implememnting STDP:
+            for(Synapse * synapse : _rsynapses) synapse->LSMUpdate(t);
         }
         else{
             // for training the input/reaodut synapses (unsupervised)
             vector<Synapse*> &tmp_synapses = _network_mode == TRAININPUT ? _isynapses : _rosynapses;
-            for(vector<Synapse*>::iterator iter = tmp_synapses.begin(); iter != tmp_synapses.end(); ++iter){
-                // Update the local variable implememnting STDP:
-                (*iter)->LSMUpdate(t);        
-            }
+            
+            for(Synapse * synapse : tmp_synapses) synapse->LSMUpdate(t);
         }
 #endif
 
-        for(list<Synapse*>::iterator iter = _lsmActiveSTDPLearnSyns.begin(); iter != _lsmActiveSTDPLearnSyns.end(); iter++){   
-            // train the targeted synapse with STDP rule:
-            (*iter)->LSMSTDPLearn(t);
-        }
+        for(Synapse * synapse : _lsmActiveSTDPLearnSyns)    synapse->LSMSTDPLearn(t);
         _lsmActiveSTDPLearnSyns.clear();
     }
 
     if(train == true) {
         if(_network_mode == READOUT){
-            for(list<Synapse*>::iterator iter = _lsmActiveLearnSyns.begin(); iter != _lsmActiveLearnSyns.end(); iter++){
-                (*iter)->LSMLearn(t, iteration);
-            }
+            for(Synapse * synapse : _lsmActiveLearnSyns)    synapse->LSMLearn(t, iteration);
             _lsmActiveLearnSyns.clear();
         }else if(_network_mode == READOUTSUPV){
-            for(list<Synapse*>::iterator iter = _lsmActiveSTDPLearnSyns.begin(); iter != _lsmActiveSTDPLearnSyns.end(); iter++){
-                (*iter)->LSMSTDPSupvLearn(t, iteration);
-            }
+            for(Synapse * synapse : _lsmActiveSTDPLearnSyns)    synapse->LSMSTDPSupvLearn(t, iteration); 
             _lsmActiveSTDPLearnSyns.clear();
         }
     }
@@ -1455,8 +1387,8 @@ void Network::CorBasedSparsify(){
     assert(f_out.is_open());
     output->LSMPrintInputSyns(f_out);
     f_out.close();
-
-    LSMPrintAllLiquidSyns(0);
+    string filename = "r_weights_info_after_corsparse.txt";
+    WriteSynWeightsToFile("reservoir", "reservoir", filename.c_str());
 #endif
 
 }    

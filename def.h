@@ -83,7 +83,6 @@
 // the new rule(SRM based/reward modulated)
 *******************************************/
 #define _REWARD_MODULATE
-#define _REWARD_MODULATE_2ND_RESP // use the entire 2nd resp as reward modification, only implement the continuous part
 #define VMEM_DAMPING_FACTOR 1
 
 #define TAU_REWARD_POS_E 4
@@ -97,7 +96,6 @@
 #define D_A_REWARD_POS 144
 #define D_A_REWARD_NEG 144
 
-#define _EACH_SYNAPSE_RESPONSE
 
 /*****************************************
  * Settings for error-backprop rule
@@ -277,10 +275,11 @@
 //* Control variable to enable the old way of readout by writing outputs/*.dat
 //#define _WRITE_STAT  
 
-//* Control variable to enable print pre-synaptic events
+//* Control variable to enable print pre-synaptic events, remember to enable _DEBUG_NEURON in neuron.C
 //#define _RES_FIRING_CHR
 
-//* Control variable to enable print max/min for 4 state variables of synaptic response
+//* Control variable to enable print max/min for 4 state variables of synaptic response, remember to enable
+//  _DEBUG_NEURON in neuron.C 
 //#define _RES_EPEN_CHR
 
 //* visualize the spikes response and the v_mem
