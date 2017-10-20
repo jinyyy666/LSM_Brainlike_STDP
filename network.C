@@ -499,6 +499,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
     int info = -1;
     int count = 0;
     vector<pair<int, int> > correct, wrong, even;
+    vector<pair<Speech*, bool> > predictions; // the predictions for each speech
     FILE * Foutp = NULL;
     char filename[64];
     vector<double> each_sample_errors;    
@@ -512,7 +513,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #else
     info = LoadFirstSpeech(true, networkmode);
 #endif
-
+    
     // 3. Load the speech for training
     while(info != -1){
         count++;
@@ -532,6 +533,11 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
             DumpHiddenOutputResponse("train", info);
         }
 #endif
+        // compute the boost error
+#ifdef _BOOSTING_METHOD
+        ComputeBoostError(predictions);  
+#endif
+
        // Apply the error bp when the speech is played
         if(_network_mode == READOUTBP)        
             BackPropError(iteration, end_time);
@@ -549,6 +555,11 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #endif
 
     }
+    // update the training weight of each sample
+#ifdef _BOOSTING_METHOD
+    BoostWeightUpdate(predictions);
+#endif
+
     LSMClearSignals();
 
     // 4. Load the speech for testing
@@ -1200,6 +1211,7 @@ void Network::LSMClearSignals(){
     _lsmActiveLearnSyns.clear();                              
     _lsmActiveSyns.clear();
     _lsmActiveSTDPLearnSyns.clear(); 
+    _sp = NULL;
 }
 void Network::LSMClearWeights(){
     for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClearLearningSynWeights();
@@ -1402,16 +1414,12 @@ void Network::LSMChannelDecrement(channelmode_t channelmode){
 //* calculate the error: # spike/max{spike}, and prop it back to modify the weights
 void Network::BackPropError(int iteration, int end_time){
     assert(_lsm_output_layer);
-#ifdef CV
-    assert(*_cv_train_sp_iter);
-    _lsm_output_layer->BpOutputError((*_cv_train_sp_iter)->Class(), iteration, end_time);
-#else
-    assert(*_sp_iter);
-    _lsm_output_layer->BpOutputError((*_sp_iter)->Class(), iteration, end_time);
-#endif
+    assert(_sp);
+    
+    _lsm_output_layer->BpOutputError(_sp->Class(), iteration, end_time, _sp->Weight());
     
     for(NeuronGroup * hidden : _lsm_hidden_layers){
-        hidden->BpHiddenError(iteration, end_time);
+        hidden->BpHiddenError(iteration, end_time, _sp->Weight());
     }
 }
 
@@ -1474,15 +1482,51 @@ void Network::ReadoutJudge(vector<pair<int, int> >& correct, vector<pair<int, in
  **************************************************************************************/
 pair<int, int> Network::LSMJudge(){
     assert(_lsm_output_layer); 
-#ifdef CV
-    assert(*_cv_test_sp_iter);
-    int cls = (*_cv_test_sp_iter)->Class();
-#else
-    assert(*_sp_iter);
-    int cls = (*_sp_iter)->Class();
-#endif
+    assert(_sp);
+    int cls = _sp->Class();
     return {_lsm_output_layer->Judge(cls), cls};
 }
+
+
+//* Compute the error for the boosting method
+void Network::ComputeBoostError(vector<pair<Speech*, bool> >& predictions){
+    pair<int, int> res = this->LSMJudge();
+    assert(_sp);
+    predictions.push_back({_sp, res.first == 1});
+}
+
+
+//* update the boosting weight associated with each sample
+void Network::BoostWeightUpdate(const vector<pair<Speech*, bool> >& predictions){
+    // 1. compute the sum of the boosting weights for each sample class
+    vector<double> sum_weights(CLS, 0);
+    for(auto & p : predictions){
+        assert(p.first);
+        int cls = p.first->Class();
+        double weight = p.first->Weight();
+        assert(cls < CLS);
+        sum_weights[cls] += weight;
+    }
+    
+    // 2. compute the weighted error for each sample class
+    vector<double> error_weighted(CLS, 0);
+    for(auto & p : predictions){
+        bool prediction = p.second;
+        int cls = p.first->Class();
+        double weight = p.first->Weight();
+        error_weighted[cls] += weight*(!prediction)/sum_weights[cls];
+    }
+    // 3. update the boost weight for each training sample:
+    for(auto & p : predictions){
+        bool prediction = p.second;
+        int cls = p.first->Class(); 
+        double weight = p.first->Weight();
+        double stage = error_weighted[cls]/20; 
+        double new_weight = weight * exp(stage * (!prediction));
+        p.first->SetWeight(new_weight);
+    }
+}
+
 
 //* add the active reservoir synapse about to be trained by STDP
 void Network::LSMAddSTDPActiveSyn(Synapse * synapse){

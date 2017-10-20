@@ -17,6 +17,7 @@ private:
     int _index;
     int _num_input_channels;
     int _input_connections;
+    double _weight; // boosting weight associated with each sample
 public:
     Speech(int);
     ~Speech();
@@ -31,6 +32,8 @@ public:
     int Class(){return _class;}
     void SetIndex(int index) {_index = index;}
     int Index() {return _index;}
+    double Weight(){return _weight;}
+    void SetWeight(double w){_weight = w;}
 
     void AddInputNumInfo(int num_inputs){ _num_input_channels = num_inputs;}
     void AddInputConnectionInfo(int input_connections){ _input_connections = input_connections;}

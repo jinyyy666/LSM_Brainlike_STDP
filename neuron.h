@@ -297,8 +297,8 @@ public:
     int Judge(int cls);
     double SoftMax(int max_count);
     int MaxFireCount();
-    void BpOutputError(int cls, int iteration, int end_time);
-    void BpHiddenError(int iteration, int end_time);
+    void BpOutputError(int cls, int iteration, int end_time, double sample_weight);
+    void BpHiddenError(int iteration, int end_time, double sample_weight);
     double ComputeRatioError(int cls);
     void UpdateLearningWeights();
 

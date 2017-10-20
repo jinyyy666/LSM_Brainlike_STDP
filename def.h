@@ -110,6 +110,8 @@
 #define BP_OBJ_COUNT // current best
 //#define BP_OBJ_SOFTMAX  // remember to make DELTA_POT == DELTA_DEP for this case
 
+#define _BOOSTING_METHOD
+
 /*****************************************
  * some available modifications 
  * to the original Yong's rule

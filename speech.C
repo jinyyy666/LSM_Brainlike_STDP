@@ -13,7 +13,8 @@ using namespace std;
 
 Speech::Speech(int cls):
     _index(-1),
-    _class(cls)
+    _class(cls),
+    _weight(1.0)
 {}
 
 Speech::~Speech(){

@@ -1768,12 +1768,13 @@ int NeuronGroup::MaxFireCount(){
 }
 
 //* compute and backprop the error in terms of the spike count/time-discounted reward
-void NeuronGroup::BpOutputError(int cls, int iteration, int end_time){
+void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sample_weight){
     int max_count = MaxFireCount();
 
     double error = 0;
     double sum_error = 0;
     double soft_max_sum = SoftMax(max_count);
+
 #ifdef _DEBUG_BP
     cout<<"True class label: "<<cls<<endl;
 #endif
@@ -1800,7 +1801,7 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time){
         else
             error = exp(f_cnt - max_count)/soft_max_sum;
 #endif
-
+        error *= sample_weight;
         sum_error += error*error;
 #ifdef _DEBUG_BP
         cout<<"The backprop error for neuron "<<i<<" : "<<error<<" with fc: "<<_neurons[i]->FireCount()<<endl;
@@ -1822,10 +1823,10 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time){
 }
 
 //* back-prop the error down to other layers:
-void NeuronGroup::BpHiddenError(int iteration, int end_time){
+void NeuronGroup::BpHiddenError(int iteration, int end_time, double sample_weight){
     for(int i = 0; i < _neurons.size(); ++i){
         // Gather the back-proped error from l+1 layer
-        double error = _neurons[i]->GatherError();
+        double error = sample_weight*_neurons[i]->GatherError();
 #ifdef _DEBUG_BP_HIDDEN
         cout<<"The gather error for "<<_neurons[i]->Name()<<" : "<<error<<endl;
 #endif

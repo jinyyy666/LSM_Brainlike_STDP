@@ -143,6 +143,9 @@ public:
     void PrintSpikeCount(std::string layer);
     void ReadoutJudge(std::vector<std::pair<int, int> >& correct, std::vector<std::pair<int, int> >& wrong, std::vector<std::pair<int, int> >& even);
     std::pair<int, int>  LSMJudge();
+    void ComputeBoostError(std::vector<std::pair<Speech*, bool> >& predictions);
+    void BoostWeightUpdate(const std::vector<std::pair<Speech*, bool> >& predictions);
+    
     //* this function is to add the active learning readout synapses:
     void LSMAddActiveLearnSyn(Synapse*synapse){_lsmActiveLearnSyns.push_back(synapse);}
     void LSMAddActiveSyn(Synapse*synapse){_lsmActiveSyns.push_back(synapse);}
