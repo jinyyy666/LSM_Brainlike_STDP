@@ -541,7 +541,7 @@ void Synapse::LSMDeliverSpike(){
 #endif
 
 #ifdef SYN_ORDER_2
-    if(excitatory){
+    if(_excitatory){
         _post->IncreaseEP(effect);
         _post->IncreaseEN(effect);
     }
