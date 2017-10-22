@@ -180,6 +180,11 @@ void Parser::Parse(const char * filename){
 	}
 #endif
 #endif
+#ifdef LOAD_RESPONSE
+	cout<<"Reservoir Response Load Start"<<endl;
+	_network->LoadResponse();
+	cout<<"Reservoir Response Load Complete"<<endl;
+#endif
 }
 
 void Parser::ParseNeuron(char * name, char * e_i, double v_mem){

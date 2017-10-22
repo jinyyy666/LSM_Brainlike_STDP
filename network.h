@@ -219,7 +219,7 @@ public:
         post->AddPreSyn(synapse);	
     } 
 	void LoadResponse();
-
+	void PrintTestError();
 };
 
 #endif

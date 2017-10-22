@@ -184,10 +184,7 @@ void Simulator::LSMRun(long tid){
     //assert(f1.is_open() && f2.is_open());
     ////////////////////////////////////////////////////////////////////////
 
-#ifdef LOAD_RESPONSE
-	_network->LoadResponse();
-	cout<<"Reservoir Response Load Complete"<<endl;
-#else
+#ifndef LOAD_RESPONSE
     // produce transient state
     networkmode = TRANSIENTSTATE;
     _network->LSMSetNetworkMode(networkmode);

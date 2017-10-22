@@ -639,6 +639,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 
     // 6. Log the test error
     LogTestError(each_sample_errors, iteration);
+	PrintTestError();
 }
 
 
@@ -2073,4 +2074,9 @@ void Network::VisualizeReservoirSyns(int indictor){
     f_out.close();
 }
 
+void Network::PrintTestError(){
+	for(int i=0;i<_readout_test_error.size();i++){
+		cout<<"iter : "<<i<<",  test error: "<<_readout_test_error[i]<<endl;
+	}
+}
 
