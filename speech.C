@@ -144,17 +144,30 @@ void Speech::PrintSpikesPerChannels(const vector<Channel*>& channels, const stri
     f_out<<"-1\t-1"<<endl;
     for(int i = 0; i < channels.size(); i++){ 
         channels[i]->Print(f_out);
+		f_out<<"-1\t-1"<<endl;
     }
-    f_out<<"-1\t-1"<<endl;
     f_out.close();
 }
 
 void Speech::PrintSpikes(int info){
+#if _NMNIST==1
+    string input = "spikes/Input_Response/input_spikes_" + to_string(_file_index) + to_string(_class) + ".dat";
+    PrintSpikesPerChannels(_channels, input);
+
+#ifdef TRAIN_SAMPLE
+    string reservoir = "spikes/Reservoir_Response/train/reservoir_spikes_" + to_string(_file_index) +"_"+ to_string(_class) + ".dat";
+#else
+    string reservoir = "spikes/Reservoir_Response/test/reservoir_spikes_" + to_string(_file_index) +"_"+ to_string(_class)  + ".dat";
+#endif
+    PrintSpikesPerChannels(_rChannels, reservoir);
+
+#else
     string input = "spikes/Input_Response/input_spikes_" + to_string(info) + ".dat";
     PrintSpikesPerChannels(_channels, input);
 
     string reservoir = "spikes/Reservoir_Response/reservoir_spikes_" + to_string(info) + ".dat";
     PrintSpikesPerChannels(_rChannels, reservoir);
+#endif
        
 }
 
@@ -225,3 +238,27 @@ void Speech::CollectFreq(synapsetype_t syn_t, vector<double>& fs, int end_t){
         fs.push_back(((double)(channels[i]->SizeSpikeT()))/end_t);
     }
 }
+
+void Speech::LoadResponse(){
+	FILE * Fp_reservoir;
+	char filename[64];
+	char linestring[8192];
+#ifdef TRAIN_SAMPLE
+	sprintf(filename,"spikes/Reservoir_Response/train/reservoir_spikes_%d_%d.dat",_file_index,_class);
+#else
+	sprintf(filename,"spikes/Reservoir_Response/test/reservoir_spikes_%d_%d.dat",_file_index,_class);
+#endif
+	Fp_reservoir = fopen(filename,"r");
+	//ofstream f_reservoir(filename);
+	//assert(f_reservoir.is_open());
+	assert(Fp_reservoir != NULL);
+	if(fgets(linestring,8191,Fp_reservoir)==NULL||linestring[0]=='\n'){
+		assert(0);
+	}
+	for(int i = 0; i < _rChannels.size(); i++){
+		_rChannels[i]->Read(Fp_reservoir);
+	}
+	fclose(Fp_reservoir);	
+}
+
+

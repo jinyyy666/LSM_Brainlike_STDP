@@ -1,10 +1,19 @@
 #ifndef PARSER_H
 #define PARSER_H
+#include "def.h"
+#include <vector>
+#include <string>
+#include <cstring>
 
 class Network;
 
 class Parser{
 private:
+#if _NMNIST==1
+	std::vector<std::vector<std::string>> path_name;
+	std::vector<std::vector<int>> path_index;
+	std::vector<std::vector<int>> path_class;
+#endif
     Network * _network;
 public:
     Parser(Network *);
@@ -16,6 +25,11 @@ public:
     void ParseSpeech(int, char*);
     void ParsePoissonSpeech(int cls, char * path);
     void ParseMNISTSpeech(int cls, char * path);
+	void SavePath(int cls,char* path);
+	void ParseNMNIST();
+	void LoadWholeTestBench(bool test);	
+	void LoadSingleTestBench();	
+	void QuickLoad();
 };
 
 #endif

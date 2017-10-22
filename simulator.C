@@ -79,9 +79,15 @@ void Simulator::LSMRun(long tid){
         sprintf(filename, "r_weights_info.txt");
         _network->WriteSynWeightsToFile("reservoir", "reservoir", filename);
         sprintf(filename, "h_weights_info.txt");
+#ifdef FEATURE_EXTRACTION
         _network->WriteSynWeightsToFile("reservoir", "hidden_0", filename);
         sprintf(filename, "o_weights_info.txt");
         _network->WriteSynWeightsToFile("hidden_0", "output", filename);
+#else
+        sprintf(filename, "o_weights_info.txt");
+        _network->WriteSynWeightsToFile("reservoir", "output", filename);
+
+#endif
 
         sprintf(filename, "o_weights_info_all.txt");
         _network->WriteSelectedSynToFile("readout", filename); 
@@ -178,6 +184,10 @@ void Simulator::LSMRun(long tid){
     //assert(f1.is_open() && f2.is_open());
     ////////////////////////////////////////////////////////////////////////
 
+#ifdef LOAD_RESPONSE
+	_network->LoadResponse();
+	cout<<"Reservoir Response Load Complete"<<endl;
+#else
     // produce transient state
     networkmode = TRANSIENTSTATE;
     _network->LSMSetNetworkMode(networkmode);
@@ -203,6 +213,9 @@ void Simulator::LSMRun(long tid){
             _network->SpeechPrint(info);
             _network->DumpVMems("Waveform/transient", info, "reservoir");
         }
+#endif
+#ifdef SAVE_RESPONSE
+            _network->SpeechPrint(info);
 #endif
         // print the firing frequency into the file:
         //_network->SpeechSpikeFreq("input", f1, f2);
@@ -247,6 +260,10 @@ void Simulator::LSMRun(long tid){
     return;
 #endif
 
+#endif // end of load response
+#ifdef SAVE_RESPONSE
+	return;
+#endif
 
 #if defined(STDP_TRAINING_READOUT) && defined(STDP_TRAINING)
     // traing the readout using STDP rule first:
@@ -278,7 +295,11 @@ void Simulator::LSMRun(long tid){
 
     // train the readout layer
     myTimer.Start();
+#ifndef TEACHER_SIGNAL
     networkmode = READOUTBP; // choose the readout supervised algorithm here!
+#else
+    networkmode = READOUT; // choose the readout supervised algorithm here!
+#endif
     _network->LSMSetNetworkMode(networkmode);
 #ifdef CV
 #if NUM_THREADS == 1
@@ -305,7 +326,6 @@ void Simulator::LSMRun(long tid){
         }
 #endif
 #endif
-        int correct = 0, wrong = 0, even = 0;
         for(int iii = 0; iii < NUM_ITERS; iii++){
             if(tid == 0)    cout<<"Run the iteration: "<<iii<<endl;
             // random shuffle the training samples for better generalization

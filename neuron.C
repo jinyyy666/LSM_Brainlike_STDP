@@ -720,9 +720,9 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
         _D_lsm_v_mem -= t%_ts_freq == 0 ? _D_lsm_v_thresh*_ts_strength_n : 0;
     }
 #else
-    if((_teacherSignal==1)&&(_lsm_calcium < LSM_CAL_MID+1)){
+    if((_teacherSignal==1)&&(_lsm_calcium < LSM_CAL_MID)){
         _lsm_v_mem += t%_ts_freq == 0 ? 20*_ts_strength_p : 0;
-    }else if((_teacherSignal==-1)&&(_lsm_calcium > LSM_CAL_MID-1)){
+    }else if((_teacherSignal==-1)&&(_lsm_calcium > LSM_CAL_MID)){
         _lsm_v_mem -= t%_ts_freq == 0 ? 15*_ts_strength_n : 0;
     }
 
@@ -823,7 +823,22 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
             // keep track of the t_spike_post for the _inputSyns and activate this syn:
             SetPostNeuronSpikeT(t);
         }
-
+#ifdef IP
+#ifdef DIGITAL
+	assert(0);
+#endif
+	if(IsDynamicThresh()){
+		if((_name[0]=='r')&&(_name[9]=='_')&&_network->LSMGetNetworkMode()==TRANSIENTSTATE&&_lsm_v_thresh<30){
+#ifdef DYNAMIC_IP
+			if(_lsm_calcium > (LSM_CAL_MID+1)*unit){
+#endif
+				_D_lsm_v_thresh=_D_lsm_v_thresh+IP_LEARNING_RATE*(1-IP_K/IP_N);
+#ifdef DYNAMIC_IP
+			}
+#endif
+		}
+	}
+#endif
         // 1. handle the _outputSyns after the neuron fires and activate the _outputSyns
         // 2. keep track of the t_spike_pre for the corresponding syns
         // 3. @para1: whether or not the current neuron is only used as a dummy input
@@ -858,6 +873,22 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
         }
 
     }
+#ifdef IP
+#ifdef DIGITAL
+	assert(0);
+#endif
+	else if(IsDynamicThresh()){
+		if((_name[0]=='r')&&(_name[9]=='_')&&_network->LSMGetNetworkMode()==TRANSIENTSTATE&&t>20&&_lsm_v_thresh>5){
+#ifdef DYNAMIC_IP
+			if(_D_lsm_calcium < (LSM_CAL_MID-1)*unit){
+#endif
+				_lsm_v_thresh=_lsm_v_thresh+IP_LEARNING_RATE*(0-IP_K/IP_N);
+#ifdef DYNAMIC_IP
+			}
+#endif
+		}
+	}
+#endif
 }
 
 
@@ -1440,6 +1471,14 @@ NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * ne
         else excitatory = true;
         sprintf(neuronName,"%s_%d",name,i);
         Neuron * neuron = new Neuron(neuronName,excitatory,network);
+#ifdef PART_RESERVOIR_IP
+		if(rand()%100<DT_Portion){
+			neuron->DynamicThresh(true);
+		}
+		else{
+			neuron->DynamicThresh(false);
+		}
+#endif
         neuron->SetIndexInGroup(i);
         _neurons[i] = neuron;
         _lsm_coordinates[i] = new int[3];
@@ -1458,7 +1497,7 @@ NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * ne
     double c, a;
     double distsq, dist;
     const double factor = 10;
-    const double factor2 = 1.5;
+    const double factor2 = 1;
     int counter = 0;
     for(i = 0; i < num; i++)
         for(j = 0; j < num; j++){
@@ -1507,7 +1546,7 @@ NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * ne
 #ifdef PURE_RANDOM_RES_CONNECTION
             if(rand()%100000 < CONNECTION_PROB*100000){ // enable purely random connections
 #else
-            if(rand()%100000 < 100000*c*exp(-distsq/4)){
+            if(rand()%100000 < 100000*c*exp(-distsq/3)){
 #endif
                 counter++;
 #ifdef DIGITAL

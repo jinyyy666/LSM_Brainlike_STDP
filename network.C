@@ -504,6 +504,11 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
     char filename[64];
     vector<double> each_sample_errors;    
 
+#if _NMNIST==1
+    vector<int> wrong_cls(10,0);
+#else
+    vector<int> wrong_cls(26,0);
+#endif
     // 1. Clear the signals
     LSMClearSignals();
    
@@ -588,7 +593,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
         fclose(Foutp);
 #endif
 
-        ReadoutJudge(correct, wrong, even); // judge the readout output here
+        ReadoutJudge(correct, wrong, even,wrong_cls); // judge the readout output here
         CollectErrorPerSample(each_sample_errors); // collect the test error for the sample
 #ifdef _PRINT_SPIKE_COUNT
         if(tid == 0 && (iteration == 0 || iteration % 10 == 0))
@@ -619,6 +624,18 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
     }
     // 5. Push the recognition result:
     LSMPushResults(correct, wrong, even, iteration);
+
+	// print performance and wrong numbers for each class
+	double correct_num=correct.size();
+	double wrong_num=wrong.size();
+	double even_num=even.size();
+
+	cout<<"tid:"<<tid<<"  ,iteration:"<<iteration<<",  performance="<<correct_num<<"/"<<correct_num+wrong_num+even_num<<" = "<<correct_num/(correct_num+wrong_num+even_num)<<endl;
+	cout<<"wrong class:";
+	 for(int i=0;i<wrong_cls.size();i++){
+		 cout<<wrong_cls[i]<<"  ";
+	 }
+	 cout<<endl;
 
     // 6. Log the test error
     LogTestError(each_sample_errors, iteration);
@@ -1246,11 +1263,26 @@ void Network::SpeechInfo(){
 
 void Network::SpeechPrint(int info){
     // prepare the paths
+#if _NMNIST==1
+    MakeDirs("spikes/Input_Response");
+    MakeDirs("spikes/Reservoir_Response");
+    MakeDirs("spikes/Reservoir_Response/test");
+    MakeDirs("spikes/Reservoir_Response/train");
+    MakeDirs("spikes/Readout_Response_Trans");
+#else
     MakeDirs("spikes/Input_Response");
     MakeDirs("spikes/Reservoir_Response");
     MakeDirs("spikes/Readout_Response_Trans");
+#endif
     if(_sp_iter != _speeches.end())
         (*_sp_iter)->PrintSpikes(info);
+}
+
+void Network::LoadResponse(){
+	for(int i=0;i<_speeches.size();i++){
+		_speeches[i]->SetNumReservoirChannel(SearchForNeuronGroup("reservoir")->Size());
+		(_speeches[i])->LoadResponse();
+	}
 }
 
 /***********************************************************************************************
@@ -1461,7 +1493,7 @@ void Network::PrintSpikeCount(string layer){
 }
 
 //* judge the readout result:
-void Network::ReadoutJudge(vector<pair<int, int> >& correct, vector<pair<int, int> >& wrong, vector<pair<int, int> >& even){
+void Network::ReadoutJudge(vector<pair<int, int> >& correct, vector<pair<int, int> >& wrong, vector<pair<int, int> >& even, vector<int> &wrong_cls){
     pair<int, int> res = this->LSMJudge(); // +/- 1, true cls
 
     if(res.first == 1) correct.push_back(res);
@@ -1472,6 +1504,9 @@ void Network::ReadoutJudge(vector<pair<int, int> >& correct, vector<pair<int, in
             <<"Undefined return type: "<<res.first<<" returned by Network::LSMJudge()"
             <<endl;
     }
+	if(res.first!=1){
+		wrong_cls[res.second]++;
+	}
 }
 
 /*************************************************************************************

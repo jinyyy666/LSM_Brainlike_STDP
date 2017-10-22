@@ -1,13 +1,14 @@
 #ifndef DEF_H
 #define DEF_H
 
-#define _IMAGE    0
+#define _IMAGE    1
 #define _MNIST    0
 #define _TRAFFIC   0
 #define _CITYSCAPE 0
+#define _NMNIST 1
 
-#define _SPEECH    1
-#define _LETTER    1
+#define _SPEECH    0
+#define _LETTER    0
 #define _DIGIT    0
 
 // this control variable is defined to direct compute the \delta_t 
@@ -37,7 +38,7 @@
 /* FOR LIQUID STATE MACHINE */
 // the control parameter to enable STDP training, you only to enable this one
 // before enable the following two variables!!
-#define STDP_TRAINING
+//#define STDP_TRAINING
 
 // the control parameter to enable training the reservoir:
 //#define STDP_TRAINING_RESERVOIR
@@ -215,15 +216,15 @@
 #define LSM_T_REFRAC 2
 #define LSM_V_REST 0
 #define LSM_V_RESET 0
-#define LSM_V_THRESH 20
-#define LSM_CAL_MID 5
+#define LSM_V_THRESH 15
+#define LSM_CAL_MID 3
 #define LSM_CAL_MARGIN 0
 #define LSM_DELTA_POT 0.006
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
-#define CLS 26
-#define NUM_THREADS 5
-#define NUM_ITERS 500
+#define CLS 10
+#define NUM_THREADS 1
+#define NUM_ITERS 40
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -271,8 +272,8 @@
 #define SYN_ORDER_1 1 
 #define SYN_ORDER_0 0 
 
-#define CV
-#define NFOLD 5
+//#define CV
+//#define NFOLD 5
 
 //* Control variable to enable the old way of readout by writing outputs/*.dat
 //#define _WRITE_STAT  
@@ -297,6 +298,30 @@ enum networkmode_t {TRAINRESERVOIR,TRAININPUT,TRAINREADOUT,TRANSIENTSTATE,READOU
 
 enum synapsetype_t {RESERVOIR_SYN, INPUT_SYN, READOUT_SYN, INVALID}; // different synaptic type
 
+
+//NMNIST functions
+
+#define TB_PER_CLASS 100
+#define INPUT_NUM 1156
+
+#define LOAD_RESPONSE
+//#define SAVE_RESPONSE
+
+//#define IP
+//#define DYNAMIC_IP
+#define IP_LEARNING_RATE 2
+#define IP_K 0.5
+#define IP_N 100
+//#define PART_RESERVOIR_IP
+#define DT_Portion 70
+
+//#define TRAIN_SAMPLE
+
+//#define QUICK_RESPONSE
+
+//the readout functions are added below
+//
+#define TEACHER_SIGNAL
 
 #endif
 

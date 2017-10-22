@@ -109,6 +109,7 @@ private:
     const int _D_lsm_v_readout_max;
     const int _D_lsm_v_readout_min;
     const int _Unit;
+	bool _dynamic_threshold;
 public:
     Neuron(char* name, bool excitatory, Network* network, double v_mem);
     Neuron(char*, bool, Network*); // only for liquid state machine
@@ -143,6 +144,9 @@ public:
     // record the firing count:
     int FireCount(){return _f_count;}
     void FireCount(int count){_f_count = count;}
+
+	bool IsDynamicThresh(){return _dynamic_threshold;}
+	void DynamicThresh(bool dt){_dynamic_threshold=dt;}
 
     bool Fired(){return _fired;}
 

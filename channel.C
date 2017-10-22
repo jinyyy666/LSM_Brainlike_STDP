@@ -3,6 +3,7 @@
 #include <iostream>
 #include <assert.h>
 #include <random>
+#include <algorithm>
 #include "channel.h"
 
 using namespace std;
@@ -27,6 +28,7 @@ void Channel::AddAnalog(double signal){
 }
 
 void Channel::AddSpike(int spikeT){
+	spikeT+=1;
     int size = _spikeT.size();
     if(size > 0){
         if(spikeT <= _spikeT[size-1])
@@ -126,4 +128,26 @@ void Channel::Print(ofstream& f_out){
     if(_spikeT.empty() == true) return;
     for(_iter_spikeT = _spikeT.begin(); _iter_spikeT != _spikeT.end(); _iter_spikeT++) 
         f_out<<_index<<"\t"<<*_iter_spikeT<<endl;
+}
+
+void Channel::Read(FILE * fp){
+	char linestring[8192];
+	char * token;
+	int spike_t;
+	int index;
+	while(1){
+		if(fgets(linestring,8191,fp)==NULL||linestring[0]=='\n'){
+			assert(0);
+		}
+		token=strtok(linestring," \t\n,");
+		index=atoi(token);
+		if(index==-1){
+			break;
+		}
+		if(index!=_index)
+			assert(0);
+		token=strtok(NULL," \t\n,");
+		spike_t=atoi(token);
+		AddSpike(atoi(token));
+	}
 }
