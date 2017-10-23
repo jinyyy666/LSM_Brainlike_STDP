@@ -1,7 +1,7 @@
 neurongroup	input 1156 excitatory
 column reservoir 6 6 15
 neurongroup	output	10	excitatory
-lsmsynapse input reservoir 1 5 64 1 fixed
+lsmsynapse input reservoir 1 5 96 1 fixed
 lsmsynapse	reservoir	output	-1	-1	8	2	learning
 #NMNIST	0	../N-MNIST/Train_new/0/
 #NMNIST	1	../N-MNIST/Train_new/1/
@@ -14,14 +14,14 @@ lsmsynapse	reservoir	output	-1	-1	8	2	learning
 #NMNIST	8	../N-MNIST/Train_new/8/
 #NMNIST	9	../N-MNIST/Train_new/9/
 #end
-NMNIST	0	../../Test_1156_700_unstable/0/
-NMNIST	1	../../Test_1156_700_unstable/1/
-NMNIST	2	../../Test_1156_700_unstable/2/
-NMNIST	3	../../Test_1156_700_unstable/3/
-NMNIST	4	../../Test_1156_700_unstable/4/
-NMNIST	5	../../Test_1156_700_unstable/5/
-NMNIST	6	../../Test_1156_700_unstable/6/
-NMNIST	7	../../Test_1156_700_unstable/7/
-NMNIST	8	../../Test_1156_700_unstable/8/
-NMNIST	9	../../Test_1156_700_unstable/9/
+NMNIST	0	../../Test_1156_200_stable/0/
+NMNIST	1	../../Test_1156_200_stable/1/
+NMNIST	2	../../Test_1156_200_stable/2/
+NMNIST	3	../../Test_1156_200_stable/3/
+NMNIST	4	../../Test_1156_200_stable/4/
+NMNIST	5	../../Test_1156_200_stable/5/
+NMNIST	6	../../Test_1156_200_stable/6/
+NMNIST	7	../../Test_1156_200_stable/7/
+NMNIST	8	../../Test_1156_200_stable/8/
+NMNIST	9	../../Test_1156_200_stable/9/
 end

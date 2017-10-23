@@ -216,7 +216,7 @@
 #define LSM_T_REFRAC 2
 #define LSM_V_REST 0
 #define LSM_V_RESET 0
-#define LSM_V_THRESH 15
+#define LSM_V_THRESH 20
 #define LSM_CAL_MID 3
 #define LSM_CAL_MARGIN 0
 #define LSM_DELTA_POT 0.006
@@ -268,9 +268,9 @@
 //#define DIGITAL_SYN_ORGINAL 1
 #define LIQUID_SYN_MODIFICATION 1
 
-//#define SYN_ORDER_2 0 
-#define SYN_ORDER_1 1 
-#define SYN_ORDER_0 0 
+#define SYN_ORDER_2 1 
+//#define SYN_ORDER_1 0
+//#define SYN_ORDER_0 0 
 
 //#define CV
 //#define NFOLD 5
@@ -302,18 +302,10 @@ enum synapsetype_t {RESERVOIR_SYN, INPUT_SYN, READOUT_SYN, INVALID}; // differen
 //NMNIST functions
 
 #define TB_PER_CLASS 100
-#define INPUT_NUM 1156
 
-#define LOAD_RESPONSE
-//#define SAVE_RESPONSE
+//#define LOAD_RESPONSE
 
 //#define IP
-//#define DYNAMIC_IP
-#define IP_LEARNING_RATE 2
-#define IP_K 0.5
-#define IP_N 100
-//#define PART_RESERVOIR_IP
-#define DT_Portion 70
 
 //#define TRAIN_SAMPLE
 

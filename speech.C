@@ -246,7 +246,7 @@ void Speech::LoadResponse(){
 #ifdef TRAIN_SAMPLE
 	sprintf(filename,"spikes/Reservoir_Response/train/reservoir_spikes_%d_%d.dat",_file_index,_class);
 #else
-	sprintf(filename,"spikes/Reservoir_Response/test/reservoir_spikes_%d_%d.dat",_file_index,_class);
+	sprintf(filename,"../Reservoir_Response_1156_200_stable/reservoir_spikes_%d_%d.dat",_file_index,_class);
 #endif
 	Fp_reservoir = fopen(filename,"r");
 	//ofstream f_reservoir(filename);

@@ -78,16 +78,9 @@ void Simulator::LSMRun(long tid){
         _network->WriteSynWeightsToFile("input", "reservoir", filename);
         sprintf(filename, "r_weights_info.txt");
         _network->WriteSynWeightsToFile("reservoir", "reservoir", filename);
-        sprintf(filename, "h_weights_info.txt");
-#ifdef FEATURE_EXTRACTION
-        _network->WriteSynWeightsToFile("reservoir", "hidden_0", filename);
-        sprintf(filename, "o_weights_info.txt");
-        _network->WriteSynWeightsToFile("hidden_0", "output", filename);
-#else
         sprintf(filename, "o_weights_info.txt");
         _network->WriteSynWeightsToFile("reservoir", "output", filename);
 
-#endif
 
         sprintf(filename, "o_weights_info_all.txt");
         _network->WriteSelectedSynToFile("readout", filename); 
@@ -211,9 +204,7 @@ void Simulator::LSMRun(long tid){
             _network->DumpVMems("Waveform/transient", info, "reservoir");
         }
 #endif
-#ifdef SAVE_RESPONSE
             _network->SpeechPrint(info);
-#endif
         // print the firing frequency into the file:
         //_network->SpeechSpikeFreq("input", f1, f2);
 #ifdef _RES_FIRING_CHR
@@ -258,7 +249,7 @@ void Simulator::LSMRun(long tid){
 #endif
 
 #endif // end of load response
-#ifdef SAVE_RESPONSE
+#ifdef QUICK_RESPONSE
 	return;
 #endif
 

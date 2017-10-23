@@ -94,7 +94,10 @@ void Network::AddNeuronGroup(char * name, int num, bool excitatory, double v_mem
     _groupNeurons[string(name)] = neuronGroup;
 
     string name_str(name);
-    if(name_str.substr(0, 6) == "hidden")   _hidden_layer_names.push_back(name_str);
+    if(name_str.substr(0, 6) == "hidden"){
+		_hidden_layer_names.push_back(name_str);
+		SetLateralInhibition(name);
+	}
    
     for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
         _allNeurons.push_back(neuron);
@@ -639,7 +642,6 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 
     // 6. Log the test error
     LogTestError(each_sample_errors, iteration);
-	PrintTestError();
 }
 
 
@@ -1623,6 +1625,7 @@ void Network::LogTestError(const vector<double>& each_sample_errors, int iter_n)
     double error_sum = 0;
     for(double e : each_sample_errors)  error_sum += e;
     _readout_test_error[iter_n] = error_sum;
+	cout<<"test error: "<<error_sum<<endl;
 }
 
 //* return the most recent results of the readout (correct, wrong, even) in a vector:
@@ -2080,3 +2083,23 @@ void Network::PrintTestError(){
 	}
 }
 
+void Network::SetLateralInhibition(const char * name){
+    NeuronGroup * NG = SearchForNeuronGroup(name);
+	int NG_size=NG->Size();
+	Neuron * Neu_pre;
+	Neuron * Neu_post;
+	Neu_pre=NG->First();
+	double value=-10;
+	double weight_limit=11;
+	while(Neu_pre!=NULL){
+		if(Neu_pre->OutSynSize()>=NG_size)
+			Neu_pre=NG->Next();
+		else{
+			Neu_post=NG->First();	
+			while(Neu_post!=NULL){
+				LSMAddSynapse(Neu_pre,Neu_post, value,true,weight_limit,false);
+			}
+			Neu_pre=NG->First();
+		}
+	}
+}

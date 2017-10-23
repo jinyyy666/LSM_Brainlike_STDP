@@ -381,6 +381,8 @@ void Parser::SavePath(int cls,char* path){
 //* They are converted from the original spike based testbench at
 //* http://www.garrickorchard.com/datasets
 void Parser::ParseNMNIST(){
+	int input_num;
+	input_num=_network->SearchForNeuronGroup("input")->Size();
 	for(int i=0;i<TB_PER_CLASS;i++){
 		for(int j=0;j<CLS;j++){
 			Speech * speech = new Speech(path_class[j][i]);
@@ -393,7 +395,7 @@ void Parser::ParseNMNIST(){
 			_network->AddSpeech(speech);
 			int index=0;
 			int line_count=0;
-			while(line_count<INPUT_NUM){
+			while(line_count<input_num){
 				line_count++;
 				channel = speech->AddChannel(10, 1, index++);
 				if(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){	
@@ -408,156 +410,12 @@ void Parser::ParseNMNIST(){
 			delete token;
 		}
 	}
-}
-
-void Parser::LoadWholeTestBench(bool test){	
-	struct dirent* filename;
-	vector<DIR *> dir(CLS);
-	vector<char *> path(CLS);
-	int index;
-	int num=0;
-	for(int i=0;i<dir.size();i++){
-		path[i]=new char[128];
-		if(test)
-			sprintf(path[i],"../Test_1156/%d/",i);
-		else
-			sprintf(path[i],"../Train_1156/%d/",i);
-
-		dir[i]=opendir(path[i]);
-		if(dir[i]==NULL){
-			cout<<"Cannot open dir "<<i<<endl;
-			assert(0);
-		}
-	}
-	int read=0;
-	while(1){
-		read=0;
-		for(int j=0;j<CLS;j++){
-			while((filename=readdir(dir[j]))!=NULL){
-				if(filename->d_name[0]<'0'||filename->d_name[0]>'9'){
-					continue;
-				}
-				else{
-					Speech * speech = new Speech(j);
-					Channel * channel;
-					char linestring[8192];
-					char * token;
-					read++;
-					num++;
-					const size_t len = strlen(path[j])+strlen(filename->d_name);
-					char *file_path=new char[len+1];
-					strcpy(file_path,path[j]);
-					index=atoi(filename->d_name);
-					speech->SetFileIndex(index);
-					strcat(file_path,filename->d_name);
-//					speech->SetTest(test);
-					FILE * fp = fopen(file_path,"r");
-					assert(fp != NULL);
-//					_network->AddSpeech(speech);
-//					if(test)
-//						_network->AddTestSpeech(speech);
-//					else
-//						_network->AddTrainSpeech(speech);
-
-					int index=0;
-					int line_count=0;
-					while(line_count<INPUT_NUM){
-						line_count++;
-						channel = speech->AddChannel(10, 1, index++);
-						if(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){	
-							token=strtok(linestring," \t\n,");
-							while(token!=NULL){
-								channel->AddSpike(atoi(token));
-								token=strtok(NULL," \t\n,");
-							}
-						}
-					}
-					if(num%1000==0){
-						cout<<num<<" files have been read"<<endl;
-					}
-					fclose(fp);
-					delete token;
-					if(!test)
-						break;
-				}
-
-			}
-		}
-		if(read!=CLS||test){
-			break;
-		}
-	}
-	for(int i=0;i<dir.size();i++){
-		closedir(dir[i]);
-	}
-}
-void Parser::LoadSingleTestBench(){	
-	struct dirent* filename;
-	DIR * dir;
-	char path[128];
-	int tid=_network->GetTid();
-	bool test;
-	int cls;
-	int index;
-	int num=0;
-	if(tid<10){
-		sprintf(path,"../../Train_1156/%d/",tid);
-		test=false;
-		cls=tid;
-	}
-	else{
-		sprintf(path,"../../Test_1156/%d/",tid-10);
-		test=true;
-		cls=tid-10;
-	}
-	dir=opendir(path);
-	if(dir==NULL){
-		cout<<"Cannot open dir "<<endl;
-		assert(0);
-	}
-	while((filename=readdir(dir))!=NULL){
-		if(filename->d_name[0]<'0'||filename->d_name[0]>'9'){
-			continue;
-		}
-		else{
-			Speech * speech = new Speech(cls);
-//			speech->SetTest(test);
-			Channel * channel;
-			char linestring[8192];
-			char * token;
-			const size_t len = strlen(path)+strlen(filename->d_name);
-			char *file_path=new char[len+1];
-			strcpy(file_path,path);
-			index=atoi(filename->d_name);
-			speech->SetFileIndex(index);
-			strcat(file_path,filename->d_name);
-			FILE * fp = fopen(file_path,"r");
-			assert(fp != NULL);
-			_network->AddSpeech(speech);
-			int index=0;
-			int line_count=0;
-			while(line_count<INPUT_NUM){
-				line_count++;
-				channel = speech->AddChannel(10, 1, index++);
-				if(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){	
-					token=strtok(linestring," \t\n,");
-					while(token!=NULL){
-						channel->AddSpike(atoi(token));
-						token=strtok(NULL," \t\n,");
-					}
-				}
-			}
-			fclose(fp);
-			delete token;
-		}
-		num++;
-	}
-	cout<<"sample num:"<<num<<endl;
-	closedir(dir);
 }
 
 
 void Parser::QuickLoad(){	
+	int input_num;
+	input_num=_network->SearchForNeuronGroup("input")->Size();
 	struct dirent* filename;
 	DIR * dir;
 	char path[128];
@@ -831,7 +689,7 @@ void Parser::QuickLoad(){
 			_network->AddSpeech(speech);
 			int index=0;
 			int line_count=0;
-			while(line_count<INPUT_NUM){
+			while(line_count<input_num){
 				line_count++;
 				channel = speech->AddChannel(10, 1, index++);
 				if(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){

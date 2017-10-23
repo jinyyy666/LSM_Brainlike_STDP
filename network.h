@@ -220,6 +220,8 @@ public:
     } 
 	void LoadResponse();
 	void PrintTestError();
+	void SetLateralInhibition(const char * name);
+
 };
 
 #endif

@@ -24,6 +24,8 @@
 //#define _DEBUG_INPUT_TRAINING
 //#define _DEBUG_BP
 //#define _DEBUG_BP_HIDDEN
+//#define DYNAMIC_IP
+//#define PART_RESERVOIR_IP
 
 // NOTE: The time constants have been changed to 2*original settings 
 //       optimized performance for letter recognition.
@@ -832,7 +834,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
 #ifdef DYNAMIC_IP
 			if(_lsm_calcium > (LSM_CAL_MID+1)*unit){
 #endif
-				_D_lsm_v_thresh=_D_lsm_v_thresh+IP_LEARNING_RATE*(1-IP_K/IP_N);
+				_D_lsm_v_thresh=_D_lsm_v_thresh+1.98;
 #ifdef DYNAMIC_IP
 			}
 #endif
@@ -882,7 +884,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
 #ifdef DYNAMIC_IP
 			if(_D_lsm_calcium < (LSM_CAL_MID-1)*unit){
 #endif
-				_lsm_v_thresh=_lsm_v_thresh+IP_LEARNING_RATE*(0-IP_K/IP_N);
+				_lsm_v_thresh=_lsm_v_thresh-0.02;
 #ifdef DYNAMIC_IP
 			}
 #endif
@@ -1472,7 +1474,7 @@ NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * ne
         sprintf(neuronName,"%s_%d",name,i);
         Neuron * neuron = new Neuron(neuronName,excitatory,network);
 #ifdef PART_RESERVOIR_IP
-		if(rand()%100<DT_Portion){
+		if(rand()%100<70){
 			neuron->DynamicThresh(true);
 		}
 		else{
@@ -1585,7 +1587,7 @@ void NeuronGroup::AddSynapse(Synapse * synapse){
 }
 
 Neuron * NeuronGroup::First(){
-    assert(_firstCalled == false);
+ //   assert(_firstCalled == false);
     _firstCalled = true;
     _iter = _neurons.begin();
     if(_iter != _neurons.end()) return (*_iter);
@@ -2028,3 +2030,4 @@ void NeuronGroup::RemoveZeroSyns(synapsetype_t syn_type){
     }
     cout<<"The number of zero-out synapses: "<<cnt/2<<endl;
 }
+
