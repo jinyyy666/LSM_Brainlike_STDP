@@ -1959,7 +1959,7 @@ void NeuronGroup::PrintSpikeCount(int cls){
     cout<<"The current speech class: "<<cls<<endl;
     for(int i = 0; i < _neurons.size(); ++i){
         cout<<"Neuron "<<i<<" fires "<<_neurons[i]->FireCount()<<endl;
-    }    
+    }
 }
 
 void NeuronGroup::LSMRemoveSpeech(){

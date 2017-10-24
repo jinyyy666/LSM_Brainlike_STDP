@@ -26,7 +26,6 @@ void Parser::Parse(const char * filename){
     int i;
     char linestring[8192];
     char ** token = new char*[64];
-	int nmnist_imported=0;
 	int count=0;
     FILE * fp = fopen(filename,"r");
     assert(fp != NULL);
@@ -150,13 +149,14 @@ void Parser::Parse(const char * filename){
 
             ParseMNISTSpeech(atoi(token[1]),token[2]);
 		}else if(strcmp(token[0],"NMNIST")==0){
-#ifndef QUICK_RESPONSE
 			token[1] = strtok(NULL," \t\n");
 			assert(token[1] != NULL);
 			token[2] = strtok(NULL," \t\n");
 			assert(token[2] != NULL);
-			SavePath(atoi(token[1]),token[2]);
-			nmnist_imported++;
+#ifdef QUICK_RESPONSE
+			QuickLoad(atoi(token[1]),token[2]);
+#else
+			ParseNMNIST(atoi(token[1]),token[2]);
 #endif
         }else if(strcmp(token[0],"end")==0){
             break;
@@ -167,19 +167,6 @@ void Parser::Parse(const char * filename){
 
     }
     fclose(fp);
-#ifdef QUICK_RESPONSE
-		QuickLoad();
-#else
-#if _NMNIST==1
-		cout<<"start parse NMNIST"<<endl;
-	if(nmnist_imported==CLS){
-		ParseNMNIST();
-	}	
-	else{
-		assert(0);
-	}
-#endif
-#endif
 #ifdef LOAD_RESPONSE
 	cout<<"Reservoir Response Load Start"<<endl;
 	_network->LoadResponse();
@@ -326,10 +313,13 @@ void Parser::ParseMNISTSpeech(int cls, char* path){
 }
 // read path for N-NMIST
 
-void Parser::SavePath(int cls,char* path){
-	vector<string> files;
-	vector<int> file_index;
-	vector<int> file_class;
+//* this function is used to parse N-MNIST testbench.
+//* for N-MNIST, there are 100 input neurons
+//* They are converted from the original spike based testbench at
+//* http://www.garrickorchard.com/datasets
+void Parser::ParseNMNIST(int cls,char* path){
+	int input_num;
+	input_num=_network->SearchForNeuronGroup("input")->Size();
 	int index;
 	if(path==NULL){
 		cout<<"directory path is NULL"<<endl;
@@ -361,320 +351,79 @@ void Parser::SavePath(int cls,char* path){
 		}
 		index=atoi(filename->d_name);
 		strcat(file_path,filename->d_name);
-		file_class.push_back(cls);
-		files.push_back(file_path);
-		file_index.push_back(index);
 		file_read++;
-		if(file_read>TB_PER_CLASS){
+		Speech * speech = new Speech(cls);
+		Channel * channel;
+		char linestring[8192];
+		char * token;
+		FILE * fp = fopen(file_path,"r");
+		speech->SetFileIndex(index);
+		assert(fp != NULL);
+		_network->AddSpeech(speech);
+		int index=0;
+		int line_count=0;
+		while(line_count<input_num){
+			line_count++;
+			channel = speech->AddChannel(10, 1, index++);
+			if(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){	
+				token=strtok(linestring," \t\n,");
+				while(token!=NULL){
+					channel->AddSpike(atoi(token));
+					token=strtok(NULL," \t\n,");
+				}
+			}
+		}
+		fclose(fp);
+		delete token;
+		if(file_read>=TB_PER_CLASS){
 			break;
 		}
 	}
 	closedir(dir);
-	path_name.push_back(files);
-	path_index.push_back(file_index);
-	path_class.push_back(file_class);
-
-}
-
-//* this function is used to parse N-MNIST testbench.
-//* for N-MNIST, there are 100 input neurons
-//* They are converted from the original spike based testbench at
-//* http://www.garrickorchard.com/datasets
-void Parser::ParseNMNIST(){
-	int input_num;
-	input_num=_network->SearchForNeuronGroup("input")->Size();
-	for(int i=0;i<TB_PER_CLASS;i++){
-		for(int j=0;j<CLS;j++){
-			Speech * speech = new Speech(path_class[j][i]);
-			Channel * channel;
-			char linestring[8192];
-			char * token;
-			FILE * fp = fopen(path_name[j][i].c_str(),"r");
-			speech->SetFileIndex(path_index[j][i]);
-			assert(fp != NULL);
-			_network->AddSpeech(speech);
-			int index=0;
-			int line_count=0;
-			while(line_count<input_num){
-				line_count++;
-				channel = speech->AddChannel(10, 1, index++);
-				if(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){	
-					token=strtok(linestring," \t\n,");
-					while(token!=NULL){
-						channel->AddSpike(atoi(token));
-						token=strtok(NULL," \t\n,");
-					}
-				}
-			}
-			fclose(fp);
-			delete token;
-		}
-	}
 }
 
 
-void Parser::QuickLoad(){	
+void Parser::QuickLoad(int cls,const char* path){
 	int input_num;
 	input_num=_network->SearchForNeuronGroup("input")->Size();
 	struct dirent* filename;
 	DIR * dir;
-	char path[128];
 	int tid=_network->GetTid();
 	bool test;
 	int index;
 	int num=0;
-	int sample_num=0;
-#ifdef TRAIN_SAMPLE
-	if(tid<10){
-		sprintf(path,"../../Train_1156_700_unstable/0/");
+	int sample_limit;
+	const char *keyword="Test";
+	if(tid/10!=cls)
+		return;
+	
+	if(strstr(path,keyword)){
+		sample_limit=100;
 	}
-	else if(tid<20){
-		sprintf(path,"../../Train_1156_700_unstable/1/");
+	else{
+		sample_limit=600;
 	}
-	else if(tid<30){
-		sprintf(path,"../../Train_1156_700_unstable/2/");
-	}
-	else if(tid<40){
-		sprintf(path,"../../Train_1156_700_unstable/3/");
-	}
-	else if(tid<50){
-		sprintf(path,"../../Train_1156_700_unstable/4/");
-	}
-	else if(tid<60){
-		sprintf(path,"../../Train_1156_700_unstable/5/");
-	}
-	else if(tid<70){
-		sprintf(path,"../../Train_1156_700_unstable/6/");
-	}
-	else if(tid<80){
-		sprintf(path,"../../Train_1156_700_unstable/7/");
-	}
-	else if(tid<90){
-		sprintf(path,"../../Train_1156_700_unstable/8/");
-	}
-    else{
-		sprintf(path,"../../Train_1156_700_unstable/9/");
-//		sprintf(path,"../../Train_1156_700_unstable/%d/",CLASS_3);
-
-	}
-#else
-	if(tid<10){
-		sprintf(path,"../../Test_1156_200_stable/0/");
-	}
-	else if(tid<20){
-		sprintf(path,"../../Test_1156_200_stable/1/");
-	}
-	else if(tid<30){
-		sprintf(path,"../../Test_1156_200_stable/2/");
-	}
-	else if(tid<40){
-		sprintf(path,"../../Test_1156_200_stable/3/");
-	}
-	else if(tid<50){
-		sprintf(path,"../../Test_1156_200_stable/4/");
-	}
-	else if(tid<60){
-		sprintf(path,"../../Test_1156_200_stable/5/");
-	}
-	else if(tid<70){
-		sprintf(path,"../../Test_1156_200_stable/6/");
-	}
-	else if(tid<80){
-		sprintf(path,"../../Test_1156_200_stable/7/");
-	}
-	else if(tid<90){
-		sprintf(path,"../../Test_1156_200_stable/8/");
-	}
-    else{
-		sprintf(path,"../../Test_1156_200_stable/9/");
-//		sprintf(path,"../../Train_1156_700_unstable/%d/",CLASS_3);
-
-	}
-
-#endif
+	
 	dir=opendir(path);
 	if(dir==NULL){
 		cout<<"Cannot open dir "<<endl;
 		assert(0);
 	}
 	while((filename=readdir(dir))!=NULL){
-#ifdef TRAIN_SAMPLE
-		if(tid<9&&num>(tid+1)*600){
-			break;
-		}
-		if(tid>=10&&tid<19&&num>(tid-9)*600){
-			break;
-		}
-		if(tid>=20&&tid<29&&num>(tid-19)*600){
-			break;
-		}
-		if(tid>=30&&tid<39&&num>(tid-29)*600){
-			break;
-		}
-		if(tid>=40&&tid<49&&num>(tid-39)*600){
-			break;
-		}
-		if(tid>=50&&tid<59&&num>(tid-49)*600){
-			break;
-		}
-		if(tid>=60&&tid<69&&num>(tid-59)*600){
-			break;
-		}
-		if(tid>=70&&tid<79&&num>(tid-69)*600){
-			break;
-		}
-		if(tid>=80&&tid<89&&num>(tid-79)*600){
-			break;
-		}
-		if(tid>=90&&tid<99&&num>(tid-89)*600){
+		if(tid%10!=9&&num>(tid-cls*10+1)*sample_limit){
 			break;
 		}
 		if(filename->d_name[0]<'0'||filename->d_name[0]>'9'){
 			continue;
 		}
-		else if(tid<10&&num<tid*600){
+		else if(num<(tid-cls*10)*sample_limit){
 			num++;
 			continue;
 		}
-		else if(tid>=10&&tid<20&&num<(tid-10)*600){
-			num++;
-			continue;		
-		}
-		else if(tid>=20&&tid<30&&num<(tid-20)*600){
-			num++;
-			continue;
-		}
-		else if(tid>=30&&tid<40&&num<(tid-30)*600){
-			num++;
-			continue;
-		}
-		else if(tid>=40&&tid<50&&num<(tid-40)*600){
-			num++;
-			continue;
-		}
-		else if(tid>=50&&tid<60&&num<(tid-50)*600){
-			num++;
-			continue;
-		}
-		else if(tid>=60&&tid<70&&num<(tid-60)*600){
-			num++;
-			continue;
-		}
-		else if(tid>=70&&tid<80&&num<(tid-70)*600){
-			num++;
-			continue;
-		}
-		else if(tid>=80&&tid<90&&num<(tid-80)*600){
-			num++;
-			continue;
-		}
-		else if(tid>=90&&num<(tid-90)*600){
-			num++;
-			continue;
-		}
-#else
-		if(tid<9&&num>(tid+1)*100){
-			break;
-		}
-		if(tid>=10&&tid<19&&num>(tid-9)*100){
-			break;
-		}
-		if(tid>=20&&tid<29&&num>(tid-19)*100){
-			break;
-		}
-		if(tid>=30&&tid<39&&num>(tid-29)*100){
-			break;
-		}
-		if(tid>=40&&tid<49&&num>(tid-39)*100){
-			break;
-		}
-		if(tid>=50&&tid<59&&num>(tid-49)*100){
-			break;
-		}
-		if(tid>=60&&tid<69&&num>(tid-59)*100){
-			break;
-		}
-		if(tid>=70&&tid<79&&num>(tid-69)*100){
-			break;
-		}
-		if(tid>=80&&tid<89&&num>(tid-79)*100){
-			break;
-		}
-		if(tid>=90&&tid<99&&num>(tid-89)*100){
-			break;
-		}
-		if(filename->d_name[0]<'0'||filename->d_name[0]>'9'){
-			continue;
-		}
-		else if(tid<10&&num<tid*100){
-			num++;
-			continue;
-		}
-		else if(tid>=10&&tid<20&&num<(tid-10)*100){
-			num++;
-			continue;		
-		}
-		else if(tid>=20&&tid<30&&num<(tid-20)*100){
-			num++;
-			continue;
-		}
-		else if(tid>=30&&tid<40&&num<(tid-30)*100){
-			num++;
-			continue;
-		}
-		else if(tid>=40&&tid<50&&num<(tid-40)*100){
-			num++;
-			continue;
-		}
-		else if(tid>=50&&tid<60&&num<(tid-50)*100){
-			num++;
-			continue;
-		}
-		else if(tid>=60&&tid<70&&num<(tid-60)*100){
-			num++;
-			continue;
-		}
-		else if(tid>=70&&tid<80&&num<(tid-70)*100){
-			num++;
-			continue;
-		}
-		else if(tid>=80&&tid<90&&num<(tid-80)*100){
-			num++;
-			continue;
-		}
-		else if(tid>=90&&num<(tid-90)*100){
-			num++;
-			continue;
-		}
-
-#endif
 		else{
 			num++;
 			Speech * speech;
-			sample_num++;
-			if(tid<10)
-				speech = new Speech(0);
-			else if(tid<20)
-				speech = new Speech(1);
-			else if(tid<30)
-				speech = new Speech(2);
-			else if(tid<40)
-				speech = new Speech(3);
-			else if(tid<50)
-				speech = new Speech(4);
-			else if(tid<60)
-				speech = new Speech(5);
-			else if(tid<70)
-				speech = new Speech(6);
-			else if(tid<80)
-				speech = new Speech(7);
-			else if(tid<90)
-				speech = new Speech(8);
-			else
-				speech = new Speech(9);
-//				speech = new Speech(CLASS_3);
-
-//			speech->SetTest(test);
+			speech = new Speech(cls);
 			Channel * channel;
 			char linestring[8192];
 			char * token;

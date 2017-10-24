@@ -599,8 +599,14 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
         ReadoutJudge(correct, wrong, even,wrong_cls); // judge the readout output here
         CollectErrorPerSample(each_sample_errors); // collect the test error for the sample
 #ifdef _PRINT_SPIKE_COUNT
-        if(tid == 0 && (iteration == 0 || iteration % 10 == 0))
+        if(tid == 0 && (iteration == 0 || iteration % 10 == 0)){
             PrintSpikeCount("readout"); // print the readout firing counts
+#ifdef CV
+			cout<<"file index:"<<(*_sp_iter)->GetFileIndex()<<endl;
+#else
+			cout<<"file index:"<<(*_sp_iter)->GetFileIndex()<<endl;
+#endif
+		}
 #endif
 
 

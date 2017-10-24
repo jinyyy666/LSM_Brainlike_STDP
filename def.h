@@ -307,8 +307,6 @@ enum synapsetype_t {RESERVOIR_SYN, INPUT_SYN, READOUT_SYN, INVALID}; // differen
 
 //#define IP
 
-//#define TRAIN_SAMPLE
-
 //#define QUICK_RESPONSE
 
 //the readout functions are added below
