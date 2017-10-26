@@ -110,7 +110,12 @@
 #define BP_OBJ_COUNT // current best
 //#define BP_OBJ_SOFTMAX  // remember to make DELTA_POT == DELTA_DEP for this case
 
-#define _BOOSTING_METHOD
+#define DESIRED_LEVEL 45    // the count level for the count based obj
+#define UNDESIRED_LEVEL 15
+#define MARGIN 5
+
+
+//#define _BOOSTING_METHOD
 
 /*****************************************
  * some available modifications 

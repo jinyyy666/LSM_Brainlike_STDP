@@ -1791,9 +1791,9 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 #elif   defined(BP_OBJ_COUNT)
         // simple count based obj
         if(i == cls)
-            error = (f_cnt >= 50 && f_cnt <= 60) ? 0 : f_cnt - 55;
+            error = (f_cnt >= DESIRED_LEVEL - MARGIN && f_cnt <= DESIRED_LEVEL + MARGIN) ? 0 : f_cnt - DESIRED_LEVEL;
         else
-            error = (f_cnt >= 10 && f_cnt <= 20) ? 0 : f_cnt - 15;
+            error = (f_cnt >= UNDESIRED_LEVEL - MARGIN && f_cnt <= UNDESIRED_LEVEL + MARGIN) ? 0 : f_cnt - UNDESIRED_LEVEL;
 #elif   defined(BP_OBJ_SOFTMAX)
         // soft max based obj
         if(i == cls)
