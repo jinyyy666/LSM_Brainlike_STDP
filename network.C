@@ -95,7 +95,6 @@ void Network::AddNeuronGroup(char * name, int num, bool excitatory, double v_mem
 
     string name_str(name);
     if(name_str.substr(0, 6) == "hidden")   _hidden_layer_names.push_back(name_str);
-	
    
     for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
         _allNeurons.push_back(neuron);
@@ -1479,7 +1478,7 @@ void Network::ReadoutJudge(vector<pair<int, int> >& correct, vector<pair<int, in
         cout<<"In Network::ReadoutJudge(vector<pair<int, int> >&, vector<pair<int, int> >&, vector<pair<int, int> >&)\n"
             <<"Undefined return type: "<<res.first<<" returned by Network::LSMJudge()"
             <<endl;
-    }	
+    }
 }
 
 /*************************************************************************************

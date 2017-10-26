@@ -722,9 +722,9 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
         _D_lsm_v_mem -= t%_ts_freq == 0 ? _D_lsm_v_thresh*_ts_strength_n : 0;
     }
 #else
-    if((_teacherSignal==1)&&(_lsm_calcium < LSM_CAL_MID)){
+    if((_teacherSignal==1)&&(_lsm_calcium < LSM_CAL_MID+1)){
         _lsm_v_mem += t%_ts_freq == 0 ? 20*_ts_strength_p : 0;
-    }else if((_teacherSignal==-1)&&(_lsm_calcium > LSM_CAL_MID)){
+    }else if((_teacherSignal==-1)&&(_lsm_calcium > LSM_CAL_MID-1)){
         _lsm_v_mem -= t%_ts_freq == 0 ? 15*_ts_strength_n : 0;
     }
 
@@ -1461,12 +1461,12 @@ NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * ne
         sprintf(neuronName,"%s_%d",name,i);
         Neuron * neuron = new Neuron(neuronName,excitatory,network);
 #ifdef _DYNAMIC_THRESHOLD
-		if(rand()%100 < 100*DYNAMIC_THRESHOLD_PER){
-			neuron->EnableDynamicThresh(true);
-		}
-		else{
-			neuron->EnableDynamicThresh(false);
-		}
+        if(rand()%100 < 100*DYNAMIC_THRESHOLD_PER){
+            neuron->EnableDynamicThresh(true);
+        }
+        else{
+            neuron->EnableDynamicThresh(false);
+        }
 #endif
         neuron->SetIndexInGroup(i);
         _neurons[i] = neuron;

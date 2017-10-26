@@ -146,7 +146,7 @@ public:
     int FireCount(){return _f_count;}
     void FireCount(int count){_f_count = count;}
 
-	void EnableDynamicThresh(bool dt){_allow_dynamic_threshold=dt;}
+    void EnableDynamicThresh(bool dt){_allow_dynamic_threshold=dt;}
 
     bool Fired(){return _fired;}
 
