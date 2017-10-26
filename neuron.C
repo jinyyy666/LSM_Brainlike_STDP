@@ -1574,7 +1574,7 @@ void NeuronGroup::AddSynapse(Synapse * synapse){
 }
 
 Neuron * NeuronGroup::First(){
- //   assert(_firstCalled == false);
+    assert(_firstCalled == false);
     _firstCalled = true;
     _iter = _neurons.begin();
     if(_iter != _neurons.end()) return (*_iter);

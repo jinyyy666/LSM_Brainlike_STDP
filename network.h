@@ -60,7 +60,7 @@ private:
     int _lsm_output;
     int _lsm_t;
     networkmode_t _network_mode;
-	int Tid;
+	int _tid; // the thread id attached to the network
 
 public:
     Network();
@@ -81,9 +81,6 @@ public:
     void LSMAddSynapse(Neuron*,NeuronGroup*,int,int,int,bool);
     void LSMAddSynapse(NeuronGroup*,NeuronGroup*,int,int,int,int,bool);
     void LSMAddSynapse(NeuronGroup * pre, int npre, int npost, int value, int random, bool fixed);
-
-	void SetTid(int tid){Tid=tid;}
-	int GetTid(){return Tid;}
 
     void PrintSize();
     void PrintAllNeuronName();
@@ -145,7 +142,7 @@ public:
     void UpdateLearningWeights();
     void CollectErrorPerSample(std::vector<double>& each_sample_error);
     void PrintSpikeCount(std::string layer);
-    void ReadoutJudge(std::vector<std::pair<int, int> >& correct, std::vector<std::pair<int, int> >& wrong, std::vector<std::pair<int, int> >& even, std::vector<int> &wrong_cls);
+    void ReadoutJudge(std::vector<std::pair<int, int> >& correct, std::vector<std::pair<int, int> >& wrong, std::vector<std::pair<int, int> >& even);
     std::pair<int, int>  LSMJudge();
     void ComputeBoostError(std::vector<std::pair<Speech*, bool> >& predictions);
     void BoostWeightUpdate(const std::vector<std::pair<Speech*, bool> >& predictions);
@@ -219,9 +216,6 @@ public:
         post->AddPreSyn(synapse);	
     } 
 	void LoadResponse();
-	void PrintTestError();
-	void SetLateralInhibition(const char * name);
-
 };
 
 #endif

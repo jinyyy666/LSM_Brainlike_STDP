@@ -3,7 +3,6 @@
 #include <iostream>
 #include <assert.h>
 #include <random>
-#include <algorithm>
 #include "channel.h"
 
 using namespace std;

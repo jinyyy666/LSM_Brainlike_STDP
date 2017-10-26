@@ -96,7 +96,6 @@ void Network::AddNeuronGroup(char * name, int num, bool excitatory, double v_mem
     string name_str(name);
     if(name_str.substr(0, 6) == "hidden"){
 		_hidden_layer_names.push_back(name_str);
-		SetLateralInhibition(name);
 	}
    
     for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
@@ -507,11 +506,6 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
     char filename[64];
     vector<double> each_sample_errors;    
 
-#if _NMNIST==1
-    vector<int> wrong_cls(10,0);
-#else
-    vector<int> wrong_cls(26,0);
-#endif
     // 1. Clear the signals
     LSMClearSignals();
    
@@ -596,7 +590,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
         fclose(Foutp);
 #endif
 
-        ReadoutJudge(correct, wrong, even,wrong_cls); // judge the readout output here
+        ReadoutJudge(correct, wrong, even); // judge the readout output here
         CollectErrorPerSample(each_sample_errors); // collect the test error for the sample
 #ifdef _PRINT_SPIKE_COUNT
         if(tid == 0 && (iteration == 0 || iteration % 10 == 0)){
@@ -1478,7 +1472,7 @@ void Network::PrintSpikeCount(string layer){
 }
 
 //* judge the readout result:
-void Network::ReadoutJudge(vector<pair<int, int> >& correct, vector<pair<int, int> >& wrong, vector<pair<int, int> >& even, vector<int> &wrong_cls){
+void Network::ReadoutJudge(vector<pair<int, int> >& correct, vector<pair<int, int> >& wrong, vector<pair<int, int> >& even){
     pair<int, int> res = this->LSMJudge(); // +/- 1, true cls
 
     if(res.first == 1) correct.push_back(res);
@@ -1489,9 +1483,7 @@ void Network::ReadoutJudge(vector<pair<int, int> >& correct, vector<pair<int, in
             <<"Undefined return type: "<<res.first<<" returned by Network::LSMJudge()"
             <<endl;
     }
-	if(res.first!=1){
-		wrong_cls[res.second]++;
-	}
+	
 }
 
 /*************************************************************************************
@@ -2058,29 +2050,3 @@ void Network::VisualizeReservoirSyns(int indictor){
     f_out.close();
 }
 
-void Network::PrintTestError(){
-	for(int i=0;i<_readout_test_error.size();i++){
-		cout<<"iter : "<<i<<",  test error: "<<_readout_test_error[i]<<endl;
-	}
-}
-
-void Network::SetLateralInhibition(const char * name){
-    NeuronGroup * NG = SearchForNeuronGroup(name);
-	int NG_size=NG->Size();
-	Neuron * Neu_pre;
-	Neuron * Neu_post;
-	Neu_pre=NG->First();
-	double value=-10;
-	double weight_limit=11;
-	while(Neu_pre!=NULL){
-		if(Neu_pre->OutSynSize()>=NG_size)
-			Neu_pre=NG->Next();
-		else{
-			Neu_post=NG->First();	
-			while(Neu_post!=NULL){
-				LSMAddSynapse(Neu_pre,Neu_post, value,true,weight_limit,false);
-			}
-			Neu_pre=NG->First();
-		}
-	}
-}

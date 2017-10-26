@@ -150,24 +150,11 @@ void Speech::PrintSpikesPerChannels(const vector<Channel*>& channels, const stri
 }
 
 void Speech::PrintSpikes(int info){
-#if _NMNIST==1
-    string input = "spikes/Input_Response/input_spikes_" + to_string(_file_index) + to_string(_class) + ".dat";
-    PrintSpikesPerChannels(_channels, input);
-
-#ifdef TRAIN_SAMPLE
-    string reservoir = "spikes/Reservoir_Response/train/reservoir_spikes_" + to_string(_file_index) +"_"+ to_string(_class) + ".dat";
-#else
-    string reservoir = "spikes/Reservoir_Response/test/reservoir_spikes_" + to_string(_file_index) +"_"+ to_string(_class)  + ".dat";
-#endif
-    PrintSpikesPerChannels(_rChannels, reservoir);
-
-#else
     string input = "spikes/Input_Response/input_spikes_" + to_string(info) + ".dat";
     PrintSpikesPerChannels(_channels, input);
 
     string reservoir = "spikes/Reservoir_Response/reservoir_spikes_" + to_string(info) + ".dat";
     PrintSpikesPerChannels(_rChannels, reservoir);
-#endif
        
 }
 

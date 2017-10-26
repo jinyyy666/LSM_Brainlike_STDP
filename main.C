@@ -134,7 +134,6 @@ int main(int argc, char * argv[]){
     Network array_network[NUM_THREADS];
 
     for(i = 0; i < NUM_THREADS; i++){
-		array_network[i].SetTid(i);
         Parser parser(&array_network[i]);
 #if _IMAGE == 1
 #if _MNIST == 1
