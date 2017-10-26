@@ -18,7 +18,7 @@ private:
     int _num_input_channels;
     int _input_connections;
     double _weight; // boosting weight associated with each sample
-	int _file_index;
+    int _file_index;
 public:
     Speech(int);
     ~Speech();

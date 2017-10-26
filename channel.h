@@ -33,7 +33,7 @@ public:
     channelmode_t Mode(){return _mode;}
     void Clear();
     void Print(std::ofstream& f_out);
-	void Read(FILE * fp);
+    void Read(FILE * fp);
 };
 
 #endif

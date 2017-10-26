@@ -60,7 +60,7 @@ private:
     bool _fired;
     double _error; // error used in the back-prop
 
-	bool _allow_dynamic_threshold; // enable dynamic threshold
+    bool _allow_dynamic_threshold; // enable dynamic threshold
 
     // collect ep/en/ip/in stat for resolution
     int _EP_max, _EP_min, _EN_max, _EN_min, _IP_max, _IP_min, _IN_max, _IN_min;

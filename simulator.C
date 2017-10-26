@@ -83,7 +83,6 @@ void Simulator::LSMRun(long tid){
         sprintf(filename, "o_weights_info.txt");
         _network->WriteSynWeightsToFile("hidden_0", "output", filename);
 
-
         sprintf(filename, "o_weights_info_all.txt");
         _network->WriteSelectedSynToFile("readout", filename); 
     }

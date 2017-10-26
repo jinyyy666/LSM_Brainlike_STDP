@@ -155,7 +155,6 @@ void Speech::PrintSpikes(int info){
 
     string reservoir = "spikes/Reservoir_Response/reservoir_spikes_" + to_string(info) + ".dat";
     PrintSpikesPerChannels(_rChannels, reservoir);
-
 }
 
 //* this function read each channel and output the firing frequency into a matrix
