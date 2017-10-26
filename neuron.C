@@ -1486,7 +1486,7 @@ NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * ne
     double c, a;
     double distsq, dist;
     const double factor = 10;
-    const double factor2 = 1;
+    const double factor2 = 1.5;
     int counter = 0;
     for(i = 0; i < num; i++)
         for(j = 0; j < num; j++){
@@ -1535,7 +1535,7 @@ NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * ne
 #ifdef PURE_RANDOM_RES_CONNECTION
             if(rand()%100000 < CONNECTION_PROB*100000){ // enable purely random connections
 #else
-            if(rand()%100000 < 100000*c*exp(-distsq/3)){
+            if(rand()%100000 < 100000*c*exp(-distsq/4)){
 #endif
                 counter++;
 #ifdef DIGITAL

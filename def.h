@@ -1,14 +1,14 @@
 #ifndef DEF_H
 #define DEF_H
 
-#define _IMAGE    1
+#define _IMAGE    0
 #define _MNIST    0
 #define _TRAFFIC   0
 #define _CITYSCAPE 0
-#define _NMNIST 1
+#define _NMNIST 0
 
-#define _SPEECH    0
-#define _LETTER    0
+#define _SPEECH    1
+#define _LETTER    1
 #define _DIGIT    0
 
 // this control variable is defined to direct compute the \delta_t 
@@ -121,7 +121,7 @@
 #define BP_OBJ_COUNT // current best
 //#define BP_OBJ_SOFTMAX  // remember to make DELTA_POT == DELTA_DEP for this case
 
-#define _BOOSTING_METHOD
+//#define _BOOSTING_METHOD
 
 /*****************************************
  * some available modifications 
@@ -232,9 +232,9 @@
 #define LSM_DELTA_POT 0.006
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
-#define CLS 10
-#define NUM_THREADS 1
-#define NUM_ITERS 40
+#define CLS 26
+#define NUM_THREADS 5
+#define NUM_ITERS 500
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -282,8 +282,8 @@
 //#define SYN_ORDER_1 0
 //#define SYN_ORDER_0 0 
 
-//#define CV
-//#define NFOLD 5
+#define CV
+#define NFOLD 5
 
 //* Control variable to enable the old way of readout by writing outputs/*.dat
 //#define _WRITE_STAT  

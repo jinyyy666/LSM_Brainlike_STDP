@@ -28,7 +28,6 @@ void Channel::AddAnalog(double signal){
 }
 
 void Channel::AddSpike(int spikeT){
-	spikeT+=1;
     int size = _spikeT.size();
     if(size > 0){
         if(spikeT <= _spikeT[size-1])

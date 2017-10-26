@@ -601,11 +601,6 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #ifdef _PRINT_SPIKE_COUNT
         if(tid == 0 && (iteration == 0 || iteration % 10 == 0)){
             PrintSpikeCount("readout"); // print the readout firing counts
-#ifdef CV
-			cout<<"file index:"<<(*_sp_iter)->GetFileIndex()<<endl;
-#else
-			cout<<"file index:"<<(*_sp_iter)->GetFileIndex()<<endl;
-#endif
 		}
 #endif
 
@@ -633,18 +628,6 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
     }
     // 5. Push the recognition result:
     LSMPushResults(correct, wrong, even, iteration);
-
-	// print performance and wrong numbers for each class
-	double correct_num=correct.size();
-	double wrong_num=wrong.size();
-	double even_num=even.size();
-
-	cout<<"tid:"<<tid<<"  ,iteration:"<<iteration<<",  performance="<<correct_num<<"/"<<correct_num+wrong_num+even_num<<" = "<<correct_num/(correct_num+wrong_num+even_num)<<endl;
-	cout<<"wrong class:";
-	 for(int i=0;i<wrong_cls.size();i++){
-		 cout<<wrong_cls[i]<<"  ";
-	 }
-	 cout<<endl;
 
     // 6. Log the test error
     LogTestError(each_sample_errors, iteration);
@@ -1272,17 +1255,10 @@ void Network::SpeechInfo(){
 
 void Network::SpeechPrint(int info){
     // prepare the paths
-#if _NMNIST==1
-    MakeDirs("spikes/Input_Response");
-    MakeDirs("spikes/Reservoir_Response");
-    MakeDirs("spikes/Reservoir_Response/test");
-    MakeDirs("spikes/Reservoir_Response/train");
-    MakeDirs("spikes/Readout_Response_Trans");
-#else
     MakeDirs("spikes/Input_Response");
     MakeDirs("spikes/Reservoir_Response");
     MakeDirs("spikes/Readout_Response_Trans");
-#endif
+    
     if(_sp_iter != _speeches.end())
         (*_sp_iter)->PrintSpikes(info);
 }
@@ -1631,7 +1607,6 @@ void Network::LogTestError(const vector<double>& each_sample_errors, int iter_n)
     double error_sum = 0;
     for(double e : each_sample_errors)  error_sum += e;
     _readout_test_error[iter_n] = error_sum;
-	cout<<"test error: "<<error_sum<<endl;
 }
 
 //* return the most recent results of the readout (correct, wrong, even) in a vector:
