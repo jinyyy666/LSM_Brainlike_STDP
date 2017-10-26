@@ -24,8 +24,6 @@
 //#define _DEBUG_INPUT_TRAINING
 //#define _DEBUG_BP
 //#define _DEBUG_BP_HIDDEN
-//#define DYNAMIC_IP
-//#define PART_RESERVOIR_IP
 
 // NOTE: The time constants have been changed to 2*original settings 
 //       optimized performance for letter recognition.
@@ -102,6 +100,7 @@ Neuron::Neuron(char * name, bool excitatory, Network * network):
     _f_count = 0;
     _fired = false;
     _error = 0;
+    _allow_dynamic_threshold = false;
 }
 
 //FOR INPUT AND OUTPUT
@@ -166,6 +165,7 @@ Neuron::Neuron(char * name, bool excitatory, Network * network, double v_mem):
     _f_count = 0;
     _fired = false;
     _error = 0;
+    _allow_dynamic_threshold = false;
 }
 
 Neuron::~Neuron(){
@@ -809,6 +809,9 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
 
     _fired = false;
 
+    if(_allow_dynamic_threshold && _network->LSMGetNetworkMode()==TRANSIENTSTATE)  
+        DynamicThreshold(t);
+
 #ifdef DIGITAL
     if(_D_lsm_v_mem > _D_lsm_v_thresh){  
         _D_lsm_calcium += unit;
@@ -825,22 +828,7 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
             // keep track of the t_spike_post for the _inputSyns and activate this syn:
             SetPostNeuronSpikeT(t);
         }
-#ifdef IP
-#ifdef DIGITAL
-	assert(0);
-#endif
-	if(IsDynamicThresh()){
-		if((_name[0]=='r')&&(_name[9]=='_')&&_network->LSMGetNetworkMode()==TRANSIENTSTATE&&_lsm_v_thresh<30){
-#ifdef DYNAMIC_IP
-			if(_lsm_calcium > (LSM_CAL_MID+1)*unit){
-#endif
-				_D_lsm_v_thresh=_D_lsm_v_thresh+1.98;
-#ifdef DYNAMIC_IP
-			}
-#endif
-		}
-	}
-#endif
+
         // 1. handle the _outputSyns after the neuron fires and activate the _outputSyns
         // 2. keep track of the t_spike_pre for the corresponding syns
         // 3. @para1: whether or not the current neuron is only used as a dummy input
@@ -875,22 +863,6 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
         }
 
     }
-#ifdef IP
-#ifdef DIGITAL
-	assert(0);
-#endif
-	else if(IsDynamicThresh()){
-		if((_name[0]=='r')&&(_name[9]=='_')&&_network->LSMGetNetworkMode()==TRANSIENTSTATE&&t>20&&_lsm_v_thresh>5){
-#ifdef DYNAMIC_IP
-			if(_D_lsm_calcium < (LSM_CAL_MID-1)*unit){
-#endif
-				_lsm_v_thresh=_lsm_v_thresh-0.02;
-#ifdef DYNAMIC_IP
-			}
-#endif
-		}
-	}
-#endif
 }
 
 
@@ -1147,6 +1119,21 @@ void Neuron::DebugFunc(int t){
 #endif
     }
 
+}
+
+
+// The function to apply dynamic threshold
+void Neuron::DynamicThreshold(){
+#ifdef DIGITAL
+    assert(0); // only implement this for the continuous setting
+#endif
+    if(!(_name[0] == 'r' && _name[9] == '_'))   return;
+    if(_fired && _lsm_calcium > LSM_CAL_MID + 1 && _lsm_v_thresh < 30) {
+        _lsm_v_thresh += 1.98;
+    }   
+    else if(!_fired && _lsm_calcium < LSM_CAL_MID -1 && _lsm_clsm_v_thresh > 5 && t > 20) {
+        _lsm_v_thresh -= 0.02;
+    }
 }
 
 
@@ -1473,12 +1460,12 @@ NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * ne
         else excitatory = true;
         sprintf(neuronName,"%s_%d",name,i);
         Neuron * neuron = new Neuron(neuronName,excitatory,network);
-#ifdef PART_RESERVOIR_IP
-		if(rand()%100<70){
-			neuron->DynamicThresh(true);
+#ifdef _DYNAMIC_THRESHOLD
+		if(rand()%100 < 100*DYNAMIC_THRESHOLD_PER){
+			neuron->EnableDynamicThresh(true);
 		}
 		else{
-			neuron->DynamicThresh(false);
+			neuron->EnableDynamicThresh(false);
 		}
 #endif
         neuron->SetIndexInGroup(i);

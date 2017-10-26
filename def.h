@@ -80,6 +80,16 @@
 #define INDEG_LIMIT  1
 #define OUTDEG_LIMIT 1
 
+
+/******************************************
+ * Control variable for switching different 
+ * readout training algorithms
+ * The TS is only defined for Yong's and supvervised
+ * STDP.
+ *****************************************/
+#define TEACHER_SIGNAL
+
+
 /*******************************************
 // the new rule(SRM based/reward modulated)
 *******************************************/
@@ -292,26 +302,25 @@
 
 //#define _TEST_
 
-enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL, OUTPUTCHANNEL}; // for allocate speech channels
-enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,READCHANNELBP,NORMALSTDP,NORMALBP,NORMAL}; // for implement network stat.
-enum networkmode_t {TRAINRESERVOIR,TRAININPUT,TRAINREADOUT,TRANSIENTSTATE,READOUT,READOUTSUPV,READOUTBP,VOID}; // different network mode
-
-enum synapsetype_t {RESERVOIR_SYN, INPUT_SYN, READOUT_SYN, INVALID}; // different synaptic type
-
-
 //NMNIST functions
 
 #define TB_PER_CLASS 100
 
 //#define LOAD_RESPONSE
 
-//#define IP
+//#define _DYNAMIC_THRESHOLD
+//#define DYNAMIC_THRESHOLD_PER 0.7
 
 //#define QUICK_RESPONSE
 
-//the readout functions are added below
-//
-#define TEACHER_SIGNAL
+
+
+enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL, OUTPUTCHANNEL}; // for allocate speech channels
+enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,READCHANNELBP,NORMALSTDP,NORMALBP,NORMAL}; // for implement network stat.
+enum networkmode_t {TRAINRESERVOIR,TRAININPUT,TRAINREADOUT,TRANSIENTSTATE,READOUT,READOUTSUPV,READOUTBP,VOID}; // different network mode
+
+enum synapsetype_t {RESERVOIR_SYN, INPUT_SYN, READOUT_SYN, INVALID}; // different synaptic type
+
 
 #endif
 

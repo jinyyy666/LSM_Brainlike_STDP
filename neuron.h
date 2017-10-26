@@ -60,6 +60,8 @@ private:
     bool _fired;
     double _error; // error used in the back-prop
 
+	bool _allow_dynamic_threshold; // enable dynamic threshold
+
     // collect ep/en/ip/in stat for resolution
     int _EP_max, _EP_min, _EN_max, _EN_min, _IP_max, _IP_min, _IN_max, _IN_min;
     // collect max pre-spike count at each time point
@@ -109,7 +111,6 @@ private:
     const int _D_lsm_v_readout_max;
     const int _D_lsm_v_readout_min;
     const int _Unit;
-	bool _dynamic_threshold;
 public:
     Neuron(char* name, bool excitatory, Network* network, double v_mem);
     Neuron(char*, bool, Network*); // only for liquid state machine
@@ -147,8 +148,7 @@ public:
     int FireCount(){return _f_count;}
     void FireCount(int count){_f_count = count;}
 
-	bool IsDynamicThresh(){return _dynamic_threshold;}
-	void DynamicThresh(bool dt){_dynamic_threshold=dt;}
+	void EnableDynamicThresh(bool dt){_allow_dynamic_threshold=dt;}
 
     bool Fired(){return _fired;}
 
@@ -232,6 +232,8 @@ public:
     void UpdateLWeight();
 
     void DebugFunc(int t);
+    
+    void DynamicThreshold();
 
     void WriteOutputWeights(std::ofstream& f_out, int& index, const std::string& post_g); 
     int SizeOutputSyns(){return _outputSyns.size();} //Calculate # of output synapses for verfication

@@ -314,7 +314,7 @@ void Parser::ParseMNISTSpeech(int cls, char* path){
 // read path for N-NMIST
 
 //* this function is used to parse N-MNIST testbench.
-//* for N-MNIST, there are 100 input neurons
+//* for N-MNIST, there are 1156 input neurons
 //* They are converted from the original spike based testbench at
 //* http://www.garrickorchard.com/datasets
 void Parser::ParseNMNIST(int cls,char* path){
