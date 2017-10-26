@@ -5,8 +5,8 @@ neurongroup output 26 excitatory 5
 lsmsynapse input reservoir 1 32 8 1 fixed
 lsmsynapse reservoir hidden_0 -1 -1 8 2 learning
 lsmsynapse hidden_0 output -1 -1 8 2 learning
-lsmsynapse output output -1 -1 1 1 fixed
-lsmsynapse hidden_0 hidden_0 -1 -1 1 1 fixed
+#lsmsynapse output output -1 -1 1 1 fixed
+#lsmsynapse hidden_0 hidden_0 -1 -1 1 1 fixed
 speech	0	../AuditoryToolbox_80/data_new/ti_alpha/train/f1_u10_c0.dat
 speech	1	../AuditoryToolbox_80/data_new/ti_alpha/train/f1_u10_c1.dat
 speech	10	../AuditoryToolbox_80/data_new/ti_alpha/train/f1_u10_c10.dat
