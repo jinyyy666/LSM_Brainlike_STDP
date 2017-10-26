@@ -134,6 +134,7 @@ int main(int argc, char * argv[]){
     Network array_network[NUM_THREADS];
 
     for(i = 0; i < NUM_THREADS; i++){
+        array_network[i].SetTid(i);
         Parser parser(&array_network[i]);
 #if _IMAGE == 1
 #if _MNIST == 1
@@ -208,7 +209,7 @@ int main(int argc, char * argv[]){
 #endif
 #elif _IMAGE == 1
 #if _NMNIST == 1
-  Readout readout_module(CLS*TB_PER_CLASS); // 500 is for 500 digit words
+    Readout readout_module(CLS*TB_PER_CLASS); // 500 is for 500 digit words
 #elif _MNIST == 1
     Readout readout_module(500); // 500 for MNIST
 #elif _TRAFFIC == 1

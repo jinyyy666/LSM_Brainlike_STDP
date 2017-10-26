@@ -17,7 +17,7 @@
 //#define _DEBUG_TRUNC
 //#define _DEBUG_YONG_RULE
 //#define _DEBUG_SIMPLE_STDP
-//#define _DEBUG_AP_STDP
+#define _DEBUG_AP_STDP
 //#define _DEBUG_UNSUPERV_TRAINING
 //#define _DEBUG_SUPV_STDP
 //#define _DEBUG_UPDATE_AT_LAST
@@ -80,7 +80,7 @@ Synapse::Synapse(Neuron * pre, Neuron * post, double lsm_weight, bool fixed, dou
     char * name = post->Name();
     if(name[0] == 'o')  _excitatory = _lsm_weight >= 0; 
 
-//    cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<_excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
+    cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<_excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
 
     // initialize the look-up table:
     _init_lookup_table(false);
@@ -440,11 +440,11 @@ void Synapse::LSMLearn(int t, int iteration){
     double weight_old = _lsm_weight;
     _lsm_c = _post->GetCalciumPre();
     if(_lsm_c > LSM_CAL_MID){
-        if((_lsm_c < LSM_CAL_MID+1)){ // &&(_post->LSMGetVMemPre() > LSM_V_THRESH*0.2)){
+        if((_lsm_c < LSM_CAL_MID+3)){ // &&(_post->LSMGetVMemPre() > LSM_V_THRESH*0.2)){
             _lsm_weight += LSM_DELTA_POT/( 1 + iteration/ITER_SEARCH_CONV);
         }
     }else{
-        if((_lsm_c > LSM_CAL_MID-1)){ //&&(_post->LSMGetVMemPre() < LSM_V_THRESH*0.2)){
+        if((_lsm_c > LSM_CAL_MID-3)){ //&&(_post->LSMGetVMemPre() < LSM_V_THRESH*0.2)){
             _lsm_weight -= LSM_DELTA_DEP/( 1+ iteration/ITER_SEARCH_CONV);
         }
     }

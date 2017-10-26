@@ -60,14 +60,16 @@ private:
     int _lsm_output;
     int _lsm_t;
     networkmode_t _network_mode;
-	int _tid; // the thread id attached to the network
-
+    int _tid;  // the id of the thread attach to the network
 public:
     Network();
     ~Network();
     void LSMSetNetworkMode(networkmode_t networkmode){_network_mode = networkmode;}
     networkmode_t LSMGetNetworkMode(){return _network_mode;}
 
+    int GetTid(){return _tid;}
+    int SetTid(int tid){_tid = tid;}
+    
     bool CheckExistence(char *);
     void AddNeuron(char* name, bool excitatory, double v_mem);
     void AddNeuronGroup(char* name, int num, bool excitatory, double v_mem);

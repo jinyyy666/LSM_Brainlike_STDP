@@ -146,6 +146,7 @@ void Speech::PrintSpikesPerChannels(const vector<Channel*>& channels, const stri
         channels[i]->Print(f_out);
 		f_out<<"-1\t-1"<<endl;
     }
+    f_out<<"-1\t-1"<<endl;
     f_out.close();
 }
 

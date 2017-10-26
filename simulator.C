@@ -204,7 +204,6 @@ void Simulator::LSMRun(long tid){
             _network->DumpVMems("Waveform/transient", info, "reservoir");
         }
 #endif
-            _network->SpeechPrint(info);
         // print the firing frequency into the file:
         //_network->SpeechSpikeFreq("input", f1, f2);
 #ifdef _RES_FIRING_CHR

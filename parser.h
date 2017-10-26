@@ -20,9 +20,7 @@ public:
     void ParseSpeech(int, char*);
     void ParsePoissonSpeech(int cls, char * path);
     void ParseMNISTSpeech(int cls, char * path);
-	void LoadWholeTestBench(bool test);	
 	void ParseNMNIST(int cls,char* path);
-	void LoadSingleTestBench();	
 	void QuickLoad(int cls,const char* path);
 };
 

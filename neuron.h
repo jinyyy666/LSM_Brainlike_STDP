@@ -118,8 +118,6 @@ public:
     char * Name();
     void AddPostSyn(Synapse*);
     void AddPreSyn(Synapse*);
-	int InSynSize(){_inputSyns.size();}
-	int OutSynSize(){_outputSyns.size();}
 
     void LSMPrintInputSyns(std::ofstream& f_out);
 

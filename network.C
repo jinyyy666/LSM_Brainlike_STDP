@@ -94,9 +94,8 @@ void Network::AddNeuronGroup(char * name, int num, bool excitatory, double v_mem
     _groupNeurons[string(name)] = neuronGroup;
 
     string name_str(name);
-    if(name_str.substr(0, 6) == "hidden"){
-		_hidden_layer_names.push_back(name_str);
-	}
+    if(name_str.substr(0, 6) == "hidden")   _hidden_layer_names.push_back(name_str);
+	
    
     for(Neuron * neuron = neuronGroup->First(); neuron != NULL; neuron = neuronGroup->Next()){
         _allNeurons.push_back(neuron);
@@ -593,9 +592,8 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
         ReadoutJudge(correct, wrong, even); // judge the readout output here
         CollectErrorPerSample(each_sample_errors); // collect the test error for the sample
 #ifdef _PRINT_SPIKE_COUNT
-        if(tid == 0 && (iteration == 0 || iteration % 10 == 0)){
+        if(tid == 0 && (iteration == 0 || iteration % 10 == 0))
             PrintSpikeCount("readout"); // print the readout firing counts
-		}
 #endif
 
 
@@ -1252,7 +1250,6 @@ void Network::SpeechPrint(int info){
     MakeDirs("spikes/Input_Response");
     MakeDirs("spikes/Reservoir_Response");
     MakeDirs("spikes/Readout_Response_Trans");
-    
     if(_sp_iter != _speeches.end())
         (*_sp_iter)->PrintSpikes(info);
 }
@@ -1482,8 +1479,7 @@ void Network::ReadoutJudge(vector<pair<int, int> >& correct, vector<pair<int, in
         cout<<"In Network::ReadoutJudge(vector<pair<int, int> >&, vector<pair<int, int> >&, vector<pair<int, int> >&)\n"
             <<"Undefined return type: "<<res.first<<" returned by Network::LSMJudge()"
             <<endl;
-    }
-	
+    }	
 }
 
 /*************************************************************************************

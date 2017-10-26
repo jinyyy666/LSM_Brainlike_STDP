@@ -38,7 +38,7 @@
 /* FOR LIQUID STATE MACHINE */
 // the control parameter to enable STDP training, you only to enable this one
 // before enable the following two variables!!
-//#define STDP_TRAINING
+#define STDP_TRAINING
 
 // the control parameter to enable training the reservoir:
 //#define STDP_TRAINING_RESERVOIR
@@ -227,7 +227,7 @@
 #define LSM_V_REST 0
 #define LSM_V_RESET 0
 #define LSM_V_THRESH 20
-#define LSM_CAL_MID 3
+#define LSM_CAL_MID 5
 #define LSM_CAL_MARGIN 0
 #define LSM_DELTA_POT 0.006
 #define LSM_DELTA_DEP 0.006
