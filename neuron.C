@@ -1123,7 +1123,7 @@ void Neuron::DebugFunc(int t){
 
 
 // The function to apply dynamic threshold
-void Neuron::DynamicThreshold(){
+void Neuron::DynamicThreshold(int t){
 #ifdef DIGITAL
     assert(0); // only implement this for the continuous setting
 #endif
@@ -1131,7 +1131,7 @@ void Neuron::DynamicThreshold(){
     if(_fired && _lsm_calcium > LSM_CAL_MID + 1 && _lsm_v_thresh < 30) {
         _lsm_v_thresh += 1.98;
     }   
-    else if(!_fired && _lsm_calcium < LSM_CAL_MID -1 && _lsm_clsm_v_thresh > 5 && t > 20) {
+    else if(!_fired && _lsm_calcium < LSM_CAL_MID -1 && _lsm_v_thresh > 5 && t > 20) {
         _lsm_v_thresh -= 0.02;
     }
 }

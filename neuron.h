@@ -233,7 +233,7 @@ public:
 
     void DebugFunc(int t);
     
-    void DynamicThreshold();
+    void DynamicThreshold(int t);
 
     void WriteOutputWeights(std::ofstream& f_out, int& index, const std::string& post_g); 
     int SizeOutputSyns(){return _outputSyns.size();} //Calculate # of output synapses for verfication
