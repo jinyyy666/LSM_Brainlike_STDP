@@ -35,8 +35,8 @@ public:
     int Index() {return _index;}
     double Weight(){return _weight;}
     void SetWeight(double w){_weight = w;}
-	void SetFileIndex(int i){_file_index=i;}
-	int GetFileIndex(){return _file_index;}
+    void SetFileIndex(int i){_file_index=i;}
+    int GetFileIndex(){return _file_index;}
 
     void AddInputNumInfo(int num_inputs){ _num_input_channels = num_inputs;}
     void AddInputConnectionInfo(int input_connections){ _input_connections = input_connections;}
@@ -50,7 +50,7 @@ public:
     void SpikeFreq(std::ofstream & f_out, const std::vector<Channel*> & channels);
     int  EndTime();
     void CollectFreq(synapsetype_t syn_t, std::vector<double>& fs, int end_t);
-	void LoadResponse();
+    void LoadResponse();
 };
 #endif
 

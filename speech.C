@@ -144,7 +144,6 @@ void Speech::PrintSpikesPerChannels(const vector<Channel*>& channels, const stri
     f_out<<"-1\t-1"<<endl;
     for(int i = 0; i < channels.size(); i++){ 
         channels[i]->Print(f_out);
-		f_out<<"-1\t-1"<<endl;
     }
     f_out<<"-1\t-1"<<endl;
     f_out.close();
@@ -156,7 +155,7 @@ void Speech::PrintSpikes(int info){
 
     string reservoir = "spikes/Reservoir_Response/reservoir_spikes_" + to_string(info) + ".dat";
     PrintSpikesPerChannels(_rChannels, reservoir);
-       
+
 }
 
 //* this function read each channel and output the firing frequency into a matrix
@@ -228,25 +227,25 @@ void Speech::CollectFreq(synapsetype_t syn_t, vector<double>& fs, int end_t){
 }
 
 void Speech::LoadResponse(){
-	FILE * Fp_reservoir;
-	char filename[64];
-	char linestring[8192];
+    FILE * Fp_reservoir;
+    char filename[64];
+    char linestring[8192];
 #ifdef TRAIN_SAMPLE
-	sprintf(filename,"spikes/Reservoir_Response/train/reservoir_spikes_%d_%d.dat",_file_index,_class);
+    sprintf(filename,"spikes/Reservoir_Response/train/reservoir_spikes_%d_%d.dat",_file_index,_class);
 #else
-	sprintf(filename,"../Reservoir_Response_1156_200_stable/reservoir_spikes_%d_%d.dat",_file_index,_class);
+    sprintf(filename,"../Reservoir_Response_1156_200_stable/reservoir_spikes_%d_%d.dat",_file_index,_class);
 #endif
-	Fp_reservoir = fopen(filename,"r");
-	//ofstream f_reservoir(filename);
-	//assert(f_reservoir.is_open());
-	assert(Fp_reservoir != NULL);
-	if(fgets(linestring,8191,Fp_reservoir)==NULL||linestring[0]=='\n'){
-		assert(0);
-	}
-	for(int i = 0; i < _rChannels.size(); i++){
-		_rChannels[i]->Read(Fp_reservoir);
-	}
-	fclose(Fp_reservoir);	
+    Fp_reservoir = fopen(filename,"r");
+    //ofstream f_reservoir(filename);
+    //assert(f_reservoir.is_open());
+    assert(Fp_reservoir != NULL);
+    if(fgets(linestring,8191,Fp_reservoir)==NULL||linestring[0]=='\n'){
+        assert(0);
+    }
+    for(int i = 0; i < _rChannels.size(); i++){
+        _rChannels[i]->Read(Fp_reservoir);
+    }
+    fclose(Fp_reservoir);	
 }
 
 
