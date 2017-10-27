@@ -21,7 +21,6 @@ public:
     void ParsePoissonSpeech(int cls, char * path);
     void ParseMNISTSpeech(int cls, char * path);
     void ParseNMNIST(int cls,char* path);
-    void QuickLoad(int cls,const char* path);
 };
 
 #endif

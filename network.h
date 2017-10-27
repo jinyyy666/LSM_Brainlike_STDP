@@ -192,7 +192,7 @@ public:
     void DumpVMems(std::string dir, int info, const std::string& group_name);
     void DumpCalciumLevels(std::string neuron_group, std::string dir, std::string filename);
     
-    void LoadResponse(const std::string& ng_name);
+    void LoadResponse(const std::string& ng_name, int sample_size);
     
     void WriteSelectedSynToFile(const std::string& syn_type, char * filename);
     void WriteSynWeightsToFile(const std::string& pre_g, const std::string& post_g, char * filename);

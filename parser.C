@@ -155,11 +155,7 @@ void Parser::Parse(const char * filename){
 #ifdef LOAD_RESPONSE
             continue; // do not read the NMNIST speech if we will direct load from the response
 #endif
-#ifdef QUICK_RESPONSE
-            QuickLoad(atoi(token[1]),token[2]);
-#else
             ParseNMNIST(atoi(token[1]),token[2]);
-#endif
         }else if(strcmp(token[0],"end")==0){
             break;
         }else{
@@ -171,7 +167,7 @@ void Parser::Parse(const char * filename){
     fclose(fp);
 #ifdef LOAD_RESPONSE
     cout<<"Reservoir Response Load Start"<<endl;
-    _network->LoadResponse("reservoir");
+    _network->LoadResponse("reservoir",TB_PER_CLASS);
     cout<<"Reservoir Response Load Complete"<<endl;
 #endif
 }
@@ -313,149 +309,90 @@ void Parser::ParseMNISTSpeech(int cls, char* path){
 
     fclose(fp);
 }
-// read path for N-NMIST
 
 //* this function is used to parse N-MNIST testbench.
 //* for N-MNIST, there are 1156 input neurons
 //* They are converted from the original spike based testbench at
 //* http://www.garrickorchard.com/datasets
+// if you want quick generate reservoir, enable quickload and set NumThread to 100
+// then load the the dumped file by enabling Load_Response
 void Parser::ParseNMNIST(int cls,char* path){
     int input_num;
     input_num=_network->SearchForNeuronGroup("input")->Size();
-    int index;
-    if(path==NULL){
-        cout<<"directory path is NULL"<<endl;
-        assert(0);
-    }
-
+	int from_num;
+	int to_num;
+    int tid=_network->GetTid();
+    int file_read=0;
+    
+	struct stat s;
+    
+	struct dirent* filename;
+    DIR *dir;
+#ifdef QUICK_RESPONSE
+    const char *keyword="Test";
+    if(tid/10!=cls)
+        return;
+	from_num=strstr(path,keyword)?(tid%10)*100:(tid%10)*600;
+	to_num=strstr(path,keyword)?(tid%10+1)*100:(tid%10+1)*600;
+	if(tid%10==9)
+		to_num=-1;
+#else
+	from_num=-1;
+	to_num=TB_PER_CLASS<0?-1:TB_PER_CLASS;
+#endif
     //check if path is a valid dir
-    struct stat s;
     lstat(path,&s);
     if(!S_ISDIR(s.st_mode)){
         cout<<"path is not a valid directory"<<endl;
         assert(0);
     }
-
-    struct dirent* filename;
-    DIR *dir;
+	//open directory
     dir=opendir(path);
     if(dir==NULL){
         cout<<"Cannot open dir"<<endl;
         assert(0);
     }
-    int file_read=0;
     while((filename=readdir(dir))!=NULL){
-        const size_t len = strlen(path)+strlen(filename->d_name);
-        char *file_path=new char[len+1];
-        strcpy(file_path,path);
         if(filename->d_name[0]<'0'||filename->d_name[0]>'9'){
             continue;
         }
-        index=atoi(filename->d_name);
+		if(from_num>=0&&file_read<from_num){
+			file_read++;
+			continue;
+		}
+		if(to_num>=0&&file_read>=to_num){
+			break;
+		}
+        const size_t len = strlen(path)+strlen(filename->d_name);
+        char *file_path=new char[len+1];
+        strcpy(file_path,path);
         strcat(file_path,filename->d_name);
         file_read++;
         Speech * speech = new Speech(cls);
         Channel * channel;
         char linestring[8192];
         char * token;
-        FILE * fp = fopen(file_path,"r");
-        speech->SetFileIndex(index);
-        assert(fp != NULL);
-        _network->AddSpeech(speech);
         int index=0;
         int line_count=0;
+        FILE * fp = fopen(file_path,"r");
+        assert(fp != NULL);
+        _network->AddSpeech(speech);
         while(line_count<input_num){
             line_count++;
             channel = speech->AddChannel(10, 1, index++);
             if(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){	
                 token=strtok(linestring," \t\n,");
                 while(token!=NULL){
-                    channel->AddSpike(atoi(token));
+                    channel->AddSpike(atoi(token)+1);
                     token=strtok(NULL," \t\n,");
                 }
             }
         }
         fclose(fp);
         delete token;
-        if(file_read>=TB_PER_CLASS){
-            break;
-        }
     }
     closedir(dir);
-}
-
-
-void Parser::QuickLoad(int cls,const char* path){
-    int input_num;
-    input_num=_network->SearchForNeuronGroup("input")->Size();
-    struct dirent* filename;
-    DIR * dir;
-    int tid=_network->GetTid();
-    bool test;
-    int index;
-    int num=0;
-    int sample_limit;
-    const char *keyword="Test";
-    if(tid/10!=cls)
-        return;
-
-    if(strstr(path,keyword)){
-        sample_limit=100;
-    }
-    else{
-        sample_limit=600;
-    }
-
-    dir=opendir(path);
-    if(dir==NULL){
-        cout<<"Cannot open dir "<<endl;
-        assert(0);
-    }
-    while((filename=readdir(dir))!=NULL){
-        if(tid%10!=9&&num>(tid-cls*10+1)*sample_limit){
-            break;
-        }
-        if(filename->d_name[0]<'0'||filename->d_name[0]>'9'){
-            continue;
-        }
-        else if(num<(tid-cls*10)*sample_limit){
-            num++;
-            continue;
-        }
-        else{
-            num++;
-            Speech * speech;
-            speech = new Speech(cls);
-            Channel * channel;
-            char linestring[8192];
-            char * token;
-            const size_t len = strlen(path)+strlen(filename->d_name);
-            char *file_path=new char[len+1];
-            strcpy(file_path,path);
-            index=atoi(filename->d_name);
-            speech->SetFileIndex(index);
-            strcat(file_path,filename->d_name);
-            FILE * fp = fopen(file_path,"r");
-            assert(fp != NULL);
-            _network->AddSpeech(speech);
-            int index=0;
-            int line_count=0;
-            while(line_count<input_num){
-                line_count++;
-                channel = speech->AddChannel(10, 1, index++);
-                if(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){
-                    token=strtok(linestring," \t\n,");
-                    while(token!=NULL){
-                        channel->AddSpike(atoi(token));
-                        token=strtok(NULL," \t\n,");
-                    }
-                }
-            }
-            fclose(fp);
-            delete token;
-        }
-    }
-    closedir(dir);
+//	cout<<tid<<" load "<<file_read<<" files"<<" from class "<<cls<<", read from "<<from_num<<" to "<<to_num<<endl;
 }
 
 

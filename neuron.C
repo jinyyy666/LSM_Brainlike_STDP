@@ -584,9 +584,6 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
         // need to get rid of the deactivated synapse !
         if(synapse->DisableStatus())  continue;
     
-        // no need to activate/learning the synapse if the post neuron is deactivated
-        if(synapse->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == true)  continue;
-        
         synapse->LSMDeliverSpike();  
         synapse->SetPreSpikeT(time);
 

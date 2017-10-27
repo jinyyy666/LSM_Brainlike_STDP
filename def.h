@@ -304,7 +304,7 @@
 
 //NMNIST functions
 
-#define TB_PER_CLASS 100
+#define TB_PER_CLASS 100 //set to -1 if need to read all
 
 //#define LOAD_RESPONSE
 

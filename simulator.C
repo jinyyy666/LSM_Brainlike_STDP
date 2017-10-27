@@ -199,14 +199,15 @@ void Simulator::LSMRun(long tid){
             _network->LSMNextTimeStep(++time,false,1, end_time, NULL);
         }
 #ifdef QUICK_RESPONSE
-        _network->SpeechPrint(info, "reservoir"); // dump the reservoir response for quick simulation
-#endif
+        _network->SpeechPrint(info+_network->GetTid()*_network->NumSpeech(), "reservoir"); // dump the reservoir response for quick simulation
+#else
 
 #ifdef _DUMP_RESPONSE
         if(tid == 0){
-            _network->SpeechPrint(info);
+			_network->SpeechPrint(info, "reservoir"); // dump the reservoir response for quick simulation
             _network->DumpVMems("Waveform/transient", info, "reservoir");
         }
+#endif
 #endif
         // print the firing frequency into the file:
         //_network->SpeechSpikeFreq("input", f1, f2);

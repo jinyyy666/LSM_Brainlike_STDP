@@ -1797,7 +1797,8 @@ void Network::DumpCalciumLevels(string neuron_group, string dir, string filename
 
 //* load the spikes to the specific channel correspond to the neuron group
 //* the spikes file is in the specific path
-void Network::LoadResponse(const string & ng_name){
+void Network::LoadResponse(const string & ng_name,int sample_size){
+	vector<int> sample_num_record(CLS,sample_size);	
     if(ng_name != "reservoir"){
         cout<<"Unsupported loading of response to neuron group: "<<ng_name<<endl;
         exit(EXIT_FAILURE);
@@ -1808,7 +1809,7 @@ void Network::LoadResponse(const string & ng_name){
     
     // pre-allocate the speeches pointers
     assert(_speeches.empty());
-    _speeches = vector<Speech*>(sp_files.size(), NULL);
+    //_speeches = vector<Speech*>(sp_files.size(), NULL);
 
     NeuronGroup * reservoir = SearchForNeuronGroup("reservoir");
     assert(reservoir);
@@ -1820,7 +1821,9 @@ void Network::LoadResponse(const string & ng_name){
         int cls = -1, index = -1;
         GetSpeechIndexClass(filename, cls, index);
         assert(cls > -1 && cls < CLS && index != -1);
-
+		if(sample_num_record[cls]==0){
+			continue;
+		}
         filename = path + filename;
         ifstream f_in(filename.c_str());
         if(!f_in.is_open()){
@@ -1829,14 +1832,16 @@ void Network::LoadResponse(const string & ng_name){
         }
         Speech * speech = new Speech(cls);
         // set the index:
-        speech->SetIndex(index);
-        _speeches[index] = speech;
+        //speech->SetIndex(index);
+        //_speeches[index] = speech;
+		AddSpeech(speech);
     
         speech->SetNumChannel(input_size, INPUTCHANNEL);
         speech->SetNumChannel(reservoir_size, RESERVOIRCHANNEL);
         speech->LoadSpikes(f_in, RESERVOIRCHANNEL);
 
         f_in.close();
+		sample_num_record[cls]--;
     }
     
     // verify that all the speeches are properly loaded!
