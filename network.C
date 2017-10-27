@@ -1845,7 +1845,7 @@ void Network::LoadResponse(const string & ng_name){
             cout<<"The "<<i<<"th speech is not properly loaded!"<<endl;
             exit(EXIT_FAILURE);
         }
-	}
+    }
 }
 
 //* write the weights of the selected synaptic type
