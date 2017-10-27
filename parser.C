@@ -179,7 +179,7 @@ void Parser::Parse(const char * filename){
 void Parser::ParseNeuron(char * name, char * e_i, double v_mem){
     assert(_network->CheckExistence(name) == false);
     assert((strcmp(e_i,"excitatory")==0)||(strcmp(e_i,"inhibitory")==0));
-
+    
     bool excitatory = strcmp(e_i,"excitatory") == 0 ? true : false;
     _network->AddNeuron(name, excitatory, v_mem);
 }
