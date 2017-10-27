@@ -1645,7 +1645,7 @@ void NeuronGroup::LSMLoadSpeech(Speech * speech, int * n_channel, neuronmode_t n
             assert(channelmode == RESERVOIRCHANNEL && speech->NumChannels(channelmode) == 0);
         }
         if(channelmode == RESERVOIRCHANNEL)
-            speech->SetNumReservoirChannel(_neurons.size());
+            speech->SetNumChannel(_neurons.size(), RESERVOIRCHANNEL);
         else
             assert(0); // your code should never go here
     }

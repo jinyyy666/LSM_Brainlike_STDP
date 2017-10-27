@@ -8,6 +8,7 @@
 #include <utility>
 #include <cmath>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <sstream>
 
 Timer::Timer(){
@@ -167,4 +168,61 @@ void MakeDirs(std::string dir){
         }
         base = base + "/" + sub_dir;
     }
+}
+
+//* get the files recursively in a specific directory that is end is certain suffix
+std::vector<std::string> GetFilesEndWith(std::string path, const std::string& suffix){
+    struct stat sb;
+    if(stat(path.c_str(), &sb) != 0){
+        std::cout<<"The given path: "<<path<<" does not exist!"<<std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if(path.back() == '/')  path.pop_back();
+
+    std::vector<std::string> filenames;
+    file_finder(path, filenames, suffix);
+    return filenames;
+}
+
+//* recursively find the files
+void file_finder(const std::string& path, std::vector<std::string>& filenames, const std::string& suffix){
+    DIR *dir;
+    struct dirent *ent; 
+    struct stat st;
+
+    dir = opendir(path.c_str());
+    while((ent = readdir(dir)) != NULL){
+        std::string file_name = ent->d_name;
+        std::string full_file_name = path + "/" + file_name;
+        if(file_name[0] == '.') continue;
+    
+        if(stat(full_file_name.c_str(), &st) == -1) continue;
+
+        bool is_directory = (st.st_mode & S_IFDIR) != 0;
+
+        if(is_directory)    file_finder(full_file_name, filenames, suffix);
+    
+        if(file_name.length() >= suffix.length() && file_name.substr(file_name.length() - suffix.length()) == suffix)
+            filenames.push_back(file_name);
+    }
+}
+
+//* given a dumped speech name, get the class and index information
+//* the speech name is like: reservoir_spikes_[index]_[cls].dat
+void GetSpeechIndexClass(std::string filename, int& cls, int& index){
+    size_t pos = filename.find_last_of("_");
+    if(pos == std::string::npos){
+        std::cout<<"Invalid spike response filename: "<<filename<<std::endl;
+        exit(EXIT_FAILURE);
+    }
+    cls = std::stoi(filename.substr(pos + 1));
+    
+    filename = filename.substr(0, pos);
+    pos = filename.find_last_of("_");
+    if(pos == std::string::npos){
+        std::cout<<"Invalid spike response filename: "<<filename<<std::endl;
+        std::cout<<"Cannot find the index before the class id!"<<std::endl;
+        exit(EXIT_FAILURE);
+    }
+    index = std::stoi(filename.substr(pos + 1));
 }

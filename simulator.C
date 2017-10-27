@@ -198,6 +198,9 @@ void Simulator::LSMRun(long tid){
         while(!_network->LSMEndOfSpeech(networkmode, end_time)){
             _network->LSMNextTimeStep(++time,false,1, end_time, NULL);
         }
+#ifdef QUICK_RESPONSE
+        _network->SpeechPrint(info, "reservoir"); // dump the reservoir response for quick simulation
+#endif
 
 #ifdef _DUMP_RESPONSE
         if(tid == 0){

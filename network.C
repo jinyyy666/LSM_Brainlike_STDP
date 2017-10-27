@@ -1244,21 +1244,15 @@ void Network::SpeechInfo(){
         (*_sp_iter)->Info();
 }
 
-void Network::SpeechPrint(int info){
+void Network::SpeechPrint(int info, const string& channel_name){
     // prepare the paths
     MakeDirs("spikes/Input_Response");
     MakeDirs("spikes/Reservoir_Response");
     MakeDirs("spikes/Readout_Response_Trans");
     if(_sp_iter != _speeches.end())
-        (*_sp_iter)->PrintSpikes(info);
+        (*_sp_iter)->PrintSpikes(info, channel_name);
 }
 
-void Network::LoadResponse(){
-	for(int i=0;i<_speeches.size();i++){
-		_speeches[i]->SetNumReservoirChannel(SearchForNeuronGroup("reservoir")->Size());
-		(_speeches[i])->LoadResponse();
-	}
-}
 
 /***********************************************************************************************
  * Collect the max/min of EP/EN/IP/IN and max active # of pre spikes for different neuron group
@@ -1741,14 +1735,14 @@ void Network::DumpHiddenOutputResponse(const string & status, int sp){
     MakeDirs(path_hidden);
     MakeDirs(path_output);
     // dump the output spikes: 
-    string output_filename = path_output + "/" + "readout_spikes_" + to_string(sp) + ".dat";
+    string output_filename = path_output + "/" + "readout_spikes_" + to_string(sp) + "_"+ to_string(_sp->Class())+".dat";
     assert(_lsm_output_layer);
     _lsm_output_layer->DumpSpikeTimes(output_filename);
 
     // dump the hidden spikes:
     for(NeuronGroup * hidden : _lsm_hidden_layers){
         assert(hidden);
-        string hidden_filename = path_hidden + "/" + string(hidden->Name())+ "_spikes_" + to_string(sp) + ".dat";
+        string hidden_filename = path_hidden + "/" + string(hidden->Name())+ "_spikes_" + to_string(sp) + "_"+ to_string(_sp->Class()) +".dat";
         hidden->DumpSpikeTimes(hidden_filename);
     }
     
@@ -1799,6 +1793,59 @@ void Network::DumpCalciumLevels(string neuron_group, string dir, string filename
     ofstream f_out(f_name.c_str());
     ng->DumpCalciumLevels(f_out);
     f_out.close();
+}
+
+//* load the spikes to the specific channel correspond to the neuron group
+//* the spikes file is in the specific path
+void Network::LoadResponse(const string & ng_name){
+    if(ng_name != "reservoir"){
+        cout<<"Unsupported loading of response to neuron group: "<<ng_name<<endl;
+        exit(EXIT_FAILURE);
+    }
+    // set the path for reading the reservoir response
+    string path = "spikes/Reservoir_Response/";
+    vector<string> sp_files = GetFilesEndWith(path, ".dat");
+    
+    // pre-allocate the speeches pointers
+    assert(_speeches.empty());
+    _speeches = vector<Speech*>(sp_files.size(), NULL);
+
+    NeuronGroup * reservoir = SearchForNeuronGroup("reservoir");
+    assert(reservoir);
+    int reservoir_size = reservoir->Size();
+    NeuronGroup * input = SearchForNeuronGroup("input");
+    int input_size = input->Size();
+
+    for(string filename : sp_files){
+        int cls = -1, index = -1;
+        GetSpeechIndexClass(filename, cls, index);
+        assert(cls > -1 && cls < CLS && index != -1);
+
+        filename = path + filename;
+        ifstream f_in(filename.c_str());
+        if(!f_in.is_open()){
+            cout<<"Cannot open the file: "<<filename<<endl;
+            exit(EXIT_FAILURE);
+        }
+        Speech * speech = new Speech(cls);
+        // set the index:
+        speech->SetIndex(index);
+        _speeches[index] = speech;
+    
+        speech->SetNumChannel(input_size, INPUTCHANNEL);
+        speech->SetNumChannel(reservoir_size, RESERVOIRCHANNEL);
+        speech->LoadSpikes(f_in, RESERVOIRCHANNEL);
+
+        f_in.close();
+    }
+    
+    // verify that all the speeches are properly loaded!
+    for(int i = 0; i < _speeches.size(); ++i){
+        if(_speeches[i] == NULL){
+            cout<<"The "<<i<<"th speech is not properly loaded!"<<endl;
+            exit(EXIT_FAILURE);
+        }
+	}
 }
 
 //* write the weights of the selected synaptic type

@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <unordered_map>
 #include "def.h"
 
 class Channel;
@@ -13,6 +14,7 @@ private:
     std::vector<Channel*> _channels;
     std::vector<Channel*> _rChannels;
     std::vector<Channel*> _oChannels;
+    std::unordered_map<int, std::vector<Channel*>* > _channel_map;
     int _class;
     int _index;
     int _num_input_channels;
@@ -22,8 +24,7 @@ private:
 public:
     Speech(int);
     ~Speech();
-    void SetNumReservoirChannel(int size);
-    void SetNumOutputChannel(int size);
+    void SetNumChannel(int size, channelmode_t mode);
     Channel * AddChannel(int step_analog, int step_spikeT, int index);
     Channel * GetChannel(int,channelmode_t);
     void ClearChannel(channelmode_t channelmode);
@@ -45,12 +46,12 @@ public:
 
     void Info();
     void PrintSpikesPerChannels(const std::vector<Channel*>& channels, const std::string& filename);
-    void PrintSpikes(int info);
+    void PrintSpikes(int info, const std::string& channel_name);
     int PrintSpikeFreq(const char * type, std::ofstream & f_out);
     void SpikeFreq(std::ofstream & f_out, const std::vector<Channel*> & channels);
     int  EndTime();
     void CollectFreq(synapsetype_t syn_t, std::vector<double>& fs, int end_t);
-    void LoadResponse();
+    void LoadSpikes(std::ifstream & f_in, channelmode_t mode);
 };
 #endif
 

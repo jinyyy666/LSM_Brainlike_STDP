@@ -15,7 +15,11 @@ Speech::Speech(int cls):
     _index(-1),
     _class(cls),
     _weight(1.0)
-{}
+{
+    _channel_map[INPUTCHANNEL] = &_channels;
+    _channel_map[RESERVOIRCHANNEL] = &_rChannels;
+    _channel_map[OUTPUTCHANNEL] = &_oChannels;
+}
 
 Speech::~Speech(){
     for(vector<Channel*>::iterator iter = _channels.begin(); iter != _channels.end(); iter++) delete *iter;
@@ -29,75 +33,37 @@ Channel * Speech::AddChannel(int step_analog, int step_spikeT, int index){
     return channel;
 }
 
-void Speech::SetNumReservoirChannel(int size){
+void Speech::SetNumChannel(int size, channelmode_t mode){
     assert(size >= 0);
-    while(_rChannels.size() < size){
-        Channel * channel = new Channel(_rChannels.size());
-        _rChannels.push_back(channel);
+    while(_channel_map[mode]->size() < size){
+        Channel * channel = new Channel(_channel_map[mode]->size());
+        _channel_map[mode]->push_back(channel);
     }
 }
 
-
-//* intialize the channels attached to readout neurons
-void Speech::SetNumOutputChannel(int size){
-    assert(size >= 0 || _oChannels.empty());
-    while(_oChannels.size() < size){
-        Channel * channel = new Channel(_oChannels.size());
-        _oChannels.push_back(channel);
-    }
-}
 
 Channel * Speech::GetChannel(int index, channelmode_t channelmode){
-    if(channelmode == INPUTCHANNEL){
-        if(index < 0 && index >= _channels.size()){
-            cout<<"Invalid channel index: "<<index
-                <<" seen in aquiring input channels!\n"
-                <<"Total number of input channels: "<<_channels.size()
-                <<endl;
-            exit(EXIT_FAILURE);
-        }
-        return _channels[index];
-    }else if(channelmode == RESERVOIRCHANNEL){
-        if(index < 0 && index >= _rChannels.size()){
-            cout<<"Invalid channel index: "<<index
-                <<" seen in aquiring reservoir channels!\n"
-                <<"Total number of reservoir channels: "<<_rChannels.size()
-                <<endl;
-            exit(EXIT_FAILURE);
-        }
-        return _rChannels[index];
-    }
-    else if(channelmode == OUTPUTCHANNEL){
-        if(index < 0 && index >= _oChannels.size()){
-            cout<<"Invalid channel index: "<<index
-                <<" seen in aquiring readout channels!\n"
-                <<"Total number of readout channels: "<<_oChannels.size()
-                <<endl;
-            exit(EXIT_FAILURE);
-        }
-        return _oChannels[index]; 
-    }
-    else{
-        cout<<"No channel is initialized for: "<<channelmode<<endl;
-        cout<<"Please do not call GetChannel for hidden neurons!"<<endl;
+    if(index < 0 && index >= _channel_map[channelmode]->size()){
+        cout<<"Invalid channel index: "<<index
+            <<" seen in aquiring input channels!\n"
+            <<"Total number of input channels: "<<_channel_map[channelmode]->size()
+            <<endl;
         exit(EXIT_FAILURE);
     }
+    return (*_channel_map[channelmode])[index]; 
 }
 
 //* clear the targeted channels:
 void Speech::ClearChannel(channelmode_t channelmode){
-    vector<Channel*> tmp;
-    vector<Channel*>& ch = channelmode == INPUTCHANNEL ? _channels : 
-        channelmode == RESERVOIRCHANNEL ? _rChannels :
-        channelmode == OUTPUTCHANNEL ? _oChannels : tmp;
-    if(ch.empty()){
+    if(_channel_map.find(channelmode) == _channel_map.end()){
         cout<<"Invalid channel type: "<<channelmode<<endl;
         exit(EXIT_FAILURE);
     }
 
-    for(size_t i = 0; i < ch.size(); ++i){
-        assert(ch[i]);
-        ch[i]->Clear();
+    for(size_t i = 0; i < _channel_map[channelmode]->size(); ++i){
+        Channel * channel = (*_channel_map[channelmode])[i]; 
+        assert(channel);
+        channel->Clear();
     }
 
 }
@@ -149,12 +115,16 @@ void Speech::PrintSpikesPerChannels(const vector<Channel*>& channels, const stri
     f_out.close();
 }
 
-void Speech::PrintSpikes(int info){
-    string input = "spikes/Input_Response/input_spikes_" + to_string(info) + ".dat";
-    PrintSpikesPerChannels(_channels, input);
-
-    string reservoir = "spikes/Reservoir_Response/reservoir_spikes_" + to_string(info) + ".dat";
-    PrintSpikesPerChannels(_rChannels, reservoir);
+void Speech::PrintSpikes(int info, const string& channel_name){
+    if(channel_name == "input" || channel_name == "all"){
+        string input = "spikes/Input_Response/input_spikes_" + to_string(info) + "_" + to_string(_class) +".dat";
+        PrintSpikesPerChannels(_channels, input);
+    }
+    
+    if(channel_name == "reservoir" || channel_name == "all"){
+        string reservoir = "spikes/Reservoir_Response/reservoir_spikes_" + to_string(info) + "_" + to_string(_class)+ ".dat";
+        PrintSpikesPerChannels(_rChannels, reservoir);
+    }
 }
 
 //* this function read each channel and output the firing frequency into a matrix
@@ -225,26 +195,16 @@ void Speech::CollectFreq(synapsetype_t syn_t, vector<double>& fs, int end_t){
     }
 }
 
-void Speech::LoadResponse(){
-    FILE * Fp_reservoir;
-    char filename[64];
-    char linestring[8192];
-#ifdef TRAIN_SAMPLE
-    sprintf(filename,"spikes/Reservoir_Response/train/reservoir_spikes_%d_%d.dat",_file_index,_class);
-#else
-    sprintf(filename,"../Reservoir_Response_1156_200_stable/reservoir_spikes_%d_%d.dat",_file_index,_class);
-#endif
-    Fp_reservoir = fopen(filename,"r");
-    //ofstream f_reservoir(filename);
-    //assert(f_reservoir.is_open());
-    assert(Fp_reservoir != NULL);
-    if(fgets(linestring,8191,Fp_reservoir)==NULL||linestring[0]=='\n'){
-        assert(0);
+//* load the spike times ([neuron_id/channel_id], [fire_time]) into the corresponding channel
+void Speech::LoadSpikes(ifstream& f_in, channelmode_t mode){
+    assert(mode == RESERVOIRCHANNEL);
+    int index, spike_time;
+    f_in>>index>>spike_time; // get rid of -1   -1 at the beginning
+    while(f_in>>index>>spike_time){
+        if(index == -1 && spike_time == -1) break; // only read one iteration of speech
+        assert(index < _rChannels.size());
+        _rChannels[index]->AddSpike(spike_time);
     }
-    for(int i = 0; i < _rChannels.size(); i++){
-        _rChannels[i]->Read(Fp_reservoir);
-    }
-    fclose(Fp_reservoir);	
 }
 
 

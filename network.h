@@ -161,7 +161,7 @@ public:
 
     void SpeechInfo();
     // print the spikes into the file
-    void SpeechPrint(int info);
+    void SpeechPrint(int info, const std::string& channel_name = "all");
     void CollectEPENStat(const char * type);
     void PreActivityStat(const char * type, std::vector<double>& prob, std::vector<double>& avg_intvl, std::vector<int>& max_intvl);
     void CollectSpikeFreq(const char * type, std::vector<double>& fs, int end_t);
@@ -192,6 +192,8 @@ public:
     void DumpVMems(std::string dir, int info, const std::string& group_name);
     void DumpCalciumLevels(std::string neuron_group, std::string dir, std::string filename);
     
+    void LoadResponse(const std::string& ng_name);
+    
     void WriteSelectedSynToFile(const std::string& syn_type, char * filename);
     void WriteSynWeightsToFile(const std::string& pre_g, const std::string& post_g, char * filename);
     void LoadSynWeightsFromFile(const char * syn_type, char * filename);
@@ -217,7 +219,6 @@ public:
         pre->AddPostSyn(synapse);
         post->AddPreSyn(synapse);	
     } 
-	void LoadResponse();
 };
 
 #endif

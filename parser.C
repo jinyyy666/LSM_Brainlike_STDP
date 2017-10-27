@@ -152,6 +152,9 @@ void Parser::Parse(const char * filename){
             assert(token[1] != NULL);
             token[2] = strtok(NULL," \t\n");
             assert(token[2] != NULL);
+#ifdef LOAD_RESPONSE
+            continue; // do not read the NMNIST speech if we will direct load from the response
+#endif
 #ifdef QUICK_RESPONSE
             QuickLoad(atoi(token[1]),token[2]);
 #else
@@ -168,7 +171,7 @@ void Parser::Parse(const char * filename){
     fclose(fp);
 #ifdef LOAD_RESPONSE
     cout<<"Reservoir Response Load Start"<<endl;
-    _network->LoadResponse();
+    _network->LoadResponse("reservoir");
     cout<<"Reservoir Response Load Complete"<<endl;
 #endif
 }

@@ -20,7 +20,10 @@ Channel::Channel(int step_analog, int step_spikeT, int index):
 Channel::Channel(int index):
     _index(index),
     _mode(RESERVOIRCHANNEL)
-{}
+{
+    _step_analog = 10;
+    _step_spikeT = 1;
+}
 
 void Channel::AddAnalog(double signal){
     _analog.push_back(signal);
