@@ -15,6 +15,7 @@
 #include <climits>
 #include <cmath>
 #include <string>
+#include <unistd.h>
 
 //#define _DEBUG_VARBASE
 //#define _DEBUG_CORBASE
@@ -528,7 +529,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 
 #ifdef _DUMP_RESPONSE
         if(tid == 0 && iteration == 0){
-            DumpVMems("Waveform/train", info, "output");
+            DumpVMems("Waveform/train", info, "output");  
             DumpVMems("Waveform/train", info, "hidden_0");
             DumpHiddenOutputResponse("train", info);
         }
@@ -1246,9 +1247,18 @@ void Network::SpeechInfo(){
 
 void Network::SpeechPrint(int info, const string& channel_name){
     // prepare the paths
-    MakeDirs("spikes/Input_Response");
-    MakeDirs("spikes/Reservoir_Response");
-    MakeDirs("spikes/Readout_Response_Trans");
+	string s;
+	for(int i=0;i<CLS;i++){
+		s="spikes/Input_Response/"+to_string(i);
+		if(access(s.c_str(),0)!=0)
+			MakeDirs(s);
+		s="spikes/Reservoir_Response/"+to_string(i);
+		if(access(s.c_str(),0)!=0)
+			MakeDirs(s);
+		s="spikes/Readout_Response_Trans/"+to_string(i);
+		if(access(s.c_str(),0)!=0)
+			MakeDirs(s);
+	}
     if(_sp_iter != _speeches.end())
         (*_sp_iter)->PrintSpikes(info, channel_name);
 }
@@ -1723,26 +1733,33 @@ void Network::RemoveZeroWeights(const char * type){
 //* Dump the spikes of the hidden and output layer
 void Network::DumpHiddenOutputResponse(const string & status, int sp){
     string path_hidden, path_output;
+	string s;
     if(status == "unsupervised"){
-        path_hidden = "spikes/Hidden_Response_Unsupv";
-        path_output = "spikes/Readout_Response_Unsupv";
+        path_hidden = "spikes/Hidden_Response_Unsupv/";
+        path_output = "spikes/Readout_Response_Unsupv/";
     } 
     else{
         assert(status == "test" || status == "train");
-        path_hidden = "spikes/Hidden_Response_Supv/" + status;
-        path_output = "spikes/Readout_Response_Supv/" + status; 
+        path_hidden = "spikes/Hidden_Response_Supv/" + status+"/";
+        path_output = "spikes/Readout_Response_Supv/" + status+"/"; 
     }
-    MakeDirs(path_hidden);
-    MakeDirs(path_output);
+	for(int i=0;i<CLS;i++){
+		s=path_hidden+to_string(i);
+		if(access(s.c_str(),0)!=0)
+			MakeDirs(s);
+		s=path_output+to_string(i);
+		if(access(s.c_str(),0)!=0)
+			MakeDirs(s);
+	}
     // dump the output spikes: 
-    string output_filename = path_output + "/" + "readout_spikes_" + to_string(sp) + "_"+ to_string(_sp->Class())+".dat";
+    string output_filename = path_output + "/" +to_string(_sp->Class())+ "/readout_spikes_" + to_string(sp) + "_"+ to_string(_sp->Class())+".dat";
     assert(_lsm_output_layer);
     _lsm_output_layer->DumpSpikeTimes(output_filename);
 
     // dump the hidden spikes:
     for(NeuronGroup * hidden : _lsm_hidden_layers){
         assert(hidden);
-        string hidden_filename = path_hidden + "/" + string(hidden->Name())+ "_spikes_" + to_string(sp) + "_"+ to_string(_sp->Class()) +".dat";
+        string hidden_filename = path_hidden + "/"+to_string(_sp->Class())+"/" + string(hidden->Name())+ "_spikes_" + to_string(sp) + "_"+ to_string(_sp->Class()) +".dat";
         hidden->DumpSpikeTimes(hidden_filename);
     }
     
@@ -1751,8 +1768,11 @@ void Network::DumpHiddenOutputResponse(const string & status, int sp){
 
 //* Dump the v_mem of the network @param2: the speech index
 void Network::DumpVMems(string dir, int info, const string& group_name){
+	string s;
     // make the directory if needed
-    MakeDirs(dir);
+	s=dir+"/"+to_string(_sp->Class());
+	if(access(s.c_str(),0)!=0)
+		MakeDirs(s);
     NeuronGroup * ng = SearchForNeuronGroup(group_name.c_str());
     if(ng == NULL){
         cout<<"Warning::Cannot find the neuron group: "<<group_name<<endl;
@@ -1760,7 +1780,7 @@ void Network::DumpVMems(string dir, int info, const string& group_name){
     }
     assert(ng);
 
-    string filename = dir + "/" + group_name + "_" + to_string(info) + ".dat";
+    string filename = dir + "/"+to_string(_sp->Class())+"/" + group_name + "_" + to_string(info) + ".dat";
     ofstream f_out(filename.c_str());
     if(!f_out.is_open()){
         cout<<"Cannot file : "<<filename<<endl;
@@ -1778,6 +1798,7 @@ void Network::DumpVMems(string dir, int info, const string& group_name){
 //* Dump the calcium levels of the readout:
 void Network::DumpCalciumLevels(string neuron_group, string dir, string filename){
     NeuronGroup * ng = NULL;
+	string s;
     if(neuron_group == "readout"){
         ng = SearchForNeuronGroup("output");
         assert(ng);
@@ -1787,9 +1808,11 @@ void Network::DumpCalciumLevels(string neuron_group, string dir, string filename
         exit(EXIT_FAILURE);
     }
     // Create the directory if necessary
-    MakeDirs(dir);   
+	s=dir+"/"+to_string(_sp->Class());   
+	if(access(s.c_str(),0)!=0)
+		MakeDirs(s);
 
-    string f_name = dir + "/" + filename + ".txt";
+    string f_name = dir+"/"+to_string(_sp->Class()) + "/" + filename + ".txt";
     ofstream f_out(f_name.c_str());
     ng->DumpCalciumLevels(f_out);
     f_out.close();
@@ -1798,52 +1821,53 @@ void Network::DumpCalciumLevels(string neuron_group, string dir, string filename
 //* load the spikes to the specific channel correspond to the neuron group
 //* the spikes file is in the specific path
 void Network::LoadResponse(const string & ng_name,int sample_size){
-	vector<int> sample_num_record(CLS,sample_size);	
-    if(ng_name != "reservoir"){
+    
+	if(ng_name != "reservoir"){
         cout<<"Unsupported loading of response to neuron group: "<<ng_name<<endl;
         exit(EXIT_FAILURE);
     }
-    // set the path for reading the reservoir response
-    string path = "spikes/Reservoir_Response/";
-    vector<string> sp_files = GetFilesEndWith(path, ".dat");
-    
     // pre-allocate the speeches pointers
-    assert(_speeches.empty());
+		assert(_speeches.empty());
     //_speeches = vector<Speech*>(sp_files.size(), NULL);
+	for(int i=0;i<CLS;i++){
+		// set the path for reading the reservoir response
+		string path = "spikes/Reservoir_Response/"+to_string(i)+"/";
+		vector<string> sp_files = GetFilesEndWith(path, ".dat");
+    
+		NeuronGroup * reservoir = SearchForNeuronGroup("reservoir");
+		assert(reservoir);
+		int reservoir_size = reservoir->Size();
+		NeuronGroup * input = SearchForNeuronGroup("input");
+		int input_size = input->Size();
+		int filenum_read=0;
 
-    NeuronGroup * reservoir = SearchForNeuronGroup("reservoir");
-    assert(reservoir);
-    int reservoir_size = reservoir->Size();
-    NeuronGroup * input = SearchForNeuronGroup("input");
-    int input_size = input->Size();
-
-    for(string filename : sp_files){
-        int cls = -1, index = -1;
-        GetSpeechIndexClass(filename, cls, index);
-        assert(cls > -1 && cls < CLS && index != -1);
-		if(sample_num_record[cls]==0){
-			continue;
-		}
-        filename = path + filename;
-        ifstream f_in(filename.c_str());
-        if(!f_in.is_open()){
-            cout<<"Cannot open the file: "<<filename<<endl;
-            exit(EXIT_FAILURE);
-        }
-        Speech * speech = new Speech(cls);
+		for(string filename : sp_files){
+			int cls = -1, index = -1;
+			GetSpeechIndexClass(filename, cls, index);
+			assert(cls > -1 && cls < CLS && index != -1);
+			if(filenum_read>=TB_PER_CLASS){
+				break;
+			}
+			filename = path + filename;
+			ifstream f_in(filename.c_str());
+			if(!f_in.is_open()){
+				cout<<"Cannot open the file: "<<filename<<endl;
+				exit(EXIT_FAILURE);
+			}
+			Speech * speech = new Speech(cls);
         // set the index:
         //speech->SetIndex(index);
         //_speeches[index] = speech;
-		AddSpeech(speech);
+			AddSpeech(speech);
     
-        speech->SetNumChannel(input_size, INPUTCHANNEL);
-        speech->SetNumChannel(reservoir_size, RESERVOIRCHANNEL);
-        speech->LoadSpikes(f_in, RESERVOIRCHANNEL);
+			speech->SetNumChannel(input_size, INPUTCHANNEL);
+			speech->SetNumChannel(reservoir_size, RESERVOIRCHANNEL);
+			speech->LoadSpikes(f_in, RESERVOIRCHANNEL);
 
-        f_in.close();
-		sample_num_record[cls]--;
-    }
-    
+			f_in.close();
+			filenum_read++;
+		}
+	}
     // verify that all the speeches are properly loaded!
     for(int i = 0; i < _speeches.size(); ++i){
         if(_speeches[i] == NULL){

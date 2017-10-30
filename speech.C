@@ -117,12 +117,12 @@ void Speech::PrintSpikesPerChannels(const vector<Channel*>& channels, const stri
 
 void Speech::PrintSpikes(int info, const string& channel_name){
     if(channel_name == "input" || channel_name == "all"){
-        string input = "spikes/Input_Response/input_spikes_" + to_string(info) + "_" + to_string(_class) +".dat";
+        string input = "spikes/Input_Response/"+ to_string(_class)+"/input_spikes_" + to_string(info) + "_" + to_string(_class) +".dat";
         PrintSpikesPerChannels(_channels, input);
     }
     
     if(channel_name == "reservoir" || channel_name == "all"){
-        string reservoir = "spikes/Reservoir_Response/reservoir_spikes_" + to_string(info) + "_" + to_string(_class)+ ".dat";
+        string reservoir = "spikes/Reservoir_Response/"+to_string(_class)+"/reservoir_spikes_" + to_string(info) + "_" + to_string(_class)+ ".dat";
         PrintSpikesPerChannels(_rChannels, reservoir);
     }
 }
