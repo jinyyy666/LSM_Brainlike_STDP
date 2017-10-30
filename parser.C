@@ -13,6 +13,8 @@
 #include <cctype>
 #include <cstring>
 #include <assert.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -145,6 +147,15 @@ void Parser::Parse(const char * filename){
             assert(token[2] != NULL);
 
             ParseMNISTSpeech(atoi(token[1]),token[2]);
+        }else if(strcmp(token[0],"NMNIST")==0){
+            token[1] = strtok(NULL," \t\n");
+            assert(token[1] != NULL);
+            token[2] = strtok(NULL," \t\n");
+            assert(token[2] != NULL);
+#ifdef LOAD_RESPONSE
+            continue; // do not read the NMNIST speech if we will direct load from the response
+#endif
+            ParseNMNIST(atoi(token[1]),token[2]);
         }else if(strcmp(token[0],"end")==0){
             break;
         }else{
@@ -154,6 +165,11 @@ void Parser::Parse(const char * filename){
 
     }
     fclose(fp);
+#ifdef LOAD_RESPONSE
+    cout<<"Reservoir Response Load Start"<<endl;
+    _network->LoadResponse("reservoir",TB_PER_CLASS);
+    cout<<"Reservoir Response Load Complete"<<endl;
+#endif
 }
 
 void Parser::ParseNeuron(char * name, char * e_i, double v_mem){
@@ -293,3 +309,91 @@ void Parser::ParseMNISTSpeech(int cls, char* path){
 
     fclose(fp);
 }
+
+//* this function is used to parse N-MNIST testbench.
+//* for N-MNIST, there are 1156 input neurons
+//* They are converted from the original spike based testbench at
+//* http://www.garrickorchard.com/datasets
+// if you want quick generate reservoir, enable quickload and set NumThread to 100
+// then load the the dumped file by enabling Load_Response
+void Parser::ParseNMNIST(int cls,char* path){
+    int input_num;
+    input_num=_network->SearchForNeuronGroup("input")->Size();
+	int from_num;
+	int to_num;
+    int tid=_network->GetTid();
+    int file_read=0;
+    
+	struct stat s;
+    
+	struct dirent* filename;
+    DIR *dir;
+#ifdef QUICK_RESPONSE
+    const char *keyword="Test";
+    if(tid/10!=cls)
+        return;
+	from_num=strstr(path,keyword)?(tid%10)*100:(tid%10)*600;
+	to_num=strstr(path,keyword)?(tid%10+1)*100:(tid%10+1)*600;
+	if(tid%10==9)
+		to_num=-1;
+#else
+	from_num=-1;
+	to_num=TB_PER_CLASS<0?-1:TB_PER_CLASS;
+#endif
+    //check if path is a valid dir
+    lstat(path,&s);
+    if(!S_ISDIR(s.st_mode)){
+        cout<<"path is not a valid directory"<<endl;
+        assert(0);
+    }
+	//open directory
+    dir=opendir(path);
+    if(dir==NULL){
+        cout<<"Cannot open dir"<<endl;
+        assert(0);
+    }
+    while((filename=readdir(dir))!=NULL){
+        if(filename->d_name[0]<'0'||filename->d_name[0]>'9'){
+            continue;
+        }
+		if(from_num>=0&&file_read<from_num){
+			file_read++;
+			continue;
+		}
+		if(to_num>=0&&file_read>=to_num){
+			break;
+		}
+        const size_t len = strlen(path)+strlen(filename->d_name);
+        char *file_path=new char[len+1];
+        strcpy(file_path,path);
+        strcat(file_path,filename->d_name);
+        file_read++;
+        Speech * speech = new Speech(cls);
+        Channel * channel;
+        char linestring[8192];
+        char * token;
+        int index=0;
+        int line_count=0;
+        FILE * fp = fopen(file_path,"r");
+        assert(fp != NULL);
+        _network->AddSpeech(speech);
+        while(line_count<input_num){
+            line_count++;
+            channel = speech->AddChannel(10, 1, index++);
+            if(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){	
+                token=strtok(linestring," \t\n,");
+                while(token!=NULL){
+                    channel->AddSpike(atoi(token)+1);
+                    token=strtok(NULL," \t\n,");
+                }
+            }
+        }
+        fclose(fp);
+        delete token;
+    }
+    closedir(dir);
+//	cout<<tid<<" load "<<file_read<<" files"<<" from class "<<cls<<", read from "<<from_num<<" to "<<to_num<<endl;
+}
+
+
+

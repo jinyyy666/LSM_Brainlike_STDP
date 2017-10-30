@@ -20,7 +20,10 @@ Channel::Channel(int step_analog, int step_spikeT, int index):
 Channel::Channel(int index):
     _index(index),
     _mode(RESERVOIRCHANNEL)
-{}
+{
+    _step_analog = 10;
+    _step_spikeT = 1;
+}
 
 void Channel::AddAnalog(double signal){
     _analog.push_back(signal);
@@ -126,4 +129,26 @@ void Channel::Print(ofstream& f_out){
     if(_spikeT.empty() == true) return;
     for(_iter_spikeT = _spikeT.begin(); _iter_spikeT != _spikeT.end(); _iter_spikeT++) 
         f_out<<_index<<"\t"<<*_iter_spikeT<<endl;
+}
+
+void Channel::Read(FILE * fp){
+	char linestring[8192];
+	char * token;
+	int spike_t;
+	int index;
+	while(1){
+		if(fgets(linestring,8191,fp)==NULL||linestring[0]=='\n'){
+			assert(0);
+		}
+		token=strtok(linestring," \t\n,");
+		index=atoi(token);
+		if(index==-1){
+			break;
+		}
+		if(index!=_index)
+			assert(0);
+		token=strtok(NULL," \t\n,");
+		spike_t=atoi(token);
+		AddSpike(atoi(token));
+	}
 }

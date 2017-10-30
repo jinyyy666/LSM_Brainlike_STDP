@@ -178,6 +178,7 @@ void Simulator::LSMRun(long tid){
     //assert(f1.is_open() && f2.is_open());
     ////////////////////////////////////////////////////////////////////////
 
+#ifndef LOAD_RESPONSE
     // produce transient state
     networkmode = TRANSIENTSTATE;
     _network->LSMSetNetworkMode(networkmode);
@@ -197,12 +198,16 @@ void Simulator::LSMRun(long tid){
         while(!_network->LSMEndOfSpeech(networkmode, end_time)){
             _network->LSMNextTimeStep(++time,false,1, end_time, NULL);
         }
+#ifdef QUICK_RESPONSE
+        _network->SpeechPrint(info+_network->GetTid()*_network->NumSpeech(), "reservoir"); // dump the reservoir response for quick simulation
+#else
 
 #ifdef _DUMP_RESPONSE
         if(tid == 0){
-            _network->SpeechPrint(info);
+			_network->SpeechPrint(info, "reservoir"); // dump the reservoir response for quick simulation
             _network->DumpVMems("Waveform/transient", info, "reservoir");
         }
+#endif
 #endif
         // print the firing frequency into the file:
         //_network->SpeechSpikeFreq("input", f1, f2);
@@ -247,6 +252,10 @@ void Simulator::LSMRun(long tid){
     return;
 #endif
 
+#endif // end of load response
+#ifdef QUICK_RESPONSE
+	return;
+#endif
 
 #if defined(STDP_TRAINING_READOUT) && defined(STDP_TRAINING)
     // traing the readout using STDP rule first:
@@ -278,7 +287,11 @@ void Simulator::LSMRun(long tid){
 
     // train the readout layer
     myTimer.Start();
+#ifndef TEACHER_SIGNAL
     networkmode = READOUTBP; // choose the readout supervised algorithm here!
+#else
+    networkmode = READOUT; // choose the readout supervised algorithm here!
+#endif
     _network->LSMSetNetworkMode(networkmode);
 #ifdef CV
 #if NUM_THREADS == 1
@@ -305,7 +318,6 @@ void Simulator::LSMRun(long tid){
         }
 #endif
 #endif
-        int correct = 0, wrong = 0, even = 0;
         for(int iii = 0; iii < NUM_ITERS; iii++){
             if(tid == 0)    cout<<"Run the iteration: "<<iii<<endl;
             // random shuffle the training samples for better generalization

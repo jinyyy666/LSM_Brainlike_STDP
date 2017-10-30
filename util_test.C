@@ -85,6 +85,27 @@ void UtilTest::testMakeDirs(){
     
 }
 
+// inorder to run the test, please enable the DUMP_RESPONSE in the simulator to generate the 
+// Waveform/ directory. Remember, only load one speech!
+void UtilTest::testGetFilesEndWith(){
+    string path = "Waveform/";
+    vector<string> res = GetFilesEndWith(path, ".dat");
+    vector<string> true_res = {"output_0.dat", "hidden_0_0.dat", "output_0.dat", "hidden_0_0.dat"};
+    for(size_t i = 0; i < res.size(); ++i)  assert(res[i] == true_res[i]);
+    cout<<"Function::GetFilesEndWith passes the simple test!!"<<endl;
+}
+
+void UtilTest::testGetSpeechIndexClass(){
+    vector<string> filenames = {"reservoir_0_0.dat", "hidden_0_100_9.dat", "output_291_10.dat"};
+    vector<pair<int, int> > true_res = {{0, 0}, {100, 9}, {291, 10}};
+    for(int i = 0; i < filenames.size(); ++i){
+        int cls = -1, index = -1;
+        GetSpeechIndexClass(filenames[i], cls, index);
+        assert(cls == true_res[i].second && index == true_res[i].first);
+    }
+    cout<<"Function::GetSpeechIndexClass passes the simple test!!"<<endl;
+}
+
 int main(int argc, char** argv){
     UtilTest ut;
     cout<<"======================= Begin testing ====================== "<<endl;
@@ -103,7 +124,14 @@ int main(int argc, char** argv){
     cout<<"Test the MakeDirs: "<<endl;
     ut.testMakeDirs();
     
+    cout<<"*********************************"<<endl;
+    cout<<"Test the GetFilesEndWith: "<<endl;
+    ut.testGetFilesEndWith();
 
+    cout<<"*********************************"<<endl;
+    cout<<"Test the GetSpeechIndexClass: "<<endl;
+    ut.testGetSpeechIndexClass();
+ 
     
     return 0;
 }

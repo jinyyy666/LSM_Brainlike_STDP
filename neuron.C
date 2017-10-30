@@ -100,6 +100,7 @@ Neuron::Neuron(char * name, bool excitatory, Network * network):
     _f_count = 0;
     _fired = false;
     _error = 0;
+    _allow_dynamic_threshold = false;
 }
 
 //FOR INPUT AND OUTPUT
@@ -164,6 +165,7 @@ Neuron::Neuron(char * name, bool excitatory, Network * network, double v_mem):
     _f_count = 0;
     _fired = false;
     _error = 0;
+    _allow_dynamic_threshold = false;
 }
 
 Neuron::~Neuron(){
@@ -582,9 +584,6 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
         // need to get rid of the deactivated synapse !
         if(synapse->DisableStatus())  continue;
     
-        // no need to activate/learning the synapse if the post neuron is deactivated
-        if(synapse->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED) == true)  continue;
-        
         synapse->LSMDeliverSpike();  
         synapse->SetPreSpikeT(time);
 
@@ -806,6 +805,9 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
     }
 
     _fired = false;
+
+    if(_allow_dynamic_threshold && _network->LSMGetNetworkMode()==TRANSIENTSTATE)  
+        DynamicThreshold(t);
 
 #ifdef DIGITAL
     if(_D_lsm_v_mem > _D_lsm_v_thresh){  
@@ -1114,6 +1116,21 @@ void Neuron::DebugFunc(int t){
 #endif
     }
 
+}
+
+
+// The function to apply dynamic threshold
+void Neuron::DynamicThreshold(int t){
+#ifdef DIGITAL
+    assert(0); // only implement this for the continuous setting
+#endif
+    if(!(_name[0] == 'r' && _name[9] == '_'))   return;
+    if(_fired && _lsm_calcium > LSM_CAL_MID + 1 && _lsm_v_thresh < 30) {
+        _lsm_v_thresh += 1.98;
+    }   
+    else if(!_fired && _lsm_calcium < LSM_CAL_MID -1 && _lsm_v_thresh > 5 && t > 20) {
+        _lsm_v_thresh -= 0.02;
+    }
 }
 
 
@@ -1440,6 +1457,14 @@ NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * ne
         else excitatory = true;
         sprintf(neuronName,"%s_%d",name,i);
         Neuron * neuron = new Neuron(neuronName,excitatory,network);
+#ifdef _DYNAMIC_THRESHOLD
+        if(rand()%100 < 100*DYNAMIC_THRESHOLD_PER){
+            neuron->EnableDynamicThresh(true);
+        }
+        else{
+            neuron->EnableDynamicThresh(false);
+        }
+#endif
         neuron->SetIndexInGroup(i);
         _neurons[i] = neuron;
         _lsm_coordinates[i] = new int[3];
@@ -1617,7 +1642,7 @@ void NeuronGroup::LSMLoadSpeech(Speech * speech, int * n_channel, neuronmode_t n
             assert(channelmode == RESERVOIRCHANNEL && speech->NumChannels(channelmode) == 0);
         }
         if(channelmode == RESERVOIRCHANNEL)
-            speech->SetNumReservoirChannel(_neurons.size());
+            speech->SetNumChannel(_neurons.size(), RESERVOIRCHANNEL);
         else
             assert(0); // your code should never go here
     }
@@ -1918,7 +1943,7 @@ void NeuronGroup::PrintSpikeCount(int cls){
     cout<<"The current speech class: "<<cls<<endl;
     for(int i = 0; i < _neurons.size(); ++i){
         cout<<"Neuron "<<i<<" fires "<<_neurons[i]->FireCount()<<endl;
-    }    
+    }
 }
 
 void NeuronGroup::LSMRemoveSpeech(){
@@ -1989,3 +2014,4 @@ void NeuronGroup::RemoveZeroSyns(synapsetype_t syn_type){
     }
     cout<<"The number of zero-out synapses: "<<cnt/2<<endl;
 }
+

@@ -1,5 +1,9 @@
 #ifndef PARSER_H
 #define PARSER_H
+#include "def.h"
+#include <vector>
+#include <string>
+#include <cstring>
 
 class Network;
 
@@ -16,6 +20,7 @@ public:
     void ParseSpeech(int, char*);
     void ParsePoissonSpeech(int cls, char * path);
     void ParseMNISTSpeech(int cls, char * path);
+    void ParseNMNIST(int cls,char* path);
 };
 
 #endif

@@ -5,6 +5,7 @@
 #define _MNIST    0
 #define _TRAFFIC   0
 #define _CITYSCAPE 0
+#define _NMNIST 0
 
 #define _SPEECH    1
 #define _LETTER    1
@@ -79,6 +80,16 @@
 #define INDEG_LIMIT  1
 #define OUTDEG_LIMIT 1
 
+
+/******************************************
+ * Control variable for switching different 
+ * readout training algorithms
+ * The TS is only defined for Yong's and supvervised
+ * STDP.
+ *****************************************/
+#define TEACHER_SIGNAL
+
+
 /*******************************************
 // the new rule(SRM based/reward modulated)
 *******************************************/
@@ -113,7 +124,6 @@
 #define DESIRED_LEVEL 45    // the count level for the count based obj
 #define UNDESIRED_LEVEL 15
 #define MARGIN 5
-
 
 //#define _BOOSTING_METHOD
 
@@ -272,9 +282,9 @@
 //#define DIGITAL_SYN_ORGINAL 1
 #define LIQUID_SYN_MODIFICATION 1
 
-//#define SYN_ORDER_2 0 
-#define SYN_ORDER_1 1 
-#define SYN_ORDER_0 0 
+#define SYN_ORDER_2 1 
+//#define SYN_ORDER_1 0
+//#define SYN_ORDER_0 0 
 
 #define CV
 #define NFOLD 5
@@ -295,6 +305,19 @@
 //#define _DUMP_CALCIUM
 
 //#define _TEST_
+
+//NMNIST functions
+
+#define TB_PER_CLASS 100 //set to -1 if need to read all
+
+//#define LOAD_RESPONSE
+
+//#define _DYNAMIC_THRESHOLD
+//#define DYNAMIC_THRESHOLD_PER 0.7
+
+//#define QUICK_RESPONSE
+
+
 
 enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL, OUTPUTCHANNEL}; // for allocate speech channels
 enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,READCHANNELBP,NORMALSTDP,NORMALBP,NORMAL}; // for implement network stat.

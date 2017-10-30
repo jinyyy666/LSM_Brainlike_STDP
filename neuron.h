@@ -60,6 +60,8 @@ private:
     bool _fired;
     double _error; // error used in the back-prop
 
+    bool _allow_dynamic_threshold; // enable dynamic threshold
+
     // collect ep/en/ip/in stat for resolution
     int _EP_max, _EP_min, _EN_max, _EN_min, _IP_max, _IP_min, _IN_max, _IN_min;
     // collect max pre-spike count at each time point
@@ -144,6 +146,8 @@ public:
     int FireCount(){return _f_count;}
     void FireCount(int count){_f_count = count;}
 
+    void EnableDynamicThresh(bool dt){_allow_dynamic_threshold=dt;}
+
     bool Fired(){return _fired;}
 
     template<typename T> void GetWaveForm(std::vector<T>& v){v = _vmems;}
@@ -226,6 +230,8 @@ public:
     void UpdateLWeight();
 
     void DebugFunc(int t);
+    
+    void DynamicThreshold(int t);
 
     void WriteOutputWeights(std::ofstream& f_out, int& index, const std::string& post_g); 
     int SizeOutputSyns(){return _outputSyns.size();} //Calculate # of output synapses for verfication

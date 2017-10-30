@@ -53,6 +53,10 @@ std::vector<double> ComputeAccSRM(const std::vector<int>& pre_times, const std::
 std::vector<int> BuildDummyTimes(int max_count, int end_time);
 void MakeDirs(std::string dir);
 
+std::vector<std::string> GetFilesEndWith(std::string path, const std::string& suffix);
+void file_finder(const std::string& path, std::vector<std::string>& filename, const std::string& suffix);
+void GetSpeechIndexClass(std::string filename, int& cls, int& index);
+
 //* reload the + for the vectors:
 template<class T> std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
 {

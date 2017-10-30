@@ -9,6 +9,8 @@ public:
     void testComputeAccSRM();  
     void testBuildDummyTimes(); 
     void testMakeDirs();
+    void testGetFilesEndWith();
+    void testGetSpeechIndexClass();
 };
 
 

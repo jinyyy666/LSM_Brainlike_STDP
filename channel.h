@@ -4,6 +4,7 @@
 #include <vector>
 #include "def.h"
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 
 class Channel{
@@ -32,6 +33,7 @@ public:
     channelmode_t Mode(){return _mode;}
     void Clear();
     void Print(std::ofstream& f_out);
+    void Read(FILE * fp);
 };
 
 #endif
