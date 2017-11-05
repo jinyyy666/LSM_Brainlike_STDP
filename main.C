@@ -198,32 +198,10 @@ int main(int argc, char * argv[]){
     gettimeofday(&val2,&zone);
     cout<<"Wall clock time: "<<((val2.tv_sec-val1.tv_sec)+double(val2.tv_usec-val1.tv_usec)*1e-6)<<" seconds"<<endl;
 
-    cout<<"Readout the results from the /outputs .... "<<endl; 
-#if _SPEECH == 1
-#if _LETTER == 1
-    Readout readout_module(260); 
-#elif _DIGIT == 1
-    Readout readout_module(500); // 500 is for 500 digit words
-#else
-    assert(0);
-#endif
-#elif _IMAGE == 1
-#if _NMNIST == 1
-    Readout readout_module(CLS*TB_PER_CLASS); // 500 is for 500 digit words
-#elif _MNIST == 1
-    Readout readout_module(500); // 500 for MNIST
-#elif _TRAFFIC == 1
-    Readout readout_module(300); // 300 for traffic sign
-#elif _CITYSCAPE == 1
-    Readout readout_module(1080); // 1080 for the city scape dataset
-#else
-    assert(0);
-#endif
-#else
-    assert(0);
-#endif
-
+    cout<<"Readout the results ..."<<endl; 
+    cout<<"Number of samples: "<<array_network[0].NumSpeech()<<endl;
 #ifdef _WRITE_STAT
+    Readout readout_module(array_network[0].NumSpeech());
     readout_module.Multireadout();
 #else
     // collect the result directly from network:

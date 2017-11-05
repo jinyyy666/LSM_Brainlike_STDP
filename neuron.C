@@ -765,10 +765,17 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
 #endif  
 
     // sum up the effect
+#ifdef DIGITAL
+    _D_lsm_state_EP += _prev_delta_ep;
+    _D_lsm_state_EN += _prev_delta_en;
+    _D_lsm_state_IP += _prev_delta_ip;
+    _D_lsm_state_IN += _prev_delta_in;
+#else
     _lsm_state_EP += _prev_delta_ep;
     _lsm_state_EN += _prev_delta_en;
     _lsm_state_IP += _prev_delta_ip;
     _lsm_state_IN += _prev_delta_in;
+#endif
 
 #ifdef DIGITAL
     int temp = DNOrderSynapticResponse();

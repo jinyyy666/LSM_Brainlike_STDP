@@ -52,12 +52,10 @@ Readout::Readout(char * nums_speech){
         cout<<"Wrong amount of total speeches!"<<endl;
         exit(-1);
     }
-    cout<<"Total number of speeches:"<<num_of_speeches<<endl;
 }
 
 Readout::Readout(int nums_speech){
     num_of_speeches = nums_speech;
-    cout<<"Total number of speeches:"<<num_of_speeches<<endl;
 }
 
 //* flag: 0 --> 26 letters  flag: 1 --> 10 digits
