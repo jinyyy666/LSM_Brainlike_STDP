@@ -1,7 +1,7 @@
 neurongroup	input 1156 excitatory
 column reservoir 6 6 15
 neurongroup	output	10	excitatory
-lsmsynapse input reservoir 1 5 48 1 fixed
+lsmsynapse input reservoir 1 5 32 1 fixed
 lsmsynapse	reservoir	output	-1	-1	8	2	learning
 #NMNIST	0	../N-MNIST/Train_new/0/
 #NMNIST	1	../N-MNIST/Train_new/1/
