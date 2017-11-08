@@ -1828,10 +1828,9 @@ void Network::LoadResponse(const string & ng_name,int sample_size){
     }
     // pre-allocate the speeches pointers
     assert(_speeches.empty());
-    //_speeches = vector<Speech*>(sp_files.size(), NULL);
-    for(int i=0;i<CLS;i++){
+    for(int i = 0; i < CLS; i++){
         // set the path for reading the reservoir response
-        string path = "spikes/Reservoir_Response/"+to_string(i)+"/";
+        string path = "spikes/Reservoir_Response/" + to_string(i) + "/";
         vector<string> sp_files = GetFilesEndWith(path, ".dat");
 
         NeuronGroup * reservoir = SearchForNeuronGroup("reservoir");
@@ -1855,9 +1854,6 @@ void Network::LoadResponse(const string & ng_name,int sample_size){
                 exit(EXIT_FAILURE);
             }
             Speech * speech = new Speech(cls);
-            // set the index:
-            //speech->SetIndex(index);
-            //_speeches[index] = speech;
             AddSpeech(speech);
 
             speech->SetNumChannel(input_size, INPUTCHANNEL);

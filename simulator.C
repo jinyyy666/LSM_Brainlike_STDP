@@ -76,7 +76,7 @@ void Simulator::LSMRun(long tid){
     if(tid == 0){
         sprintf(filename, "r_weights_info.txt");
         _network->WriteSynWeightsToFile("input", "reservoir", filename);
-        sprintf(filename, "r_weights_info_recurrent.txt");
+        sprintf(filename, "r_weights_recurrent_info.txt");
         _network->WriteSynWeightsToFile("reservoir", "reservoir", filename);
         sprintf(filename, "h_weights_info.txt");
         _network->WriteSynWeightsToFile("reservoir", "hidden_0", filename);
@@ -156,9 +156,9 @@ void Simulator::LSMRun(long tid){
 
     // Write the weight back to file after training the reservoir with STDP:
     if(tid == 0){
-        sprintf(filename, "r_weights_info_trained.txt");
+        sprintf(filename, "r_weights_recurrent_info_trained.txt");
         _network->WriteSelectedSynToFile("reservoir", filename);
-        sprintf(filename, "i_weights_info_trained.txt");
+        sprintf(filename, "r_weights_info_trained.txt");
         _network->WriteSelectedSynToFile("input", filename);
     }
 
@@ -204,7 +204,7 @@ void Simulator::LSMRun(long tid){
 
 #ifdef _DUMP_RESPONSE
         if(tid == 0){
-			_network->SpeechPrint(info, "reservoir"); // dump the reservoir response for quick simulation
+			_network->SpeechPrint(info, "all");
             _network->DumpVMems("Waveform/transient", info, "reservoir");
         }
 #endif
