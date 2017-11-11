@@ -51,6 +51,10 @@ void Simulator::LSMRun(long tid){
     srand(0);
     _network->IndexSpeech();
     cout<<"Number of speeches: "<<_network->NumSpeech()<<endl;
+#ifdef USE_TEST_SAMPLE
+    cout<<"Number of speeches for testing: "<<_network->NumTestSpeech()<<endl;
+#endif
+
 #ifndef CV // This is for the case without cross-validation
 #ifdef _WRITE_STAT
     for(int count = 0; count < _network->NumSpeech(); count++){
@@ -183,51 +187,11 @@ void Simulator::LSMRun(long tid){
     networkmode = TRANSIENTSTATE;
     _network->LSMSetNetworkMode(networkmode);
     myTimer.Start();
-#ifdef _RES_FIRING_CHR
-    vector<double> prob, avg_intvl;
-    vector<int> max_intvl;
+    _network->LSMTransientSim(networkmode, "train_sample");
+#ifdef USE_TEST_SAMPLE
+    _network->LSMTransientSim(networkmode, "test_sample");
 #endif
-    count = 0;
-    _network->LSMClearSignals();
-    info = _network->LoadFirstSpeech(false, networkmode);
-    while(info != -1){
-        Fp = NULL;
-        Foutp = NULL;
-        count++;
-        int time = 0, end_time = _network->SpeechEndTime();
-        while(!_network->LSMEndOfSpeech(networkmode, end_time)){
-            _network->LSMNextTimeStep(++time,false,1, end_time, NULL);
-        }
-#ifdef QUICK_RESPONSE   //Only for NMNIST
-        _network->SpeechPrint(info+(_network->GetTid()%10)*(_network->NumSpeech()>400?600:100), "reservoir"); // dump the reservoir response for quick simulation
-#else
-
-#ifdef _DUMP_RESPONSE
-        if(tid == 0){
-			_network->SpeechPrint(info, "all");
-            _network->DumpVMems("Waveform/transient", info, "reservoir");
-        }
-#endif
-#endif
-        // print the firing frequency into the file:
-        //_network->SpeechSpikeFreq("input", f1, f2);
-#ifdef _RES_FIRING_CHR
-        _network->PreActivityStat("reservoir", prob, avg_intvl, max_intvl);
-#endif
-
-#ifdef _VARBASED_SPARSE
-        // Collect the firing activity of each reservoir neurons from sp
-        // and scatter the frequency back to the network:
-        cout<<"Begin readout sparsification...."<<endl;
-        vector<double> fs;
-        _network->CollectSpikeFreq("reservoir", fs, time);
-        _network->ScatterSpikeFreq("reservoir", fs);
-        cout<<"Done with the readout sparsification!"<<endl;
-#endif
-
-        _network->LSMClearSignals();
-        info = _network->LoadNextSpeech(false, networkmode);
-    }
+    
     myTimer.End("running transient");
     //////////////////////////////////////////////////////////////////////////////
     // REMEMBER TO REMOVE THESE CODES!
@@ -245,11 +209,6 @@ void Simulator::LSMRun(long tid){
     // merge the firing of two neurons based on the correlations
     cout<<"Begin correlation based readout sparsification"<<endl;
     _network->CorBasedSparsify();
-#endif
-
-#ifdef _RES_FIRING_CHR
-    CollectPAStat(prob, avg_intvl, max_intvl);
-    return;
 #endif
 
 #endif // end of load response

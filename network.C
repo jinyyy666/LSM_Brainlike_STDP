@@ -488,6 +488,49 @@ void Network::LSMHubDetection(){
     cout<<"Total number of hubs in the reservoir is "<<cnt<<endl;
 }
 
+//****************************************************************************************
+//
+// This is a function wrapper for running the transient simulation
+// @param2: can be "train_sample", samples for training and cv, 
+//                 "test_sample", samples for purely testing, need to enable "USE_TEST_SAMPLE"
+//****************************************************************************************
+void Network::LSMTransientSim(networkmode_t networkmode, const string sample_type){
+    int count = 0;
+    LSMClearSignals();
+    int info = this->LoadFirstSpeech(false, networkmode, sample_type);
+    while(info != -1){
+        count++;
+        int time = 0, end_time = this->SpeechEndTime();
+        while(!LSMEndOfSpeech(networkmode, end_time)){
+            LSMNextTimeStep(++time,false,1, end_time, NULL);
+        }
+#ifdef QUICK_RESPONSE   //Only for NMNIST
+        SpeechPrint(info+(_network->GetTid()%10)*(_network->NumSpeech()>400?600:100), "reservoir"); // dump the reservoir response for quick simulation
+#else
+
+#ifdef _DUMP_RESPONSE
+        if(tid == 0 && sample_type == "train_sample"){
+			SpeechPrint(info, "all");
+            DumpVMems("Waveform/transient", info, "reservoir");
+        }
+#endif
+#endif
+
+#ifdef _VARBASED_SPARSE
+        // Collect the firing activity of each reservoir neurons from sp
+        // and scatter the frequency back to the network:
+        cout<<"Begin readout sparsification...."<<endl;
+        vector<double> fs;
+        this->CollectSpikeFreq("reservoir", fs, time);
+        this->ScatterSpikeFreq("reservoir", fs);
+        cout<<"Done with the readout sparsification!"<<endl;
+#endif
+        LSMClearSignals();
+        info = LoadNextSpeech(false, networkmode, sample_type);
+    }
+
+}
+
 
 //****************************************************************************************
 //
@@ -566,6 +609,8 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
     // 4. Load the speech for testing
 #ifdef CV
     info = LoadFirstSpeechTestCV(networkmode);
+#elif defined(USE_TEST_SAMPLE)
+    info = LoadFirstSpeech(false, networkmode, "test_sample");
 #else
     info = LoadFirstSpeech(false, networkmode);
 #endif
@@ -614,6 +659,8 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 
 #ifdef CV
         info = LoadNextSpeechTestCV(networkmode);
+#elif defined(USE_TEST_SAMPLE)
+        info = LoadNextSpeech(false, networkmode, "test_sample");
 #else
         info = LoadNextSpeech(false, networkmode);
 #endif
@@ -817,6 +864,10 @@ void Network::AddSpeech(Speech * speech){
     _speeches.push_back(speech);
 }
 
+void Network::AddTestSpeech(Speech * speech){
+    _t_speeches.push_back(speech);
+}
+
 //* function wrapper
 //  1. Given a iter pointed to speech, load this speech to both input & reservoir layer.
 //  2. No need to load the channels of speech to the reservoir during STDP training.
@@ -962,15 +1013,23 @@ void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neur
 
 }
 
-int Network::LoadFirstSpeech(bool train, networkmode_t networkmode){
+int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, const string sample_type){
     LSMLoadLayers();
 
     neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
     // determine the neuron mode by the network mode:
     DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout); 
+    auto sp_end_ptr = _speeches.end();
+    if(sample_type == "test_sample"){
+        _sp_iter = _t_speeches.begin();
+        sp_end_ptr = _t_speeches.end();
+    }
+    else{
+        _sp_iter = _speeches.begin();
+        sp_end_ptr = _speeches.end();
+    }
 
-    _sp_iter = _speeches.begin();
-    if(_sp_iter != _speeches.end()){
+    if(_sp_iter != sp_end_ptr){
         LoadSpeeches(*_sp_iter, neuronmode_input, neuronmode_reservoir, neuronmode_readout, train);
 #ifdef _READOUT_HELPER_CURRENT
         if(!train && networkmode == TRAINREADOUT && _lsm_output_layer){
@@ -1018,7 +1077,7 @@ int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, bool inputEx
 }
 
 
-int Network::LoadNextSpeech(bool train, networkmode_t networkmode){
+int Network::LoadNextSpeech(bool train, networkmode_t networkmode, const string sample_type){
     assert(_lsm_input_layer != NULL);
     assert(_lsm_reservoir_layer != NULL);
     assert(_lsm_output_layer != NULL);
@@ -1029,7 +1088,16 @@ int Network::LoadNextSpeech(bool train, networkmode_t networkmode){
 
     if(train == true) _lsm_output_layer->LSMRemoveTeacherSignal((*_sp_iter)->Class());
     _sp_iter++;
-    if(_sp_iter != _speeches.end()){
+
+    auto sp_end_ptr = _speeches.end();
+    if(sample_type == "test_sample"){
+        sp_end_ptr = _t_speeches.end();
+    }
+    else{
+        sp_end_ptr = _speeches.end();
+    }
+
+    if(_sp_iter != sp_end_ptr){
         LoadSpeeches(*_sp_iter, neuronmode_input, neuronmode_reservoir, neuronmode_readout, train);
 #ifdef _READOUT_HELPER_CURRENT
         if(!train && networkmode==TRAINREADOUT && _lsm_output_layer) 
@@ -1576,6 +1644,7 @@ void Network::CrossValidation(int fold){
 
 void Network::IndexSpeech(){
     for(int i = 0; i < _speeches.size(); i++) _speeches[i]->SetIndex(i);
+    for(int i = 0; i < _t_speeches.size(); ++i) _t_speeches[i]->SetIndex(i);
 }
 
 //* push the readout results into the corresponding vector:

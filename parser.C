@@ -152,10 +152,12 @@ void Parser::Parse(const char * filename){
             assert(token[1] != NULL);
             token[2] = strtok(NULL," \t\n");
             assert(token[2] != NULL);
+            token[3] = strtok(NULL," \t\n");
+            assert(token[3] != NULL);
 #ifdef LOAD_RESPONSE
             continue; // do not read the NMNIST speech if we will direct load from the response
 #endif
-            ParseNMNIST(atoi(token[1]),token[2]);
+            ParseNMNIST(atoi(token[1]), token[2], token[3]);
         }else if(strcmp(token[0],"end")==0){
             break;
         }else{
@@ -316,7 +318,7 @@ void Parser::ParseMNISTSpeech(int cls, char* path){
 //* http://www.garrickorchard.com/datasets
 // if you want quick generate reservoir, enable quickload and set NumThread to 100
 // then load the the dumped file by enabling Load_Response
-void Parser::ParseNMNIST(int cls,char* path){
+void Parser::ParseNMNIST(int cls, char * train_test, char* path){
     int input_num;
     input_num=_network->SearchForNeuronGroup("input")->Size();
 	int from_num;
@@ -376,7 +378,16 @@ void Parser::ParseNMNIST(int cls,char* path){
         int line_count=0;
         FILE * fp = fopen(file_path,"r");
         assert(fp != NULL);
-        _network->AddSpeech(speech);
+
+        if(strcmp(train_test, "train") == 0)
+            _network->AddSpeech(speech);
+        else if(strcmp(train_test, "test") == 0)
+            _network->AddTestSpeech(speech);
+        else{
+            cout<<"Undefined load speech type: "<<train_test<<endl;
+            exit(EXIT_FAILURE);
+        }
+
         while(line_count<input_num){
             line_count++;
             channel = speech->AddChannel(10, 1, index++);

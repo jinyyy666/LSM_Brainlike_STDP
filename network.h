@@ -42,6 +42,7 @@ private:
 
     // for LSM
     std::vector<Speech*> _speeches;
+    std::vector<Speech*> _t_speeches;
     std::vector<Speech*>::iterator _sp_iter;
     int _fold;
     int _fold_ind;
@@ -97,6 +98,7 @@ public:
     void LSMSumGatedNeurons();
     void LSMHubDetection();
 
+    void LSMTransientSim(networkmode_t networkmode, const std::string sample_type);
     void LSMSupervisedTraining(networkmode_t networkmode, int tid, int iteration);
     void LSMUnsupervisedTraining(networkmode_t networkmode, int tid);
     void LSMReservoirTraining(networkmode_t networkmode);
@@ -110,7 +112,8 @@ public:
 
     // for LSM
     int  SpeechEndTime();
-    void AddSpeech(Speech*);
+    void AddSpeech(Speech* speech);
+    void AddTestSpeech(Speech* speech);
     void LoadSpeeches(Speech      * sp_iter, 
             neuronmode_t neuronmode_input,
             neuronmode_t neuronmode_reservoir,
@@ -122,15 +125,16 @@ public:
     void LSMLoadLayers();
     void DetermineNetworkNeuronMode(const networkmode_t &, neuronmode_t &, neuronmode_t &, neuronmode_t&);
 
-    int LoadFirstSpeech(bool train, networkmode_t networkmode);
+    int LoadFirstSpeech(bool train, networkmode_t networkmode, const std::string sample_type = "train_sample");
     int LoadFirstSpeech(bool train, networkmode_t networkmode, bool inputExist);
-    int LoadNextSpeech(bool train, networkmode_t networkmode);
+    int LoadNextSpeech(bool train, networkmode_t networkmode, const std::string sample_type = "train_sample");
     int LoadNextSpeech(bool train, networkmode_t networkmode, bool inputExist);
     int LoadFirstSpeechTrainCV(networkmode_t);
     int LoadNextSpeechTrainCV(networkmode_t);
     int LoadFirstSpeechTestCV(networkmode_t);
     int LoadNextSpeechTestCV(networkmode_t);
 
+    int NumTestSpeech(){return _t_speeches.size();}
     int NumSpeech(){return _speeches.size();}
     int NumIteration(){return _readout_correct.size();}
     std::vector<int> NumEachSpeech();
