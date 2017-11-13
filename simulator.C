@@ -187,9 +187,9 @@ void Simulator::LSMRun(long tid){
     networkmode = TRANSIENTSTATE;
     _network->LSMSetNetworkMode(networkmode);
     myTimer.Start();
-    _network->LSMTransientSim(networkmode, "train_sample");
+    _network->LSMTransientSim(networkmode, tid, "train_sample");
 #ifdef USE_TEST_SAMPLE
-    _network->LSMTransientSim(networkmode, "test_sample");
+    _network->LSMTransientSim(networkmode, tid, "test_sample");
 #endif
     
     myTimer.End("running transient");

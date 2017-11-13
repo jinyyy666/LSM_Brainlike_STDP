@@ -494,7 +494,7 @@ void Network::LSMHubDetection(){
 // @param2: can be "train_sample", samples for training and cv, 
 //                 "test_sample", samples for purely testing, need to enable "USE_TEST_SAMPLE"
 //****************************************************************************************
-void Network::LSMTransientSim(networkmode_t networkmode, const string sample_type){
+void Network::LSMTransientSim(networkmode_t networkmode, int  tid, const string sample_type){
     int count = 0;
     LSMClearSignals();
     int info = this->LoadFirstSpeech(false, networkmode, sample_type);

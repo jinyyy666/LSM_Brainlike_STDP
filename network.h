@@ -98,7 +98,7 @@ public:
     void LSMSumGatedNeurons();
     void LSMHubDetection();
 
-    void LSMTransientSim(networkmode_t networkmode, const std::string sample_type);
+    void LSMTransientSim(networkmode_t networkmode, int tid, const std::string sample_type);
     void LSMSupervisedTraining(networkmode_t networkmode, int tid, int iteration);
     void LSMUnsupervisedTraining(networkmode_t networkmode, int tid);
     void LSMReservoirTraining(networkmode_t networkmode);
