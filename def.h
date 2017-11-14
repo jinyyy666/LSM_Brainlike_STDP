@@ -308,6 +308,8 @@
 
 //NMNIST functions
 
+//#define USE_TEST_SAMPLE
+
 #define TB_PER_CLASS 100 //set to -1 if need to read all
 
 //#define LOAD_RESPONSE
@@ -317,7 +319,6 @@
 
 //#define QUICK_RESPONSE
 
-//#define USE_TEST_SAMPLE
 
 
 enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL, OUTPUTCHANNEL}; // for allocate speech channels

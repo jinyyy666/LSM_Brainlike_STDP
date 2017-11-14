@@ -11,6 +11,7 @@ public:
     void testMakeDirs();
     void testGetFilesEndWith();
     void testGetSpeechIndexClass();
+    void testReadMnistData();
 };
 
 

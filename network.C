@@ -1301,7 +1301,7 @@ bool Network::LSMEndOfSpeech(networkmode_t networkmode, int end_time){
     if((networkmode == TRANSIENTSTATE)&&(_lsm_input>0)){
         return false;
     }
-    if((networkmode != VOID)&&(_lsm_reservoir>0)){
+    if((networkmode != VOID)&&(_lsm_reservoir > 0 || _lsm_input > 0)){
         return false;
     }
     return true;
@@ -1944,6 +1944,7 @@ void Network::LoadResponse(const string & ng_name,int sample_size){
 
 //* write the weights of the selected synaptic type
 void Network::WriteSelectedSynToFile(const string& syn_type, char * filename){
+
     ofstream f_out(filename);
     if(!f_out.is_open()){
         cout<<"In Network::WriteSelectedSynToFile(), cannot open the file : "<<filename<<endl;
@@ -1959,7 +1960,6 @@ void Network::WriteSelectedSynToFile(const string& syn_type, char * filename){
         wrt_syn_type == RESERVOIR_SYN ? _rsynapses : 
         wrt_syn_type == READOUT_SYN ? _rosynapses : 
         wrt_syn_type == INPUT_SYN ? _isynapses : tmp;
-    assert(!synapses.empty());
     for(size_t i = 0; i < synapses.size(); ++i)
         f_out<<i<<"\t"<<synapses[i]->PreNeuron()->Name()
             <<"\t"<<synapses[i]->PostNeuron()->Name()

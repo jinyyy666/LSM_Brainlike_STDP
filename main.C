@@ -33,7 +33,7 @@ void * ParallelSim(void * NTPargptr){
     Simulator simulator(network);
 
 #if _NMNIST == 0
-#if   _IMAGE == 1
+#if   _IMAGE == 1 && _MNIST == 0
     (network)->RateToSpike();     // application for image
 #else
     (network)->AnalogToSpike();   // application for speech
@@ -138,7 +138,7 @@ int main(int argc, char * argv[]){
         Parser parser(&array_network[i]);
 #if _IMAGE == 1
 #if _MNIST == 1
-        parser.Parse("netlist/netlist_MNIST.txt"); // For mnist
+        parser.Parse("netlist/netlist_MNIST_new.txt"); // For mnist
 #elif _NMNIST == 1
 	    parser.Parse("netlist/netlist_N_MNIST.txt"); // For N-MNIST
 #elif _TRAFFIC == 1

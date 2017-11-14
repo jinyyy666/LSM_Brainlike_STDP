@@ -16,6 +16,8 @@ Date: Sept 8, 2016
 #include <iterator>
 #include <assert.h>
 
+typedef std::vector<std::vector<std::vector<float> > > Matrices;
+typedef std::vector<std::vector<float> > Matrix;
 class Timer{
 private:
     struct timeval m_start, m_cur, m_end;
@@ -56,6 +58,8 @@ void MakeDirs(std::string dir);
 std::vector<std::string> GetFilesEndWith(std::string path, const std::string& suffix);
 void file_finder(const std::string& path, std::vector<std::string>& filename, const std::string& suffix);
 void GetSpeechIndexClass(std::string filename, int& cls, int& index);
+
+int ReadMnistData(Matrices & x, std::vector<int>& y, std::string xpath, std::string ypath, int nums);
 
 //* reload the + for the vectors:
 template<class T> std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)

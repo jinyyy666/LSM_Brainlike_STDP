@@ -410,7 +410,7 @@ void Parser::ParseNMNIST(int cls, char * train_test, char* path){
         cout<<"path is not a valid directory"<<endl;
         assert(0);
     }
-	//open directory
+    //open directory
     dir=opendir(path);
     if(dir==NULL){
         cout<<"Cannot open dir"<<endl;
@@ -420,13 +420,13 @@ void Parser::ParseNMNIST(int cls, char * train_test, char* path){
         if(filename->d_name[0]<'0'||filename->d_name[0]>'9'){
             continue;
         }
-		if(from_num>=0&&file_read<from_num){
-			file_read++;
-			continue;
-		}
-		if(to_num>=0&&file_read>=to_num){
-			break;
-		}
+        if(from_num>=0&&file_read<from_num){
+            file_read++;
+            continue;
+        }
+        if(to_num>=0&&file_read>=to_num){
+            break;
+        }
         const size_t len = strlen(path)+strlen(filename->d_name);
         char *file_path=new char[len+1];
         strcpy(file_path,path);
@@ -438,7 +438,7 @@ void Parser::ParseNMNIST(int cls, char * train_test, char* path){
         char * token;
         int index=0;
         int line_count=0;
-		int tmp;
+        int tmp;
         FILE * fp = fopen(file_path,"r");
         assert(fp != NULL);
 
@@ -452,10 +452,10 @@ void Parser::ParseNMNIST(int cls, char * train_test, char* path){
         }
         speech->SetNumChannel(_network->SearchForNeuronGroup("input")->Size(), INPUTCHANNEL);
         while(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){	
-			token=strtok(linestring," \t\n,");
-			tmp=atoi(token);
-			assert(tmp>0);
-			channel=speech->GetChannel(tmp-1,INPUTCHANNEL);
+            token=strtok(linestring," \t\n,");
+            tmp=atoi(token);
+            assert(tmp>0);
+            channel=speech->GetChannel(tmp-1,INPUTCHANNEL);
             token=strtok(NULL," \t\n,");
             while(token!=NULL){
                 channel->AddSpike(atoi(token)+1);
@@ -466,7 +466,7 @@ void Parser::ParseNMNIST(int cls, char * train_test, char* path){
         delete token;
     }
     closedir(dir);
-//	cout<<tid<<" load "<<file_read<<" files"<<" from class "<<cls<<", read from "<<from_num<<" to "<<to_num<<endl;
+    //	cout<<tid<<" load "<<file_read<<" files"<<" from class "<<cls<<", read from "<<from_num<<" to "<<to_num<<endl;
 }
 
 

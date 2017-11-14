@@ -88,9 +88,9 @@ void UtilTest::testMakeDirs(){
 // inorder to run the test, please enable the DUMP_RESPONSE in the simulator to generate the 
 // Waveform/ directory. Remember, only load one speech!
 void UtilTest::testGetFilesEndWith(){
-    string path = "Waveform/";
-    vector<string> res = GetFilesEndWith(path, ".dat");
-    vector<string> true_res = {"output_0.dat", "hidden_0_0.dat", "output_0.dat", "hidden_0_0.dat"};
+    string path = "test/";
+    vector<string> res = GetFilesEndWith(path, ".sh");
+    vector<string> true_res = {"run_test.sh"};
     for(size_t i = 0; i < res.size(); ++i)  assert(res[i] == true_res[i]);
     cout<<"Function::GetFilesEndWith passes the simple test!!"<<endl;
 }
@@ -104,6 +104,18 @@ void UtilTest::testGetSpeechIndexClass(){
         assert(cls == true_res[i].second && index == true_res[i].first);
     }
     cout<<"Function::GetSpeechIndexClass passes the simple test!!"<<endl;
+}
+
+void UtilTest::testReadMnistData(){
+    Matrices x;
+    vector<int> y;
+    int ret = ReadMnistData(x, y, "mnist/t10k-images-idx3-ubyte", "mnist/t10k-labels-idx1-ubyte",  10000);
+    assert(ret == 10000);
+    assert(x.size() == 10000);
+    assert(y.size() == 10000);
+    assert(y[0] == 7);
+    cout<<"Function::ReadMnistData passes the simple test!!"<<endl;
+
 }
 
 int main(int argc, char** argv){
@@ -132,6 +144,10 @@ int main(int argc, char** argv){
     cout<<"Test the GetSpeechIndexClass: "<<endl;
     ut.testGetSpeechIndexClass();
  
+    cout<<"*********************************"<<endl;
+    cout<<"Test the ReadMnistData: "<<endl;
+    ut.testReadMnistData();
+
     
     return 0;
 }

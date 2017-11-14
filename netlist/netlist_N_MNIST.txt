@@ -1,9 +1,9 @@
 neurongroup	input 1156 excitatory
-column reservoir 6 6 15
-neurongroup hidden_0 400 excitatory
+column reservoir 1 1 1
+neurongroup hidden_0 800 excitatory 15
 neurongroup	output	10	excitatory 5
-lsmsynapse input reservoir 1 5 32 1 fixed
-lsmsynapse reservoir hidden_0   -1  -1  8   2   learning
+#lsmsynapse input reservoir 1 5 32 1 fixed
+lsmsynapse input hidden_0   -1  -1  8   2   learning
 lsmsynapse hidden_0 output	-1	-1	8	2	learning
 NMNIST	0   train   ../Train_1156_700_stable/0/
 NMNIST	1	train   ../Train_1156_700_stable/1/
@@ -15,7 +15,7 @@ NMNIST	6	train   ../Train_1156_700_stable/6/
 NMNIST	7	train   ../Train_1156_700_stable/7/
 NMNIST	8	train   ../Train_1156_700_stable/8/
 NMNIST	9	train   ../Train_1156_700_stable/9/
-NMNIST	0	test    ../Test_1156_700_stable/0/
+NMNIST	0	test    ../Train_1156_700_stable/0/
 NMNIST	1	test    ../Test_1156_700_stable/1/
 NMNIST	2	test    ../Test_1156_700_stable/2/
 NMNIST	3	test    ../Test_1156_700_stable/3/

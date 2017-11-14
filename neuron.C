@@ -1653,7 +1653,11 @@ void NeuronGroup::LSMLoadSpeech(Speech * speech, int * n_channel, neuronmode_t n
         else
             assert(0); // your code should never go here
     }
-    *n_channel = speech->NumChannels(channelmode);
+    if(neuronmode == DEACTIVATED)
+        *n_channel = 0;
+    else
+        *n_channel = speech->NumChannels(channelmode);
+
     // assign the channel ptr to each neuron:
     for(int i = 0; i < _neurons.size(); i++){
         _neurons[i]->LSMSetChannel(speech->GetChannel(i,channelmode),channelmode);
