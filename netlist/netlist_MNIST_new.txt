@@ -1,0 +1,7 @@
+neurongroup	input 784 excitatory
+column reservoir 1 1 1
+neurongroup hidden_0 400 excitatory 15
+neurongroup	output	10	excitatory 5
+lsmsynapse input hidden_0   -1  -1  8   2   learning
+lsmsynapse hidden_0 output	-1	-1	8	2	learning
+MNIST_DURATION  500

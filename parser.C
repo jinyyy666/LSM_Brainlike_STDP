@@ -5,6 +5,7 @@
 #include "network.h"
 #include "speech.h"
 #include "channel.h"
+#include "util.h"
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -15,14 +16,18 @@
 #include <assert.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <random>
+#include <math.h>
 
 using namespace std;
+
 
 Parser::Parser(Network * network){
     _network = network;
 }
 
 void Parser::Parse(const char * filename){
+    int mnist_duration = 500; // the default mnist duration (duration of the possion spike train)
     int i;
     char linestring[8192];
     char ** token = new char*[64];
@@ -141,12 +146,18 @@ void Parser::Parse(const char * filename){
 
             ParsePoissonSpeech(atoi(token[1]),token[2]);
         }else if(strcmp(token[0],"MNIST")==0){
-            token[1] = strtok(NULL," \t\n");
-            assert(token[1] != NULL);
-            token[2] = strtok(NULL," \t\n");
-            assert(token[2] != NULL);
+             token[1] = strtok(NULL," \t\n");
+             assert(token[1] != NULL);
+             token[2] = strtok(NULL," \t\n");
+             assert(token[2] != NULL);
 
-            ParseMNISTSpeech(atoi(token[1]),token[2]);
+             ParseMNISTSpeech(atoi(token[1]),token[2]); 
+        }else if(strcmp(token[0], "MNIST_DURATION") == 0){
+            token[1] = strtok(NULL, " \t\n");
+            assert(token[1] != NULL && atoi(token[1]) > 0);
+            mnist_duration = atoi(token[1]);
+
+            ParseMNIST(mnist_duration);
         }else if(strcmp(token[0],"NMNIST")==0){
             token[1] = strtok(NULL," \t\n");
             assert(token[1] != NULL);
@@ -310,6 +321,57 @@ void Parser::ParseMNISTSpeech(int cls, char* path){
     }
 
     fclose(fp);
+}
+
+//* this function is used to MNIST dataset and generate the corresponding poisson spikes
+void Parser::ParseMNIST(int duration)
+{
+    vector<vector<vector<float> > > trainX;
+    vector<vector<vector<float> > > testX;
+    vector<int> trainY;
+    vector<int> testY;
+    ReadMnistData(trainX, trainY, "mnist/train-images-idx3-ubyte", "mnist/train-labels-idx1-ubyte", 60000);
+    ReadMnistData(testX, testY, "mnist/t10k-images-idx3-ubyte", "mnist/t10k-labels-idx1-ubyte",  10000);
+    cout<<"Finish reading the MNIST sample!"<<endl;
+
+    GeneratePossionSpikes(trainX, trainY, duration, true);
+    GeneratePossionSpikes(testX, testY, duration, false);
+    cout<<"Finish generating the possion spikes for the MNIST!"<<endl;
+}
+
+//* generate the possion spike train given the image
+void Parser::GeneratePossionSpikes(vector<vector<vector<float> > >& x, vector<int>& y, int duration, bool is_train)
+{
+    std::random_device rd;
+    std::mt19937 e2(rd());
+    std::uniform_real_distribution<> dist(0, 1);
+    vector<int> quota(CLS, TB_PER_CLASS);
+
+    assert(x.size() == y.size());
+    for(int i = 0; i < x.size(); ++i){
+        int cls = y[i];
+        assert(cls >= 0 && cls < CLS);
+
+        if(quota[cls] == 0) continue;
+        if(quota[cls] > 0)  quota[cls]--;
+
+        Speech * speech = new Speech(cls);
+        Channel * channel;
+        int index = 0;
+
+        for(int j = 0; j < x[i].size(); ++j){
+            for(int k = 0; k < x[i][j].size(); ++k){
+                float freq = x[i][j][k];
+                channel = speech->AddChannel(10, 1, index++);
+                if(fabsf(freq - 0.0f) < 1e-5)   continue;
+                for(int time = 1; time < duration; ++time){
+                    if(dist(e2) < freq) channel->AddSpike(time);
+                }
+            }
+        }
+        if(is_train)    _network->AddSpeech(speech);
+        else    _network->AddTestSpeech(speech);
+    } 
 }
 
 //* this function is used to parse N-MNIST testbench.
