@@ -317,6 +317,7 @@
 
 //#define QUICK_RESPONSE
 
+//#define USE_TEST_SAMPLE
 
 
 enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL, OUTPUTCHANNEL}; // for allocate speech channels

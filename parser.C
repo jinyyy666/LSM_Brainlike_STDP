@@ -438,6 +438,7 @@ void Parser::ParseNMNIST(int cls, char * train_test, char* path){
         char * token;
         int index=0;
         int line_count=0;
+		int tmp;
         FILE * fp = fopen(file_path,"r");
         assert(fp != NULL);
 
@@ -449,16 +450,16 @@ void Parser::ParseNMNIST(int cls, char * train_test, char* path){
             cout<<"Undefined load speech type: "<<train_test<<endl;
             exit(EXIT_FAILURE);
         }
-
-        while(line_count<input_num){
-            line_count++;
-            channel = speech->AddChannel(10, 1, index++);
-            if(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){	
-                token=strtok(linestring," \t\n,");
-                while(token!=NULL){
-                    channel->AddSpike(atoi(token)+1);
-                    token=strtok(NULL," \t\n,");
-                }
+        speech->SetNumChannel(_network->SearchForNeuronGroup("input")->Size(), INPUTCHANNEL);
+        while(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){	
+			token=strtok(linestring," \t\n,");
+			tmp=atoi(token);
+			assert(tmp>0);
+			channel=speech->GetChannel(tmp-1,INPUTCHANNEL);
+            token=strtok(NULL," \t\n,");
+            while(token!=NULL){
+                channel->AddSpike(atoi(token)+1);
+                token=strtok(NULL," \t\n,");
             }
         }
         fclose(fp);
