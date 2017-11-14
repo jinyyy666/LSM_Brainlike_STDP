@@ -37,6 +37,7 @@ void Speech::SetNumChannel(int size, channelmode_t mode){
     assert(size >= 0);
     while(_channel_map[mode]->size() < size){
         Channel * channel = new Channel(_channel_map[mode]->size());
+        channel->SetMode(mode);
         _channel_map[mode]->push_back(channel);
     }
 }
