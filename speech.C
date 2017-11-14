@@ -45,8 +45,8 @@ void Speech::SetNumChannel(int size, channelmode_t mode){
 Channel * Speech::GetChannel(int index, channelmode_t channelmode){
     if(index < 0 && index >= _channel_map[channelmode]->size()){
         cout<<"Invalid channel index: "<<index
-            <<" seen in aquiring input channels!\n"
-            <<"Total number of input channels: "<<_channel_map[channelmode]->size()
+            <<" seen in aquiring "<<channelmode<<" channels!\n"
+            <<"Total number of channels: "<<_channel_map[channelmode]->size()
             <<endl;
         exit(EXIT_FAILURE);
     }
