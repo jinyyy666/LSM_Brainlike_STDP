@@ -66,7 +66,11 @@ void PrintResultsToFile(const vector<int>& r_correct, const vector<int>& r_wrong
 
 
 void CollectResultsFromNetwork(Network array_network[]){
+#ifdef USE_TEST_SAMPLE
+    int num_speeches = array_network[0].NumTestSpeech();
+#else
     int num_speeches = array_network[0].NumSpeech();
+#endif
     int num_iters = array_network[0].NumIteration();
     vector<int> num_each_speech = array_network[0].NumEachSpeech();
 
@@ -199,7 +203,11 @@ int main(int argc, char * argv[]){
     cout<<"Wall clock time: "<<((val2.tv_sec-val1.tv_sec)+double(val2.tv_usec-val1.tv_usec)*1e-6)<<" seconds"<<endl;
 
     cout<<"Readout the results ..."<<endl; 
+#ifdef USE_TEST_SAMPLE
+    cout<<"Number of samples: "<<array_network[0].NumTestSpeech()<<endl;
+#else
     cout<<"Number of samples: "<<array_network[0].NumSpeech()<<endl;
+#endif
 #ifdef _WRITE_STAT
     Readout readout_module(array_network[0].NumSpeech());
     readout_module.Multireadout();

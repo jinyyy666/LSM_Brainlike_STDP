@@ -637,7 +637,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
         ReadoutJudge(correct, wrong, even); // judge the readout output here
         CollectErrorPerSample(each_sample_errors); // collect the test error for the sample
 #ifdef _PRINT_SPIKE_COUNT
-        if(tid == 0 && (iteration == 0 || iteration % 10 == 0))
+        if(tid == 0 && (iteration == 0 || (iteration+1) % 5 == 0))
             PrintSpikeCount("readout"); // print the readout firing counts
 #endif
 
@@ -1003,8 +1003,8 @@ void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neur
         neuronmode_readout = NORMALSTDP;
     }
     else if(networkmode == READOUTBP){ // the error backprop mode
-        neuronmode_input = DEACTIVATED;
-        neuronmode_reservoir = READCHANNELBP;
+        neuronmode_input = READCHANNEL;
+        neuronmode_reservoir = DEACTIVATED;
         neuronmode_readout = NORMALBP;
     }else{
         cout<<"Unrecognized network mode!"<<endl;
@@ -1044,39 +1044,6 @@ int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, const string
     }
 }
 
-// this function is similar to the original LoadFirstSpeech. But it is only used for separation measurement.
-int Network::LoadFirstSpeech(bool train, networkmode_t networkmode, bool inputExist){
-    // if the input layer has not been added to the network, then add it.
-    // this can only happen for measuring the separation property:
-    if(!inputExist){
-        _sp_iter = _speeches.begin();
-
-        if(_sp_iter != _speeches.end()){
-            // Add the input layer here!!!
-            InitializeInputLayer((*_sp_iter)->NumInputs(), (*_sp_iter)->NumConnections()); 
-        }
-        else{
-            cout<<"No speech parsed into the network!"<<endl;
-            return -1;
-        }
-    }
-
-    LSMLoadLayers();
-    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
-    // determine the neuron mode by the network mode:
-    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
-
-    _sp_iter = _speeches.begin();
-    if(_sp_iter != _speeches.end()){
-        LoadSpeeches(*_sp_iter, neuronmode_input, neuronmode_reservoir, neuronmode_readout,train);
-        return (*_sp_iter)->Index();
-    }else{
-        _sp = NULL;
-        return -1;
-    }
-}
-
-
 int Network::LoadNextSpeech(bool train, networkmode_t networkmode, const string sample_type){
     assert(_lsm_input_layer != NULL);
     assert(_lsm_reservoir_layer != NULL);
@@ -1103,36 +1070,6 @@ int Network::LoadNextSpeech(bool train, networkmode_t networkmode, const string 
         if(!train && networkmode==TRAINREADOUT && _lsm_output_layer) 
             _lsm_output_layer->LSMSetTeacherSignal((*_sp_iter)->Class());
 #endif
-        return (*_sp_iter)->Index();
-    }else{
-        LSMNetworkRemoveSpeech();
-        return -1;
-    }
-}
-
-// This function is similar to the original LoadNextSpeech. 
-// But it is only used for separation measurement.
-int Network::LoadNextSpeech(bool train, networkmode_t networkmode, bool inputExist){
-    //assert(_lsm_input_layer != NULL);
-    assert(_lsm_reservoir_layer != NULL);
-    assert(_lsm_output_layer != NULL);
-
-    neuronmode_t neuronmode_input = NORMAL, neuronmode_reservoir = NORMAL, neuronmode_readout = NORMAL;
-    // determine the neuron mode by the network mode:
-    DetermineNetworkNeuronMode(networkmode, neuronmode_input, neuronmode_reservoir, neuronmode_readout);
-
-    if(train == true) _lsm_output_layer->LSMRemoveTeacherSignal((*_sp_iter)->Class());
-    _sp_iter++;
-    if(_sp_iter != _speeches.end()){
-        if(!inputExist){
-            // if the input layer has not been added yet, added it here!
-            InitializeInputLayer((*_sp_iter)->NumInputs(), (*_sp_iter)->NumConnections());
-            assert(_lsm_input_layer == NULL);
-            _lsm_input_layer = SearchForNeuronGroup("input");
-            assert(_lsm_input_layer != NULL);
-        }
-
-        LoadSpeeches(*_sp_iter, neuronmode_input, neuronmode_reservoir, neuronmode_readout,train);
         return (*_sp_iter)->Index();
     }else{
         LSMNetworkRemoveSpeech();
@@ -1247,7 +1184,11 @@ void Network::PrintAllNeuronName(){
 //* count the number of speech from each class
 vector<int> Network::NumEachSpeech(){
     vector<int> res(CLS, 0);
+#ifdef USE_TEST_SAMPLE
+    for(auto & sp : _t_speeches){
+#else
     for(auto & sp : _speeches){
+#endif
         assert(sp && sp->Class() < CLS);
         res[sp->Class()]++;
     }

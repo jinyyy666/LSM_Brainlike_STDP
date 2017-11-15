@@ -126,9 +126,7 @@ public:
     void DetermineNetworkNeuronMode(const networkmode_t &, neuronmode_t &, neuronmode_t &, neuronmode_t&);
 
     int LoadFirstSpeech(bool train, networkmode_t networkmode, const std::string sample_type = "train_sample");
-    int LoadFirstSpeech(bool train, networkmode_t networkmode, bool inputExist);
     int LoadNextSpeech(bool train, networkmode_t networkmode, const std::string sample_type = "train_sample");
-    int LoadNextSpeech(bool train, networkmode_t networkmode, bool inputExist);
     int LoadFirstSpeechTrainCV(networkmode_t);
     int LoadNextSpeechTrainCV(networkmode_t);
     int LoadFirstSpeechTestCV(networkmode_t);

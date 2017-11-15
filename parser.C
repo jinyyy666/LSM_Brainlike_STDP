@@ -407,7 +407,7 @@ void Parser::ParseNMNIST(int cls, char * train_test, char* path){
     //check if path is a valid dir
     lstat(path,&s);
     if(!S_ISDIR(s.st_mode)){
-        cout<<"path is not a valid directory"<<endl;
+        cout<<"path : "<<path<<" is not a valid directory"<<endl;
         assert(0);
     }
     //open directory
