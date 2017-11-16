@@ -1938,13 +1938,37 @@ void Network::WriteSynWeightsToFile(const string& pre_g, const string& post_g, c
     f_out.close();
 }
 
+//* Given a filename, load all the weigths recorded in the file to the network
+void Network::LoadSynWeightsFromFile(const string& filename)
+{
+    ifstream f_in(filename);
+    if(!f_in.is_open()){
+        cout<<"In Network::LoadSynWeightsFromFile(), cannot open the file: "<<filename<<endl;
+        assert(0);
+    }
+    int index;
+    string pre;
+    string post; 
+#ifdef DIGITAL
+    int weight;
+#else
+    double weight;
+#endif
+    while(f_in>>index>>pre>>post>>weight){
+        assert(_synapses_map.find(pre) != _synapses_map.end());
+        assert(_synapses_map[pre].find(post) != _synapses_map[pre].end());
+        _synapses_map[pre][post]->Weight(weight);
+    }
+   
+}
+
 //* This function is to load the synaptic weights from file and assign it to the synapses:
 //* "syn_type" can be reservoir or readout or input
 void Network::LoadSynWeightsFromFile(const char * syn_type, char * filename){
     ifstream f_in(filename);
     if(!f_in.is_open()){
         cout<<"In Network::LoadSynWeightsFromFile(), cannot open the file: "<<filename<<endl;
-        exit(EXIT_FAILURE);
+        assert(0);
     }
 
     synapsetype_t read_syn_type = INVALID;

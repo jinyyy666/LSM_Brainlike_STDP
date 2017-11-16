@@ -21,6 +21,7 @@ class Network{
 private:
     std::list<Neuron*> _individualNeurons;
     std::unordered_map<std::string, NeuronGroup*> _groupNeurons;
+    std::unordered_map<std::string, std::unordered_map<std::string, Synapse*> > _synapses_map;
     std::list<Neuron*> _allNeurons;
     std::list<Neuron*> _allExcitatoryNeurons;
     std::list<Neuron*> _allInhibitoryNeurons;
@@ -198,6 +199,7 @@ public:
     
     void WriteSelectedSynToFile(const std::string& syn_type, char * filename);
     void WriteSynWeightsToFile(const std::string& pre_g, const std::string& post_g, char * filename);
+    void LoadSynWeightsFromFile(const std::string& filename);
     void LoadSynWeightsFromFile(const char * syn_type, char * filename);
     void WriteSynActivityToFile(char * pre_name, char * post_name, char * filename);
     void TruncateIntermSyns(const char * syn_type);
@@ -209,6 +211,16 @@ public:
     void LSMAddSynapse(Neuron * pre, Neuron * post, T weight, bool fixed, T weight_limit,bool liquid, NeuronGroup * group = NULL){
         Synapse * synapse = new Synapse(pre, post, weight, fixed, weight_limit, pre->IsExcitatory(),liquid);
         _synapses.push_back(synapse);
+        std::string pre_name = std::string(pre->Name());
+        std::string post_name = std::string(post->Name());
+        if(_synapses_map.find(pre_name) == _synapses_map.end()){
+            _synapses_map[pre_name] = std::unordered_map<std::string, Synapse*>();
+        }
+        if(_synapses_map[pre_name].find(post_name) != _synapses_map[pre_name].end()){
+            std::cout<<"Warning:: duplicate synapse "<<pre_name<<" to "<<post_name<<" detected"<<std::endl;
+        }
+        _synapses_map[pre_name][post_name] = synapse; 
+    
         // push back the reservoir, readout and input synapses into the vector:
         if(!synapse->IsReadoutSyn() && !synapse->IsInputSyn())
             _rsynapses.push_back(synapse);
