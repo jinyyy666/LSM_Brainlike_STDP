@@ -1588,6 +1588,15 @@ void Network::IndexSpeech(){
     for(int i = 0; i < _t_speeches.size(); ++i) _t_speeches[i]->SetIndex(i);
 }
 
+//* this function is used to print out the recognition rate at the current iteration
+void Network::CurrentPerformance(int iter_n)
+{
+    int total = _readout_correct[iter_n] + _readout_wrong[iter_n] + _readout_even[iter_n];
+    if(_tid == 0){
+        cout<<"The performance @"<<iter_n<<" = "<<_readout_correct[iter_n]<<"/"<<total<<" = "<<double(_readout_correct[iter_n])*100/ total<<'%'<<endl;
+    }
+}
+
 //* push the readout results into the corresponding vector:
 void Network::LSMPushResults(const vector<pair<int, int> >& correct, const vector<pair<int, int> >& wrong, const vector<pair<int, int> >& even, int iter_n){
     assert(iter_n < _readout_correct.size());

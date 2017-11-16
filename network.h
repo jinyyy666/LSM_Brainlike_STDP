@@ -176,6 +176,7 @@ public:
 
     // supporting functions:
     // the push/view readout results:
+    void CurrentPerformance(int iter_n);
     void LSMPushResults(const std::vector<std::pair<int, int> >& correct, const std::vector<std::pair<int, int> >& wrong, const std::vector<std::pair<int, int> >& even, int n_iter);
     std::vector<int> LSMViewResults();
     void MergeReadoutResults(std::vector<int>& r_correct, std::vector<int>& r_wrong, std::vector<int>& r_even, std::vector<std::vector<int> >& r_correct_bd);
