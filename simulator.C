@@ -193,6 +193,7 @@ void Simulator::LSMRun(long tid){
 #endif
     
     myTimer.End("running transient");
+    //_network->LoadSynWeightsFromFile("o_weights_info_trained_all.txt");
     //////////////////////////////////////////////////////////////////////////////
     // REMEMBER TO REMOVE THESE CODES!
     //_network->LSMSumGatedNeurons();
@@ -288,7 +289,7 @@ void Simulator::LSMRun(long tid){
                 _network->WriteSelectedSynToFile("readout", filename);
             }
 #endif
-
+            _network->CurrentPerformance(iii);
         }
 #if defined(CV) && NUM_THREADS == 1
     }

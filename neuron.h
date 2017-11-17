@@ -147,6 +147,7 @@ public:
     void FireCount(int count){_f_count = count;}
 
     void EnableDynamicThresh(bool dt){_allow_dynamic_threshold=dt;}
+    bool HasDynamicThresh(){return _allow_dynamic_threshold;}
 
     bool Fired(){return _fired;}
 
@@ -160,6 +161,7 @@ public:
     void SetIndexInGroup(int index){_indexInGroup = index;}
     int IndexInGroup(){return _indexInGroup;}
     void SetVth(double vth);
+    double GetVth(){return _lsm_v_thresh;}
     void SetTeacherSignal(int signal);
     void SetTeacherSignalStrength(double val, bool isPos){isPos? _ts_strength_p = val : _ts_strength_n = val;}
     void SetTeacherSignalFreq(int freq){_ts_freq = freq;}
@@ -305,6 +307,8 @@ public:
     int MaxFireCount();
     void BpOutputError(int cls, int iteration, int end_time, double sample_weight);
     void BpHiddenError(int iteration, int end_time, double sample_weight);
+    void DynamicTuneThreshold(int cls);
+
     double ComputeRatioError(int cls);
     void UpdateLearningWeights();
 

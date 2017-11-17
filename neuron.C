@@ -24,6 +24,7 @@
 //#define _DEBUG_INPUT_TRAINING
 //#define _DEBUG_BP
 //#define _DEBUG_BP_HIDDEN
+#define _DEBUG_DYNAMIC_THRESHOLD
 
 // NOTE: The time constants have been changed to 2*original settings 
 //       optimized performance for letter recognition.
@@ -813,9 +814,10 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
 
     _fired = false;
 
+    /*
     if(_allow_dynamic_threshold && _network->LSMGetNetworkMode()==TRANSIENTSTATE)  
         DynamicThreshold(t);
-
+    */
 #ifdef DIGITAL
     if(_D_lsm_v_mem > _D_lsm_v_thresh){  
         _D_lsm_calcium += unit;
@@ -1355,6 +1357,14 @@ NeuronGroup::NeuronGroup(char * name, int num, Network * network, bool excitator
     for(int i = 0; i < num; i++){
         sprintf(neuronName,"%s_%d",name,i);
         Neuron * neuron = new Neuron(neuronName, excitatory, network, v_mem);
+#ifdef _DYNAMIC_THRESHOLD
+        if(1.0f* rand() / RAND_MAX < DYNAMIC_THRESHOLD_PER){
+            neuron->EnableDynamicThresh(true);
+        }
+        else{
+            neuron->EnableDynamicThresh(false);
+        }
+#endif
         neuron->SetIndexInGroup(i);
         _neurons[i] = neuron;
     }
@@ -1856,6 +1866,11 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 #ifdef _DEBUG_BP
     cout<<"Current accumulative error: "<<sum_error/2<<endl;
 #endif
+    
+#ifdef _DYNAMIC_THRESHOLD
+    // For adaptively tuning the threshold:
+    //DynamicTuneThreshold(cls);
+#endif
 }
 
 //* back-prop the error down to other layers:
@@ -1871,6 +1886,49 @@ void NeuronGroup::BpHiddenError(int iteration, int end_time, double sample_weigh
         // update the weight given the error
         _neurons[i]->BpError(error, iteration);
     }
+#ifdef _DYNAMIC_THRESHOLD
+    // For adaptively tuning the threshold:
+    DynamicTuneThreshold(-1);
+#endif
+}
+
+//* dynamic tune the threshold to reduce the number of dead neurons
+void NeuronGroup::DynamicTuneThreshold(int cls)
+{
+    int size = _neurons.size();
+    int cnt = 0;
+    for(int i = 0; i < _neurons.size(); ++i){
+        if(!(_neurons[i]->HasDynamicThresh()) || i == cls)  continue;
+
+        int f_cnt = _neurons[i]->FireCount();
+        double vth = _neurons[i]->GetVth();        
+        if(f_cnt == 0)
+        {
+            if(vth < 5.0f - 1e-6)
+            {
+                vth = 5.0f;
+                continue;
+            }
+            _neurons[i]->SetVth(vth - 0.0001* size);
+            cnt++;
+#ifdef _DEBUG_DYNAMIC_THRESHOLD
+            cout<<"Tune the "<<_neurons[i]->Name()<<" with freq: "<<f_cnt<<" : the old vth: "<<vth<<" into "<<_neurons[i]->GetVth()<<endl;
+#endif
+        }
+        else if(f_cnt > DESIRED_LEVEL + MARGIN)
+        {
+            if(vth > 25.0f + 1e-6)
+            {
+                vth = 25.0f;
+                continue;
+            }
+            _neurons[i]->SetVth(vth + 0.0001* size);
+#ifdef _DEBUG_DYNAMIC_THRESHOLD
+            cout<<"Tune the "<<_neurons[i]->Name()<<" with freq: "<<f_cnt<<" : the old vth: "<<vth<<" into "<<_neurons[i]->GetVth()<<endl;
+#endif
+        }
+    }
+    //cout<<"Number of dead neuron in the "<<_name<<" is "<<cnt<<endl;
 }
 
 //* compute the back-prop error and print out:
