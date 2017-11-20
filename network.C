@@ -50,6 +50,8 @@ _network_mode(VOID)
 Network::~Network(){
     for(list<Neuron*>::iterator iter = _individualNeurons.begin(); iter != _individualNeurons.end(); iter++)
         delete (*iter);
+    for(auto & b_neuron : _allBiasNeurons)
+        delete b_neuron;
     for(auto & p : _groupNeurons)
         delete (p.second);
     for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++)
@@ -83,6 +85,20 @@ void Network::AddNeuron(char * name, bool excitatory, double v_mem){
         neuron->SetExcitatory();
     }else _allInhibitoryNeurons.push_back(neuron);
 }
+
+
+void Network::AddBiasNeuron(char * ng_name, int dummy_freq)
+{
+    NeuronGroup * ng = SearchForNeuronGroup(ng_name);
+    assert(ng);
+    string name = string(ng_name) + "_" + to_string(ng->Size()) + "bias";
+    double vmem = ng->Order(0)->GetVth();
+    BiasNeuron* b_neuron = new BiasNeuron((char*)name.c_str(), true, this, vmem, dummy_freq);
+    
+    ng->SetBiasNeuron(b_neuron);
+    _allBiasNeurons.push_back(b_neuron);
+}
+
 
 void Network::AddNeuronGroup(char * name, int num, bool excitatory, double v_mem){
     assert(num >= 1);
@@ -354,6 +370,10 @@ void Network::LSMAddSynapse(NeuronGroup * pre, NeuronGroup * post, int npre, int
     assert((npre == 1)||(npre == -1));
     for(Neuron * neuron = pre->First(); neuron != NULL; neuron = pre->Next()){
         LSMAddSynapse(neuron,post,npost,value, random, fixed);
+    }
+    if(pre->GetBiasNeuron() != NULL){
+        BiasNeuron * b_neuron = pre->GetBiasNeuron();
+        LSMAddSynapse(b_neuron, post, npost, value, 0, fixed);
     }
 }
 
@@ -774,6 +794,8 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration,int end_time, FILE
     // _lsmActiveSyns, _lsmActiveSTDPLearnSyns, and _lsmActiveLearnSyns:
     for(Neuron * neuron : _allNeurons)  neuron->LSMNextTimeStep(t, Foutp, train, end_time);
 
+    for(BiasNeuron * b_neuron : _allBiasNeurons) b_neuron->LSMNextTimeStep(t, Foutp, train, end_time);
+
     // Update the previous delta effect with the current delta effect
     for(Neuron * neuron : _allNeurons)  neuron->UpdateDeltaEffect();
  
@@ -1003,8 +1025,8 @@ void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neur
         neuronmode_readout = NORMALSTDP;
     }
     else if(networkmode == READOUTBP){ // the error backprop mode
-        neuronmode_input = READCHANNEL;
-        neuronmode_reservoir = DEACTIVATED;
+        neuronmode_input = DEACTIVATED;
+        neuronmode_reservoir = READCHANNELBP;
         neuronmode_readout = NORMALBP;
     }else{
         cout<<"Unrecognized network mode!"<<endl;
@@ -1216,6 +1238,8 @@ void Network::RateToSpike(){
 
 void Network::LSMClearSignals(){
     for(list<Neuron*>::iterator iter = _allNeurons.begin(); iter != _allNeurons.end(); iter++) (*iter)->LSMClear();
+    for(auto & b_neuron : _allBiasNeurons)
+        b_neuron->LSMClear();
     for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClear();
     // Remember to clear the list to store the synapses:      
     _lsmActiveLearnSyns.clear();                              

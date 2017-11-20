@@ -52,6 +52,15 @@ void Parser::Parse(const char * filename){
 
             double v_mem = token[3] == NULL ? LSM_V_THRESH : atof(token[3]);
             ParseNeuron(token[1],token[2], v_mem);
+        }else if(strcmp(token[0], "bias") == 0){
+            // parse bias neuron
+            // the neuron group name, dummy firing frequency
+            token[1] = strtok(NULL, " \t\n");
+            assert(token[1] != NULL);
+            token[2] = strtok(NULL, " \t\n");
+            assert(token[2] != NULL);
+         
+            ParseBiasNeuron(token[1], atoi(token[2]));
         }else if(strcmp(token[0],"neurongroup")==0){
             // neurongroup name number
             token[1] = strtok(NULL," \t\n");
@@ -191,6 +200,13 @@ void Parser::ParseNeuron(char * name, char * e_i, double v_mem){
     
     bool excitatory = strcmp(e_i,"excitatory") == 0 ? true : false;
     _network->AddNeuron(name, excitatory, v_mem);
+}
+
+
+void Parser::ParseBiasNeuron(char * ng_name, int dummy_freq)
+{
+    assert(_network->SearchForNeuronGroup(ng_name));
+    _network->AddBiasNeuron(ng_name, dummy_freq);
 }
 
 void Parser::ParseNeuronGroup(char * name, int num, char * e_i, double v_mem){
