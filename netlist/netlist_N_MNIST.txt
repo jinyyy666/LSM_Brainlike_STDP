@@ -5,24 +5,24 @@ neurongroup	output	10	excitatory 5
 #lsmsynapse input reservoir 1 5 32 1 fixed
 lsmsynapse input hidden_0   -1  -1  8   2   learning
 lsmsynapse hidden_0 output	-1	-1	8	2	learning
-NMNIST	0   train   ../Train_1156_700_stable/0/
-NMNIST	1	train   ../Train_1156_700_stable/1/
-NMNIST	2	train   ../Train_1156_700_stable/2/
-NMNIST	3	train   ../Train_1156_700_stable/3/
-NMNIST	4	train   ../Train_1156_700_stable/4/
-NMNIST	5	train   ../Train_1156_700_stable/5/
-NMNIST	6	train   ../Train_1156_700_stable/6/
-NMNIST	7	train   ../Train_1156_700_stable/7/
-NMNIST	8	train   ../Train_1156_700_stable/8/
-NMNIST	9	train   ../Train_1156_700_stable/9/
-NMNIST	0	test    ../Train_1156_700_stable/0/
-NMNIST	1	test    ../Test_1156_700_stable/1/
-NMNIST	2	test    ../Test_1156_700_stable/2/
-NMNIST	3	test    ../Test_1156_700_stable/3/
-NMNIST	4	test    ../Test_1156_700_stable/4/
-NMNIST	5	test    ../Test_1156_700_stable/5/
-NMNIST	6	test    ../Test_1156_700_stable/6/
-NMNIST	7	test    ../Test_1156_700_stable/7/
-NMNIST	8	test    ../Test_1156_700_stable/8/
-NMNIST	9	test    ../Test_1156_700_stable/9/
+NMNIST	0   train   ../1156_1000_stable/Train_0.dat
+NMNIST	1	train   ../1156_1000_stable/Train_1.dat
+NMNIST	2	train   ../1156_1000_stable/Train_2.dat
+NMNIST	3	train   ../1156_1000_stable/Train_3.dat
+NMNIST	4	train   ../1156_1000_stable/Train_4.dat
+NMNIST	5	train   ../1156_1000_stable/Train_5.dat
+NMNIST	6	train   ../1156_1000_stable/Train_6.dat
+NMNIST	7	train   ../1156_1000_stable/Train_7.dat
+NMNIST	8	train   ../1156_1000_stable/Train_8.dat
+NMNIST	9	train   ../1156_1000_stable/Train_9.dat
+NMNIST	0	test    ../1156_1000_stable/Test_0.dat
+NMNIST	1	test    ../1156_1000_stable/Test_1.dat
+NMNIST	2	test    ../1156_1000_stable/Test_2.dat
+NMNIST	3	test    ../1156_1000_stable/Test_3.dat
+NMNIST	4	test    ../1156_1000_stable/Test_4.dat
+NMNIST	5	test    ../1156_1000_stable/Test_5.dat
+NMNIST	6	test    ../1156_1000_stable/Test_6.dat
+NMNIST	7	test    ../1156_1000_stable/Test_7.dat
+NMNIST	8	test    ../1156_1000_stable/Test_8.dat
+NMNIST	9	test    ../1156_1000_stable/Test_9.dat
 end

@@ -525,7 +525,7 @@ void Network::LSMTransientSim(networkmode_t networkmode, int  tid, const string 
             LSMNextTimeStep(++time,false,1, end_time, NULL);
         }
 #ifdef QUICK_RESPONSE   //Only for NMNIST
-        SpeechPrint(info+(_network->GetTid()%10)*(_network->NumSpeech()>400?600:100), "reservoir"); // dump the reservoir response for quick simulation
+        SpeechPrint(info+(GetTid()%10)*(NumSpeech()>400?600:100), "reservoir"); // dump the reservoir response for quick simulation
 #else
 
 #ifdef _DUMP_RESPONSE
