@@ -14,6 +14,7 @@ public:
     Parser(Network *);
     void Parse(const char *);
     void ParseNeuron(char * name, char * e_i, double v_mem);
+    void ParseBiasNeuron(char * ng_name, int dummy_freq);
     void ParseNeuronGroup(char * name, int num, char * e_i, double v_mem);
 
     void ParseLSMSynapse(char *, char *, int, int, int, int, char *);

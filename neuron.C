@@ -24,7 +24,7 @@
 //#define _DEBUG_INPUT_TRAINING
 //#define _DEBUG_BP
 //#define _DEBUG_BP_HIDDEN
-#define _DEBUG_DYNAMIC_THRESHOLD
+//#define _DEBUG_DYNAMIC_THRESHOLD
 
 // NOTE: The time constants have been changed to 2*original settings 
 //       optimized performance for letter recognition.
@@ -168,6 +168,7 @@ Neuron::Neuron(char * name, bool excitatory, Network * network, double v_mem):
     _error = 0;
     _allow_dynamic_threshold = false;
 }
+
 
 Neuron::~Neuron(){
     if(_name != NULL) delete [] _name;
@@ -902,12 +903,15 @@ void Neuron::LSMRemoveChannel(){
 
 //* Get the timing of the spikes
 void Neuron::GetSpikeTimes(vector<int>& times){
-    if(_name[0] == 'o' || _name[0] == 'h'){
+    if((_name[0] == 'o' || _name[0] == 'h') || !_fire_timings.empty()){
         times = _fire_timings;
     }
     else{
-        assert(_lsm_channel);
-        _lsm_channel->GetAllSpikes(times);
+        if(_lsm_channel == NULL){
+            times = vector<int>();
+        }
+        else
+            _lsm_channel->GetAllSpikes(times);
     }
 }
 
@@ -1109,7 +1113,7 @@ void Neuron::DebugFunc(int t){
 
     _pre_fire_max = max(fire_cnt, _pre_fire_max);
     
-    if(strcmp(_name,"output_0")==0 && (_mode == NORMALSTDP || _mode == NORMALBP)){
+    if(strcmp(_name,"output_0")==0 && (_mode == NORMALSTDP || _mode == NORMALBP || _mode == NORMAL)){
         cout<<"@time: "<<t<<endl;
         for(vector<pair<string, double> >::iterator it = pre_names.begin(); it != pre_names.end(); ++it){
             cout<<it->first<<" fires with weight "<<it->second<<endl;
@@ -1343,10 +1347,32 @@ double Neuron::GetInputSynSqSum(double weight_limit){
 
 ///////////////////////////////////////////////////////////////////////////
 
+BiasNeuron::BiasNeuron(char * name, bool excitatory, Network * network, double vmem, int dummy_f):
+Neuron(name, excitatory, network, vmem),
+_dummy_freq(dummy_f)
+{
+}
+
+void BiasNeuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
+    assert(_mode == NORMAL);
+    _fired = false;
+    if(t % _dummy_freq == 0){
+        HandleFiringActivity(true, t, train);
+        _fired = true;
+        ++_f_count;
+        assert(t > (_fire_timings.empty() ? -1 : _fire_timings.back()));
+        _fire_timings.push_back(t);
+    }  
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+
 NeuronGroup::NeuronGroup(char * name, int num, Network * network, bool excitatory, double v_mem):
     _firstCalled(false),
     _s_firstCalled(false),
     _lsm_coordinates(0),
+    _b_neuron(NULL),
     _network(network)
 {
     _name = new char[strlen(name)+2];
@@ -1375,6 +1401,7 @@ NeuronGroup::NeuronGroup(char * name, int num, Network * network, bool excitator
 NeuronGroup::NeuronGroup(char * name, char * path_neuron, char * path_synapse, Network * network):
     _firstCalled(false),
     _s_firstCalled(false),
+    _b_neuron(NULL),
     _network(network)
 {
     bool excitatory;
@@ -1454,6 +1481,7 @@ NeuronGroup::NeuronGroup(char * name, char * path_neuron, char * path_synapse, N
 NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * network):
     _firstCalled(false),
     _s_firstCalled(false),
+    _b_neuron(NULL),
     _network(network)
 {
     int num = dim1*dim2*dim3;
@@ -1959,6 +1987,7 @@ void NeuronGroup::WriteSynWeightsToFile(ofstream& f_out, int& index, const strin
         assert(neuron);
         neuron->WriteOutputWeights(f_out, index, post_g);
     }
+    if(_b_neuron)   _b_neuron->WriteOutputWeights(f_out, index, post_g);
 }
 
 

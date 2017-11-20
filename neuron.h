@@ -17,7 +17,7 @@ class Channel;
 
 
 class Neuron{
-private:
+protected:
     neuronmode_t _mode;
     char * _name;
 
@@ -113,7 +113,7 @@ private:
     const int _Unit;
 public:
     Neuron(char* name, bool excitatory, Network* network, double v_mem);
-    Neuron(char*, bool, Network*); // only for liquid state machine
+    Neuron(char* name, bool excitatory, Network* network); // only for reservoir
     ~Neuron();
     char * Name();
     void AddPostSyn(Synapse*);
@@ -209,7 +209,7 @@ public:
     void HandleFiringActivity(bool isInput, int time, bool train);
 
     void UpdateDeltaEffect();
-    void LSMNextTimeStep(int t , FILE * Foutp, bool train, int end_time);
+    virtual void LSMNextTimeStep(int t , FILE * Foutp, bool train, int end_time);
     double LSMSumAbsInputWeights();
     int  DLSMSumAbsInputWeights();
     void LSMSetChannel(Channel*,channelmode_t);
@@ -251,6 +251,14 @@ public:
     
 };
 
+class BiasNeuron : public Neuron{
+private:
+    int _dummy_freq;
+public:
+    BiasNeuron(char* name, bool excitatory, Network * network, double v_mem, int dummy_f);
+    void LSMNextTimeStep(int t , FILE * Foutp, bool train, int end_time);
+};
+
 class NeuronGroup{
 private:
     char * _name;
@@ -258,6 +266,7 @@ private:
     std::vector<Synapse*>::iterator _s_iter;
     std::vector<Neuron*> _neurons;
     std::vector<Neuron*>::iterator _iter;
+    BiasNeuron* _b_neuron; // the bias neuron
     std::set<int> _s_labels;
     bool _firstCalled;
     bool _s_firstCalled;
@@ -266,7 +275,7 @@ private:
     Network * _network;
 public:
     NeuronGroup(char* name, int num, Network* network, bool excitatory, double v_mem);
-    NeuronGroup(char*,int,int,int,Network*); // only for liquid state machine
+    NeuronGroup(char*,int,int,int,Network*); // only for reservoir
     NeuronGroup(char*,char*,char*,Network*); // for brain-like structure
     ~NeuronGroup();
 
@@ -286,6 +295,9 @@ public:
     void SubSpeechLabel(std::set<int> labels){_s_labels = labels;}
     std::set<int> SubSpeechLabel(){return _s_labels;}
     bool InSet(int num){return _s_labels.empty()? true: _s_labels.count(num)!=0;}
+
+    void SetBiasNeuron(BiasNeuron * b_neuron){_b_neuron = b_neuron;}
+    BiasNeuron* GetBiasNeuron(){return _b_neuron;}
 
     void PrintTeacherSignal();
     void PrintMembranePotential(double);

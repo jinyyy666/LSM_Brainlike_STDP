@@ -399,23 +399,23 @@ void Parser::GeneratePossionSpikes(vector<vector<vector<float> > >& x, vector<in
 void Parser::ParseNMNIST(int cls, char * train_test, char* path){
     int input_num;
     input_num=_network->SearchForNeuronGroup("input")->Size();
-	int from_num;
-	int to_num;
+    int from_num;
+    int to_num;
     int tid=_network->GetTid();
     int file_read=0;
 #ifdef QUICK_RESPONSE
-	const char *keyword="train";
+    const char *keyword="train";
     if(tid/10!=cls)
         return;
-	from_num=strcmp(train_test,keyword)?(tid%10)*100:(tid%10)*600;
-	to_num=strcmp(train_test,keyword)?(tid%10+1)*100:(tid%10+1)*600;
-	if(tid%10==9)
-		to_num=-1;
+    from_num=strcmp(train_test,keyword)?(tid%10)*100:(tid%10)*600;
+    to_num=strcmp(train_test,keyword)?(tid%10+1)*100:(tid%10+1)*600;
+    if(tid%10==9)
+        to_num=-1;
 #else
-	from_num=-1;
-	to_num=TB_PER_CLASS<0?-1:TB_PER_CLASS;
+    from_num=-1;
+    to_num=TB_PER_CLASS<0?-1:TB_PER_CLASS;
 #endif
-	bool new_file=true;
+    bool new_file=true;
     char linestring[8192];
     char * token;
     int index=0;
@@ -423,33 +423,33 @@ void Parser::ParseNMNIST(int cls, char * train_test, char* path){
     int channel_index;
     FILE * fp = fopen(path,"r");	
     assert(fp != NULL);
-	Speech * speech;
+    Speech * speech;
     while(fgets(linestring,8191,fp)!=NULL&&linestring[0]!='\n'){	
         if(linestring[0] == '#'){
-			file_read++;	
-			new_file=true;
-			continue;
-		}
-		if(from_num>=0&&file_read<from_num){
-			continue;
-		}
+            file_read++;	
+            new_file=true;
+            continue;
+        }
+        if(from_num>=0&&file_read<from_num){
+            continue;
+        }
         if(to_num>=0&&file_read>=to_num){
             break;
         }
-		if(new_file){
-			speech = new Speech(cls);
-			if(strcmp(train_test, "train") == 0)
-				_network->AddSpeech(speech);
-			else if(strcmp(train_test, "test") == 0)
-				_network->AddTestSpeech(speech);
-			else{
-				cout<<"Undefined load speech type: "<<train_test<<endl;
-				exit(EXIT_FAILURE);
-			}
-			speech->SetNumChannel(_network->SearchForNeuronGroup("input")->Size(), INPUTCHANNEL);
-			new_file=false;
-		}
-		token=strtok(linestring," \t\n,");
+        if(new_file){
+            speech = new Speech(cls);
+            if(strcmp(train_test, "train") == 0)
+                _network->AddSpeech(speech);
+            else if(strcmp(train_test, "test") == 0)
+                _network->AddTestSpeech(speech);
+            else{
+                cout<<"Undefined load speech type: "<<train_test<<endl;
+                exit(EXIT_FAILURE);
+            }
+            speech->SetNumChannel(_network->SearchForNeuronGroup("input")->Size(), INPUTCHANNEL);
+            new_file=false;
+        }
+        token=strtok(linestring," \t\n,");
         Channel * channel;
         channel_index=atoi(token);
         assert(channel_index>0);

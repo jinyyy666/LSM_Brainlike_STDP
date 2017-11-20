@@ -13,6 +13,7 @@
 #include <unordered_map>
 
 class Neuron;
+class BiasNeuron;
 class Synapse;
 class NeuronGroup;
 class Speech;
@@ -23,6 +24,7 @@ private:
     std::unordered_map<std::string, NeuronGroup*> _groupNeurons;
     std::unordered_map<std::string, std::unordered_map<std::string, Synapse*> > _synapses_map;
     std::list<Neuron*> _allNeurons;
+    std::list<BiasNeuron*> _allBiasNeurons;
     std::list<Neuron*> _allExcitatoryNeurons;
     std::list<Neuron*> _allInhibitoryNeurons;
     std::list<Neuron*> _inputNeurons;
@@ -74,6 +76,7 @@ public:
     
     bool CheckExistence(char *);
     void AddNeuron(char* name, bool excitatory, double v_mem);
+    void AddBiasNeuron(char* ng_name, int dummy_freq);
     void AddNeuronGroup(char* name, int num, bool excitatory, double v_mem);
     void LSMDeleteNeuronGroup(char * name);
     void InitializeInputLayer(int num_inputs, int num_connections);
