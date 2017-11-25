@@ -21,7 +21,7 @@
 //#define _DEBUG_UNSUPERV_TRAINING
 //#define _DEBUG_SUPV_STDP
 //#define _DEBUG_UPDATE_AT_LAST
-//#define _DEBUG_BP
+#define _DEBUG_BP
 
 using namespace std;
 
@@ -591,11 +591,17 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration, const vecto
     _pre->GetSpikeTimes(pre_times);
     auto synaptic_effects = ComputeAccSRM(pre_times, post_times, 4*LSM_T_M_C, LSM_T_FO, LSM_T_M_C, LSM_T_REFRAC);
     double size = synaptic_effects.size();
+#ifdef _DEBUG_BP
+    if(strcmp(_pre->Name(), "input_157") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0){
+        cout<<"Pre fire times for "<<_pre->Name()<<" : "<<pre_times<<endl;
+        cout<<"Post fire times for "<<_post->Name()<<" : "<<post_times<<endl;
+    }
+#endif
     //for(auto & c : pre_calcium_stamp){
     for(auto & p : synaptic_effects){
         double c = p;
 #ifdef _DEBUG_BP
-        if(strcmp(_pre->Name(), "hidden_0_0") == 0 && strcmp(_post->Name(), "output_0") == 0 || (strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "hidden_0_0)") == 0))
+        if(strcmp(_pre->Name(), "input_157") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0 || (strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "hidden_0_0)") == 0))
             cout<<"error part: "<<error*lr*c<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
 #endif
         _lsm_weight -= error*lr*c + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
