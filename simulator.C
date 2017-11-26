@@ -83,7 +83,7 @@ void Simulator::LSMRun(long tid){
         sprintf(filename, "r_weights_recurrent_info.txt");
         _network->WriteSynWeightsToFile("reservoir", "reservoir", filename);
         sprintf(filename, "h_weights_info.txt");
-        _network->WriteSynWeightsToFile("reservoir", "hidden_0", filename);
+        _network->WriteSynWeightsToFile("input", "hidden_0", filename);
         sprintf(filename, "o_weights_info.txt");
         _network->WriteSynWeightsToFile("hidden_0", "output", filename);
 
@@ -304,7 +304,7 @@ void Simulator::LSMRun(long tid){
         sprintf(filename, "o_weights_info_trained_all.txt");
         _network->WriteSelectedSynToFile("readout", filename);
         sprintf(filename, "h_weights_info_trained.txt");
-        _network->WriteSynWeightsToFile("reservoir", "hidden_0", filename);
+        _network->WriteSynWeightsToFile("input", "hidden_0", filename);
         sprintf(filename, "o_weights_info_trained.txt");
         _network->WriteSynWeightsToFile("hidden_0", "output", filename);
     }
