@@ -460,7 +460,6 @@ void Parser::ParseNMNIST(int cls, char * train_test, char* path){
             token=strtok(NULL," \t\n,");
         }
     }
-    delete token;
     fclose(fp);
     //	cout<<tid<<" load "<<file_read<<" files"<<" from class "<<cls<<", read from "<<from_num<<" to "<<to_num<<endl;
 }

@@ -22,7 +22,7 @@
 //#define _DEBUG_UNSUPERV_TRAINING
 //#define _DEBUG_SUPV_STDP
 //#define _DEBUG_UPDATE_AT_LAST
-#define _DEBUG_BP
+//#define _DEBUG_BP
 
 using namespace std;
 
