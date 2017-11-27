@@ -577,7 +577,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #else
     info = LoadFirstSpeech(true, networkmode);
 #endif
-    
+    double cost = 0;
     // 3. Load the speech for training
     while(info != -1){
         count++;
@@ -603,8 +603,10 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #endif
 
        // Apply the error bp when the speech is played
-        if(_network_mode == READOUTBP)        
+        if(_network_mode == READOUTBP){ 
             BackPropError(iteration, end_time);
+            cost += GetBpCost();
+        }
 
 #if defined(_UPDATE_AT_LAST)
         UpdateLearningWeights();
@@ -623,6 +625,8 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #ifdef _BOOSTING_METHOD
     BoostWeightUpdate(predictions);
 #endif
+    if(_network_mode == READOUTBP)
+        cout<<"@"<<iteration<<"th iteration, the cost on the training sample: "<<cost<<endl;
 
     LSMClearSignals();
 
@@ -634,7 +638,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #else
     info = LoadFirstSpeech(false, networkmode);
 #endif
-
+    cost = 0;
     while(info != -1){
         Foutp = NULL;
 
@@ -656,6 +660,8 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 
         ReadoutJudge(correct, wrong, even); // judge the readout output here
         CollectErrorPerSample(each_sample_errors); // collect the test error for the sample
+        if(_network_mode == READOUTBP)  cost += GetBpCost();
+
 #ifdef _PRINT_SPIKE_COUNT
         if(tid == 0 && (iteration == 0 || (iteration+1) % 5 == 0))
             PrintSpikeCount("readout"); // print the readout firing counts
@@ -690,6 +696,11 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 
     // 6. Log the test error
     LogTestError(each_sample_errors, iteration);
+
+    // 7. Output the cost on the test samples
+    if(_network_mode == READOUTBP)
+        cout<<"@"<<iteration<<"th iteration, the cost on the testing sample: "<<cost<<endl;
+
 }
 
 
@@ -1468,6 +1479,13 @@ void Network::BackPropError(int iteration, int end_time){
     }
 }
 
+//* calculate the cost function of the error-bp
+double Network::GetBpCost(){
+    assert(_lsm_output_layer);
+    assert(_sp);
+    return _lsm_output_layer->GetCost(_sp->Class(), _sp->Weight());
+}
+
 //* update the learning weight in the end of each sample
 void Network::UpdateLearningWeights(){
     assert(_lsm_output_layer);
@@ -1477,13 +1495,9 @@ void Network::UpdateLearningWeights(){
 //* collect the test error for a single sample
 void Network::CollectErrorPerSample(vector<double>& each_sample_errors){
     assert(_lsm_output_layer);
-#ifdef CV
-    assert(*_cv_test_sp_iter);
-    double error = _lsm_output_layer->ComputeRatioError((*_cv_test_sp_iter)->Class());
-#else
-    assert(*_sp_iter);
-    double error = _lsm_output_layer->ComputeRatioError((*_sp_iter)->Class());
-#endif
+    assert(_sp);
+
+    double error = _lsm_output_layer->GetCost((_sp)->Class(), _sp->Weight());
     each_sample_errors.push_back(error);
 }
 

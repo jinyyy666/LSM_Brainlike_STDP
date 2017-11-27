@@ -147,6 +147,7 @@ public:
     bool LSMEndOfSpeech(networkmode_t networkmode, int end_time);
     void LSMChannelDecrement(channelmode_t);
     void BackPropError(int iteration, int end_time);
+    double GetBpCost();
     void UpdateLearningWeights();
     void CollectErrorPerSample(std::vector<double>& each_sample_error);
     void PrintSpikeCount(std::string layer);

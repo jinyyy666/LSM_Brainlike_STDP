@@ -1822,6 +1822,39 @@ int NeuronGroup::Judge(int cls){
 }
 
 
+//* compute the cost
+double NeuronGroup::GetCost(int cls, double sample_weight){
+    int max_count = MaxFireCount();
+    double cost = 0;
+    for(int i = 0; i < _neurons.size(); ++i){
+        int f_cnt = _neurons[i]->FireCount();
+        double diff = 0;
+        // simple ratio based obj
+#if     defined(BP_OBJ_RATIO)
+        if(max_count != 0)
+            diff = (i == cls) ? (f_cnt == max_count ? 0 : double(f_cnt)/max_count - 2): 
+                max(_neurons[i]->FireCount()/double(max_count) - 0.5, 0.0);
+        else
+            diff = (i == cls) ? - 1: 0;
+#elif   defined(BP_OBJ_COUNT)
+        // simple count based obj
+        if(i == cls)
+            diff = (f_cnt >= DESIRED_LEVEL - MARGIN && f_cnt <= DESIRED_LEVEL + MARGIN) ? 0 : f_cnt - DESIRED_LEVEL;
+        else
+            diff = (f_cnt >= UNDESIRED_LEVEL - MARGIN && f_cnt <= UNDESIRED_LEVEL + MARGIN) ? 0 : f_cnt - UNDESIRED_LEVEL;
+#elif   defined(BP_OBJ_SOFTMAX)
+        // soft max based obj
+        if(i == cls)
+            diff = exp(f_cnt - max_count)/soft_max_sum - 1;
+        else
+            diff = exp(f_cnt - max_count)/soft_max_sum;
+#endif
+        diff *= sample_weight;
+        cost += diff*diff;
+    }
+    return cost;
+}
+
 //* compute the softmax of the readout neurons:
 double NeuronGroup::SoftMax(int max_count){
     double sum = 0;
@@ -1959,18 +1992,6 @@ void NeuronGroup::DynamicTuneThreshold(int cls)
     //cout<<"Number of dead neuron in the "<<_name<<" is "<<cnt<<endl;
 }
 
-//* compute the back-prop error and print out:
-double NeuronGroup::ComputeRatioError(int cls){
-    int max_count = MaxFireCount();
-    double error = 0, sum_error = 0;
-    for(int i = 0; i < _neurons.size(); ++i){
-        int f_cnt = _neurons[i]->FireCount();
-        if(max_count != 0)  error = (i == cls) - double(f_cnt)/max_count;
-        else    error = (i == cls);
-        sum_error += error*error;
-    }
-    return sum_error;
-}
 
 //* update the input synapses for each neuron
 void NeuronGroup::UpdateLearningWeights(){

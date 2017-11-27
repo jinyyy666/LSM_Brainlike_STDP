@@ -315,13 +315,13 @@ public:
     void MergeCorrelatedNeurons(int num_sample);
 
     int Judge(int cls);
+    double GetCost(int cls, double sample_weight);
     double SoftMax(int max_count);
     int MaxFireCount();
     void BpOutputError(int cls, int iteration, int end_time, double sample_weight);
     void BpHiddenError(int iteration, int end_time, double sample_weight);
     void DynamicTuneThreshold(int cls);
 
-    double ComputeRatioError(int cls);
     void UpdateLearningWeights();
 
     void WriteSynWeightsToFile(std::ofstream & f_out, int& index, const std::string& post_g);
