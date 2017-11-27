@@ -626,7 +626,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
     BoostWeightUpdate(predictions);
 #endif
     if(_network_mode == READOUTBP)
-        cout<<"@"<<iteration<<"th iteration, the cost on the training sample: "<<cost<<endl;
+        cout<<"@"<<iteration<<"th iteration, the cost on the training sample: "<<cost/count<<endl;
 
     LSMClearSignals();
 
@@ -639,15 +639,16 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
     info = LoadFirstSpeech(false, networkmode);
 #endif
     cost = 0;
+    count = 0;
     while(info != -1){
         Foutp = NULL;
-
 #if defined(_WRITE_STAT)
         sprintf(filename,"outputs/spikepattern%d.dat",info);
         Foutp = fopen(filename,"a");
         assert(Foutp != NULL);
 #endif
 
+        count++;
         int time = 0, end_time = this->SpeechEndTime();
         while(!LSMEndOfSpeech(networkmode, end_time)){
             LSMNextTimeStep(++time, false, 1, end_time, Foutp);
@@ -699,7 +700,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 
     // 7. Output the cost on the test samples
     if(_network_mode == READOUTBP)
-        cout<<"@"<<iteration<<"th iteration, the cost on the testing sample: "<<cost<<endl;
+        cout<<"@"<<iteration<<"th iteration, the cost on the testing sample: "<<cost/count<<endl;
 
 }
 
