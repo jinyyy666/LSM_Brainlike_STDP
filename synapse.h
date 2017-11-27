@@ -64,6 +64,7 @@ private:
 
     double _lsm_c;
     double _lsm_weight;
+    double _lsm_v_w; // f^{\prime} for SGD
     double _lsm_weight_old;
     double _lsm_weight_limit;
 

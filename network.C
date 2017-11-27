@@ -1246,10 +1246,8 @@ void Network::LSMClearSignals(){
     _lsmActiveSyns.clear();
     _lsmActiveSTDPLearnSyns.clear(); 
     _sp = NULL;
-    _lsm_input_layer = NULL;
-    _lsm_reservoir_layer = NULL;
-    _lsm_output_layer = NULL;
 }
+
 void Network::LSMClearWeights(){
     for(list<Synapse*>::iterator iter = _synapses.begin(); iter != _synapses.end(); iter++) (*iter)->LSMClearLearningSynWeights();
 }

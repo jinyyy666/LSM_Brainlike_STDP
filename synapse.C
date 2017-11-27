@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include <iostream>
+#include <numeric>
 
 
 //#define _DEBUG_SYN_UPDATE
@@ -48,6 +49,7 @@ Synapse::Synapse(Neuron * pre, Neuron * post, double lsm_weight, bool fixed, dou
     _lsm_delay(0),
     _lsm_c(0),
     _lsm_weight(lsm_weight),
+    _lsm_v_w(0),
     _lsm_weight_old(_lsm_weight),
     _lsm_weight_limit(fabs(lsm_weight_limit)),
     _Unit(1),
@@ -108,6 +110,7 @@ Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int 
     _lsm_delay(0),
     _lsm_c(0),
     _lsm_weight(0),
+    _lsm_v_w(0),
     _lsm_weight_old(_lsm_weight),
     _lsm_weight_limit(0),
     _D_lsm_c(0),
@@ -597,15 +600,20 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration, const vecto
         cout<<"Post fire times for "<<_post->Name()<<" : "<<post_times<<endl;
     }
 #endif
+    double acc_response = 0;
     //for(auto & c : pre_calcium_stamp){
-    for(auto & p : synaptic_effects){
-        double c = p;
-#ifdef _DEBUG_BP
-        if(strcmp(_pre->Name(), "input_157") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0 || (strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "hidden_0_0)") == 0))
-            cout<<"error part: "<<error*lr*c<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
-#endif
-        _lsm_weight -= error*lr*c + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
+    for(auto & c : synaptic_effects){
+        acc_response += c;
+        //_lsm_weight -= error*lr*c + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
     }
+#ifdef _DEBUG_BP
+    if(strcmp(_pre->Name(), "input_157") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0 || (strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "hidden_0_0)") == 0))
+        cout<<"error part: "<<error*lr*acc_response<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
+#endif
+    double weight_grad = error * acc_response * lr + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
+    _lsm_v_w = _lsm_v_w * BP_MOMENTUM + weight_grad;
+    _lsm_weight -= _lsm_v_w;
+
     CheckReadoutWeightOutBound();
 }
 

@@ -87,7 +87,7 @@
  * The TS is only defined for Yong's and supvervised
  * STDP.
  *****************************************/
-#define TEACHER_SIGNAL
+//#define TEACHER_SIGNAL
 
 
 /*******************************************
@@ -111,7 +111,8 @@
 /*****************************************
  * Settings for error-backprop rule
  ****************************************/
-#define BP_BETA_REG 0.0 // params for the regularization
+#define BP_MOMENTUM 0.9   // momentum for STDp
+#define BP_BETA_REG 0.0   // params for the regularization
 #define BP_LAMBDA_REG 0.08
 #define BP_DELTA_POT 0.00001 // params for the learning of pos/neg class
 #define BP_DELTA_DEP 0.00001
@@ -237,8 +238,8 @@
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
 #define CLS 26
-#define NUM_THREADS 5
-#define NUM_ITERS 500
+#define NUM_THREADS 1
+#define NUM_ITERS 10
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -282,11 +283,11 @@
 //#define DIGITAL_SYN_ORGINAL 1
 #define LIQUID_SYN_MODIFICATION 1
 
-#define SYN_ORDER_2 1 
-//#define SYN_ORDER_1 0
+//#define SYN_ORDER_2 1 
+#define SYN_ORDER_1 1
 //#define SYN_ORDER_0 0 
 
-#define CV
+//#define CV
 #define NFOLD 5
 
 //* Control variable to enable the old way of readout by writing outputs/*.dat
@@ -310,12 +311,12 @@
 
 //#define USE_TEST_SAMPLE
 
-#define TB_PER_CLASS 100 //set to -1 if need to read all
+#define TB_PER_CLASS 1 //set to -1 if need to read all
 
 //#define LOAD_RESPONSE
 
 //#define _DYNAMIC_THRESHOLD
-//#define DYNAMIC_THRESHOLD_PER 0.7
+//#define DYNAMIC_THRESHOLD_PER 1
 
 //#define QUICK_RESPONSE
 
