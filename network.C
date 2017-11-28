@@ -1037,8 +1037,8 @@ void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neur
         neuronmode_readout = NORMALSTDP;
     }
     else if(networkmode == READOUTBP){ // the error backprop mode
-        neuronmode_input = DEACTIVATED;
-        neuronmode_reservoir = READCHANNELBP;
+        neuronmode_input = READCHANNEL;
+        neuronmode_reservoir = DEACTIVATED;
         neuronmode_readout = NORMALBP;
     }else{
         cout<<"Unrecognized network mode!"<<endl;

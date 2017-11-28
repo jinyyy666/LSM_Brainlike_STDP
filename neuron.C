@@ -1826,6 +1826,8 @@ int NeuronGroup::Judge(int cls){
 double NeuronGroup::GetCost(int cls, double sample_weight){
     int max_count = MaxFireCount();
     double cost = 0;
+    double soft_max_sum = SoftMax(max_count);
+
     for(int i = 0; i < _neurons.size(); ++i){
         int f_cnt = _neurons[i]->FireCount();
         double diff = 0;
@@ -1859,8 +1861,8 @@ double NeuronGroup::GetCost(int cls, double sample_weight){
 double NeuronGroup::SoftMax(int max_count){
     double sum = 0;
     for(int i = 0; i < _neurons.size(); ++i){
-        double f_cnt = _neurons[i]->FireCount();
-        sum += exp(f_cnt - max_count);
+        double ratio = _neurons[i]->FireCount()/double(max_count);
+        sum += exp(ratio - 1);
     }
     return sum;
 }
@@ -1904,9 +1906,9 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 #elif   defined(BP_OBJ_SOFTMAX)
         // soft max based obj
         if(i == cls)
-            error = exp(f_cnt - max_count)/soft_max_sum - 1;
+            error = exp(f_cnt/double(max_count) - 1)/soft_max_sum - 1;
         else
-            error = exp(f_cnt - max_count)/soft_max_sum;
+            error = exp(f_cnt/double(max_count) - 1)/soft_max_sum;
 #endif
         error *= sample_weight;
         sum_error += error*error;
