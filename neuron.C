@@ -1847,9 +1847,9 @@ double NeuronGroup::GetCost(int cls, double sample_weight){
 #elif   defined(BP_OBJ_SOFTMAX)
         // soft max based obj
         if(i == cls)
-            diff = exp(f_cnt - max_count)/soft_max_sum - 1;
+            diff = exp(f_cnt/double(max_count) - 1)/soft_max_sum - 1;
         else
-            diff = exp(f_cnt - max_count)/soft_max_sum;
+            diff = exp(f_cnt/double(max_count) - 1)/soft_max_sum;
 #endif
         diff *= sample_weight;
         cost += diff*diff;
