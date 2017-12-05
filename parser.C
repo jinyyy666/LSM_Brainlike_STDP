@@ -381,6 +381,7 @@ void Parser::GeneratePossionSpikes(vector<vector<vector<float> > >& x, vector<in
                 channel = speech->AddChannel(10, 1, index++);
                 if(fabsf(freq - 0.0f) < 1e-5)   continue;
                 for(int time = 1; time < duration; ++time){
+                    //if((rand() / (RAND_MAX + 1.0f)) < freq) channel->AddSpike(time);
                     if(dist(e2) < freq) channel->AddSpike(time);
                 }
             }
