@@ -915,9 +915,9 @@ void Neuron::GetSpikeTimes(vector<int>& times){
     }
 }
 
-//* Set the timing of the spikes, only valid for the readout neurons
+//* Set the timing of the spikes, only valid for the readout or hidden neurons
 void Neuron::SetSpikeTimes(const vector<int>& times){
-    assert(_name[0] == 'o');
+    assert(_name[0] == 'o' || _name[0] == 'h');
     _fire_timings = times;
 }
 
@@ -1915,9 +1915,9 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 #ifdef _DEBUG_BP
         cout<<"The backprop error for neuron "<<i<<" : "<<error<<" with fc: "<<_neurons[i]->FireCount()<<endl;
 #endif
-        // build a dummmy firing timings for the targeted neuron when there is no spikes
-        if(i == cls && f_cnt == 0){
-            vector<int> dummy_f_seq = BuildDummyTimes(max_count, end_time);
+        // build a dummmy firing timings for neurons when there is no spikes
+        if(f_cnt == 0){
+            vector<int> dummy_f_seq = BuildDummyTimes(max_count, end_time, i == cls);
             _neurons[i]->SetSpikeTimes(dummy_f_seq); 
         }
         // set the error for further bp to other layers
@@ -1938,6 +1938,8 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 
 //* back-prop the error down to other layers:
 void NeuronGroup::BpHiddenError(int iteration, int end_time, double sample_weight){
+    int max_count = MaxFireCount();
+
     for(int i = 0; i < _neurons.size(); ++i){
         // Gather the back-proped error from l+1 layer
         double error = sample_weight*_neurons[i]->GatherError();
@@ -1946,6 +1948,11 @@ void NeuronGroup::BpHiddenError(int iteration, int end_time, double sample_weigh
 #endif
         // Set the error for further use
         _neurons[i]->SetError(error);
+        // modify the spike times if necessary
+        if(_neurons[i]->FireCount() == 0){
+            vector<int> dummy_f_seq = BuildDummyTimes(max_count, end_time, false);
+            _neurons[i]->SetSpikeTimes(dummy_f_seq); 
+        }
         // update the weight given the error
         _neurons[i]->BpError(error, iteration);
     }

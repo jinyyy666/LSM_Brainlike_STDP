@@ -141,13 +141,14 @@ std::vector<double> ComputeAccSRM(const std::vector<int>& pre_times, const std::
 
 
 //* Build the dummy firing times for the targeted neuron with zero spike cnt
-std::vector<int> BuildDummyTimes(int max_count, int end_time){
+//* for the target neuron, the fire count after changing should be max_count
+//* for the neuron that is not the target, the fire count after chaning should be 4
+std::vector<int> BuildDummyTimes(int max_count, int end_time, bool is_target){
     std::vector<int> v;
-    int interval = end_time/std::max(max_count, 1);
+    int interval = max_count == 0 || !is_target ? end_time/4 : end_time/max_count;
     for(int i = interval; i < end_time; i += interval){
         v.push_back(i);
     }
-    if(v.empty())   v.push_back(end_time/2);
     return v;
 }
 
