@@ -145,7 +145,7 @@ std::vector<double> ComputeAccSRM(const std::vector<int>& pre_times, const std::
 //* for the neuron that is not the target, the fire count after chaning should be 4
 std::vector<int> BuildDummyTimes(int max_count, int end_time, bool is_target){
     std::vector<int> v;
-    int interval = max_count == 0 || !is_target ? end_time/4 : end_time/max_count;
+    int interval = max_count == 0 || !is_target ? end_time - 1 : end_time/max_count;
     for(int i = interval; i < end_time; i += interval){
         v.push_back(i);
     }
