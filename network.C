@@ -665,7 +665,7 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 
 #ifdef _PRINT_SPIKE_COUNT
         if(tid == 0 && (iteration == 0 || (iteration+1) % 5 == 0))
-            PrintSpikeCount("readout"); // print the readout firing counts
+            PrintSpikeCount("output"); // print the readout firing counts
 #endif
 
 
@@ -1504,11 +1504,7 @@ void Network::CollectErrorPerSample(vector<double>& each_sample_errors){
 
 //* print the fire spike count of a specific layer 
 void Network::PrintSpikeCount(string layer){
-    NeuronGroup * ng = NULL;
-    if(layer == "readout")  ng = _lsm_output_layer;
-    else{
-        cout<<"Unrecognized layer: "<<layer<<endl;
-    }
+    NeuronGroup * ng = SearchForNeuronGroup(layer.c_str());
     assert(ng);
 #ifdef CV
     assert(*_cv_test_sp_iter);
