@@ -1908,7 +1908,7 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
     double error = 0;
     double sum_error = 0;
     double soft_max_sum = SoftMax(max_count);
-    vector<double> lateral_factors = false ? GetLateralFactor(cls) : vector<double>(_neurons.size(), 1);
+    vector<double> lateral_factors = _has_lateral ? GetLateralFactor(cls) : vector<double>(_neurons.size(), 1);
 
 #ifdef _DEBUG_BP
     cout<<"True class label: "<<cls<<endl;
