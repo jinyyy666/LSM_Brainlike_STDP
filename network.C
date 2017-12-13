@@ -351,11 +351,13 @@ void Network::LSMAddSynapse(Neuron * pre, NeuronGroup * post, int npost, int val
     }
 }
 
-//* add the laterial inhibition inside the layer
+//* add the lateral inhibition inside the layer
 void Network::LSMAddSynapse(NeuronGroup * pre, int npre, int npost, int value, int random, bool fixed){
     assert(npre == -1 && npost == -1);
     assert(fixed);
     assert(value > 0);
+    pre->SetLateral();
+    pre->SetLateralWeight(double(value));
     for(Neuron * pre_neuron = pre->First(); pre_neuron != NULL; pre_neuron = pre->Next()){
         for(int i = 0; i < pre->Size(); ++i){
             Neuron * post_neuron = pre->Order(i);

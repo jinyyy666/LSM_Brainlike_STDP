@@ -270,6 +270,8 @@ private:
     std::set<int> _s_labels;
     bool _firstCalled;
     bool _s_firstCalled;
+    bool _has_lateral;
+    double _lateral_w;
 
     int ** _lsm_coordinates;
     Network * _network;
@@ -306,6 +308,9 @@ public:
     void LSMLoadSpeech(Speech*,int*,neuronmode_t,channelmode_t);
     void LSMSetNeurons(neuronmode_t neuronmode);
 
+    void SetLateral(){_has_lateral = true;}
+    void SetLateralWeight(double weight){_lateral_w = weight;}
+
     void Collect4State(int& ep_max, int& ep_min, int& ip_max, int& ip_min, 
             int& en_max, int& en_min, int& in_max, int& in_min, int& pre_active_max);
     void ScatterFreq(std::vector<double>& fs, std::size_t & bias, std::size_t & cnt);
@@ -316,6 +321,7 @@ public:
 
     int Judge(int cls);
     double GetCost(int cls, double sample_weight);
+    std::vector<double> GetLateralFactor(int cls);
     double SoftMax(int max_count);
     int MaxFireCount();
     void BpOutputError(int cls, int iteration, int end_time, double sample_weight);

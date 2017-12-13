@@ -1373,6 +1373,8 @@ NeuronGroup::NeuronGroup(char * name, int num, Network * network, bool excitator
     _s_firstCalled(false),
     _lsm_coordinates(0),
     _b_neuron(NULL),
+    _has_lateral(false),
+    _lateral_w(0.0),
     _network(network)
 {
     _name = new char[strlen(name)+2];
@@ -1402,6 +1404,8 @@ NeuronGroup::NeuronGroup(char * name, char * path_neuron, char * path_synapse, N
     _firstCalled(false),
     _s_firstCalled(false),
     _b_neuron(NULL),
+    _has_lateral(false),
+    _lateral_w(0.0),
     _network(network)
 {
     bool excitatory;
@@ -1482,6 +1486,8 @@ NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * ne
     _firstCalled(false),
     _s_firstCalled(false),
     _b_neuron(NULL),
+    _has_lateral(false),
+    _lateral_w(0.0),
     _network(network)
 {
     int num = dim1*dim2*dim3;
@@ -1857,6 +1863,25 @@ double NeuronGroup::GetCost(int cls, double sample_weight){
     return cost;
 }
 
+//* get the specific factor when lateral exists
+vector<double> NeuronGroup::GetLateralFactor(int cls){
+    vector<double> factors(_neurons.size(), 1);
+    double d_sum = 0.0;
+    for(int i = 0; i < _neurons.size(); ++i){
+        double vth = _neurons[i]->GetVth();
+        int f_cnt = _neurons[i]->FireCount();
+        if(f_cnt > 0 || (f_cnt == 0 && i == cls))  d_sum += 1/vth;
+    }
+
+    for(int i = 0; i < _neurons.size(); ++i){
+        double vth = _neurons[i]->GetVth();
+        int f_cnt = _neurons[i]->FireCount();
+        double d = (f_cnt > 0 || (f_cnt == 0 && i == cls)) ? 1 / vth : 0;
+        factors[i] = 1 / (1 - _lateral_w * _lateral_w * d * (d_sum - d));
+    }
+    return factors;
+}
+
 //* compute the softmax of the readout neurons:
 double NeuronGroup::SoftMax(int max_count){
     double sum = 0;
@@ -1883,6 +1908,7 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
     double error = 0;
     double sum_error = 0;
     double soft_max_sum = SoftMax(max_count);
+    vector<double> lateral_factors = false ? GetLateralFactor(cls) : vector<double>(_neurons.size(), 1);
 
 #ifdef _DEBUG_BP
     cout<<"True class label: "<<cls<<endl;
@@ -1912,11 +1938,14 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 #endif
         error *= sample_weight;
         sum_error += error*error;
+        // incorporate the change for lateral inhibition
+        error *= lateral_factors[i]; 
+
 #ifdef _DEBUG_BP
         cout<<"The backprop error for neuron "<<i<<" : "<<error<<" with fc: "<<_neurons[i]->FireCount()<<endl;
 #endif
         // build a dummmy firing timings for neurons when there is no spikes
-        if(f_cnt == 0){
+        if(f_cnt == 0 && i == cls){
             vector<int> dummy_f_seq = BuildDummyTimes(max_count, end_time, i == cls);
             _neurons[i]->SetSpikeTimes(dummy_f_seq); 
         }
@@ -1948,11 +1977,6 @@ void NeuronGroup::BpHiddenError(int iteration, int end_time, double sample_weigh
 #endif
         // Set the error for further use
         _neurons[i]->SetError(error);
-        // modify the spike times if necessary
-        if(_neurons[i]->FireCount() == 0){
-            vector<int> dummy_f_seq = BuildDummyTimes(max_count, end_time, false);
-            _neurons[i]->SetSpikeTimes(dummy_f_seq); 
-        }
         // update the weight given the error
         _neurons[i]->BpError(error, iteration);
     }
