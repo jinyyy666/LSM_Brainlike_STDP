@@ -443,7 +443,7 @@ void Synapse::LSMLearn(int t, int iteration){
     double weight_old = _lsm_weight;
     _lsm_c = _post->GetCalciumPre();
 	int signal=_post->GetTeacherSignal();
-    if(signal){
+    if(signal==1){
         if((_lsm_c < LSM_CAL_MID+6)){ // &&(_post->LSMGetVMemPre() > LSM_V_THRESH*0.2)){
             _lsm_weight += LSM_DELTA_POT/( 1 + iteration/ITER_SEARCH_CONV);
         }

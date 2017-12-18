@@ -237,7 +237,6 @@ void Parser::ParseSpeech(int cls, char* path){
 
     char linestring[8192];
     char * token;
-    //cout<<path<<endl;
     FILE * fp = fopen(path,"r");
     assert(fp != NULL);
     int index = 0;

@@ -283,8 +283,8 @@
 //#define DIGITAL_SYN_ORGINAL 1
 #define LIQUID_SYN_MODIFICATION 1
 
-//#define SYN_ORDER_2 1 
-#define SYN_ORDER_1 1
+#define SYN_ORDER_2 1 
+//#define SYN_ORDER_1 1
 //#define SYN_ORDER_0 0 
 
 #define CV
@@ -301,7 +301,7 @@
 //#define _RES_EPEN_CHR
 
 //* visualize the spikes response and the v_mem
-//#define _DUMP_RESPONSE
+#define _DUMP_RESPONSE
 
 //#define _DUMP_CALCIUM
 
