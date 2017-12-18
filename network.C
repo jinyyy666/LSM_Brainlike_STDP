@@ -537,6 +537,8 @@ void Network::LSMTransientSim(networkmode_t networkmode, int  tid, const string 
         }
 #endif
 #endif
+        if(tid == 0)
+			SpeechPrint(info, "reservoir"); // dump the reservoir response for quick simulation
 
 #ifdef _VARBASED_SPARSE
         // Collect the firing activity of each reservoir neurons from sp

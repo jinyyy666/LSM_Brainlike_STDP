@@ -25,6 +25,7 @@
 //#define _DEBUG_BP
 //#define _DEBUG_BP_HIDDEN
 //#define _DEBUG_DYNAMIC_THRESHOLD
+#define TARGET_CAL 6
 
 // NOTE: The time constants have been changed to 2*original settings 
 //       optimized performance for letter recognition.
@@ -62,6 +63,7 @@ Neuron::Neuron(char * name, bool excitatory, Network * network):
     _lsm_tau_IN(LSM_T_SYNI*2),
     _lsm_tau_FO(LSM_T_FO),
     _lsm_v_thresh(LSM_V_THRESH),
+	_lsm_t_m_c(LSM_T_M_C),
     _ts_strength_p(0),
     _ts_strength_n(0),
     _ts_freq(DEFAULT_TS_FREQ),
@@ -102,6 +104,8 @@ Neuron::Neuron(char * name, bool excitatory, Network * network):
     _fired = false;
     _error = 0;
     _allow_dynamic_threshold = false;
+	_fire_start=false;
+    vector<double>().swap( _cals);
 }
 
 //FOR INPUT AND OUTPUT
@@ -127,6 +131,7 @@ Neuron::Neuron(char * name, bool excitatory, Network * network, double v_mem):
     _lsm_tau_IN(LSM_T_SYNI*2),
     _lsm_tau_FO(LSM_T_FO),
     _lsm_v_thresh(v_mem),
+	_lsm_t_m_c(LSM_T_M_C),
     _ts_strength_p(0),
     _ts_strength_n(0),
     _ts_freq(DEFAULT_TS_FREQ),
@@ -167,6 +172,8 @@ Neuron::Neuron(char * name, bool excitatory, Network * network, double v_mem):
     _fired = false;
     _error = 0;
     _allow_dynamic_threshold = false;
+	_fire_start=false;
+    vector<double>().swap( _cals);
 }
 
 
@@ -351,6 +358,9 @@ void Neuron::LSMClear(){
     _D_lsm_state_EN = 0;
     _D_lsm_state_IP = 0;
     _D_lsm_state_IN = 0;
+	_fire_start=false;
+    vector<double>().swap( _cals);
+	_lsm_t_m_c=LSM_T_M_C;
 }
 
 //* function wrapper for ExpDecay:
@@ -385,6 +395,12 @@ inline void Neuron::ExpDecay(int& var, const int time_c){
 //******            so that good performance is obtained under continuous case.
 //******            But without leaking term, the continuous case will not work!
 inline void Neuron::ExpDecay(double & var, const int time_c){
+    var -= var/time_c;
+#ifdef DIGITAL
+    assert(0);
+#endif
+}
+inline void Neuron::ExpDecay(double & var, double time_c){
     var -= var/time_c;
 #ifdef DIGITAL
     assert(0);
@@ -703,6 +719,15 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
         return;
     }
 
+	if(t>20)
+		_cals.push_back(_lsm_calcium);
+    
+#ifdef TEACHER_SIGNAL
+    if(_allow_dynamic_threshold && _network->LSMGetNetworkMode()==TRANSIENTSTATE&&t>20)  
+        DynamicThreshold(t);
+#endif
+    
+
     // the following code is to simulate the mode of NORMAL, WRITECHANNEL, and STDP
 #ifdef DIGITAL
     _D_lsm_v_mem_pre = _D_lsm_v_mem;
@@ -721,11 +746,11 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
         _D_lsm_v_mem -= t%_ts_freq == 0 ? _D_lsm_v_thresh*_ts_strength_n : 0;
     }
 #else
-    if((_teacherSignal==1)&&(_lsm_calcium < LSM_CAL_MID+1)){
-        _lsm_v_mem += t%_ts_freq == 0 ? 20*_ts_strength_p : 0;
-    }else if((_teacherSignal==-1)&&(_lsm_calcium > LSM_CAL_MID-1)){
-        _lsm_v_mem -= t%_ts_freq == 0 ? 15*_ts_strength_n : 0;
-    }
+//    if((_teacherSignal==1)&&(_lsm_calcium < LSM_CAL_MID+1)){
+//        _lsm_v_mem += t%_ts_freq == 0 ? 20*_ts_strength_p : 0;
+//    }else if((_teacherSignal==-1)&&(_lsm_calcium > LSM_CAL_MID-1)){
+//        _lsm_v_mem -= t%_ts_freq == 0 ? 15*_ts_strength_n : 0;
+//    }
 
 #endif
 
@@ -751,7 +776,10 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
     /* this is for continuous case: */
     int pos;
     double value;
-    ExpDecay(_lsm_v_mem, LSM_T_M_C);
+	if(_name[0]=='r')
+		ExpDecay(_lsm_v_mem, _lsm_t_m_c);
+	else
+		ExpDecay(_lsm_v_mem, LSM_T_M_C);
 #ifdef SYN_ORDER_2 
     ExpDecay(_lsm_state_EP, _lsm_tau_EP);
     ExpDecay(_lsm_state_EN, _lsm_tau_EN);
@@ -795,6 +823,9 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
 #else
     double temp = NOrderSynapticResponse();
     _lsm_v_mem += temp;
+	if(temp>0){
+		_fire_start=true;
+	}
 #ifdef _DUMP_RESPONSE
     _vmems.push_back(_lsm_ref > 0 ? 0 : _lsm_v_mem);
 #endif
@@ -815,10 +846,6 @@ void Neuron::LSMNextTimeStep(int t, FILE * Foutp, bool train, int end_time){
 
     _fired = false;
 
-    /*
-    if(_allow_dynamic_threshold && _network->LSMGetNetworkMode()==TRANSIENTSTATE)  
-        DynamicThreshold(t);
-    */
 #ifdef DIGITAL
     if(_D_lsm_v_mem > _D_lsm_v_thresh){  
         _D_lsm_calcium += unit;
@@ -1138,13 +1165,39 @@ void Neuron::DynamicThreshold(int t){
     assert(0); // only implement this for the continuous setting
 #endif
     if(!(_name[0] == 'r' && _name[9] == '_'))   return;
-    if(_fired && _lsm_calcium > LSM_CAL_MID + 1 && _lsm_v_thresh < 30) {
-        _lsm_v_thresh += 1.98;
-    }   
-    else if(!_fired && _lsm_calcium < LSM_CAL_MID -1 && _lsm_v_thresh > 5 && t > 20) {
-        _lsm_v_thresh -= 0.02;
-    }
+	double E=Estimate_Cal();
+	if(E==0){
+		_lsm_t_m_c=256;
+	}
+	else
+		_lsm_t_m_c*=TARGET_CAL/E;
+	if(_lsm_t_m_c<16){
+		_lsm_t_m_c=16;
+	}
+	if(_lsm_t_m_c>256){
+		_lsm_t_m_c=256;
+	}
 }
+
+double Neuron::Estimate_Cal(){
+	assert(!_cals.empty());
+	double sum=0;
+	for(int i=0;i<_cals.size();i++){
+		sum+=_cals[i];
+	}
+	return sum/_cals.size();
+}
+
+double Neuron::VAR_Cal(){
+	assert(!_cals.empty());
+	double estimate_cal=Estimate_Cal();
+	double var=0;
+	for(int i=0;i<_cals.size();i++){
+		var+=(_cals[i]-estimate_cal)*(_cals[i]-estimate_cal);
+	}
+	return var/_cals.size();
+}
+
 
 
 //* write the output synaptic weigths to the file
@@ -1385,13 +1438,9 @@ NeuronGroup::NeuronGroup(char * name, int num, Network * network, bool excitator
     for(int i = 0; i < num; i++){
         sprintf(neuronName,"%s_%d",name,i);
         Neuron * neuron = new Neuron(neuronName, excitatory, network, v_mem);
-#ifdef _DYNAMIC_THRESHOLD
-        if(1.0f* rand() / RAND_MAX < DYNAMIC_THRESHOLD_PER){
+#ifdef _DYNAMIC_THRESHOLD_OUT
+        if(neuron->IsExcitatory())
             neuron->EnableDynamicThresh(true);
-        }
-        else{
-            neuron->EnableDynamicThresh(false);
-        }
 #endif
         neuron->SetIndexInGroup(i);
         _neurons[i] = neuron;
@@ -1509,12 +1558,8 @@ NeuronGroup::NeuronGroup(char * name, int dim1, int dim2, int dim3, Network * ne
         sprintf(neuronName,"%s_%d",name,i);
         Neuron * neuron = new Neuron(neuronName,excitatory,network);
 #ifdef _DYNAMIC_THRESHOLD
-        if(rand()%100 < 100*DYNAMIC_THRESHOLD_PER){
+        if(neuron->IsExcitatory())
             neuron->EnableDynamicThresh(true);
-        }
-        else{
-            neuron->EnableDynamicThresh(false);
-        }
 #endif
         neuron->SetIndexInGroup(i);
         _neurons[i] = neuron;

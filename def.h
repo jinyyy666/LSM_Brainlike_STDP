@@ -87,7 +87,7 @@
  * The TS is only defined for Yong's and supvervised
  * STDP.
  *****************************************/
-//#define TEACHER_SIGNAL
+#define TEACHER_SIGNAL
 
 
 /*******************************************
@@ -232,14 +232,14 @@
 #define LSM_V_REST 0
 #define LSM_V_RESET 0
 #define LSM_V_THRESH 20
-#define LSM_CAL_MID 5
+#define LSM_CAL_MID 8
 #define LSM_CAL_MARGIN 0
 #define LSM_DELTA_POT 0.006
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
 #define CLS 26
-#define NUM_THREADS 1
-#define NUM_ITERS 10
+#define NUM_THREADS 5
+#define NUM_ITERS 500
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -287,7 +287,7 @@
 #define SYN_ORDER_1 1
 //#define SYN_ORDER_0 0 
 
-//#define CV
+#define CV
 #define NFOLD 5
 
 //* Control variable to enable the old way of readout by writing outputs/*.dat
@@ -315,8 +315,7 @@
 
 //#define LOAD_RESPONSE
 
-//#define _DYNAMIC_THRESHOLD
-//#define DYNAMIC_THRESHOLD_PER 1
+#define _DYNAMIC_THRESHOLD
 
 //#define QUICK_RESPONSE
 

@@ -25,6 +25,7 @@ protected:
     std::vector<Synapse*> _inputSyns; 
     std::vector<double> _fire_freq;
     std::vector<bool> _presyn_act;
+    std::vector<double> _cals;
     std::map<Neuron*, int> _correlation;
     std::vector<int> _fire_timings;
 #ifdef DIGITAL
@@ -85,6 +86,8 @@ protected:
     double _ts_strength_p; // for both continuous and digital model
     double _ts_strength_n;
     double _inputsyn_sq_sum; // normalized sq sum of its presynaptic weights, initialized as -1
+	bool _fire_start;
+	double _lsm_t_m_c;
 
     int _ts_freq;
 
@@ -199,6 +202,7 @@ public:
     /** Wrappers for clean code: **/
     void ExpDecay(int& var, const int time_c);
     void ExpDecay(double& var, const int time_c);
+    void ExpDecay(double& var, double time_c);
     void BoundVariable(int& var, const int v_min, const int v_max);
     void AccumulateSynapticResponse(const int pos, double value);
     void DAccumulateSynapticResponse(const int pos, int value, const int c_num_dec_digit_mem,const int c_nbt_std_syn, const int c_num_bit_syn);
@@ -248,6 +252,8 @@ public:
     void DeleteBrokenSyns();
     bool GetStatus();
     double GetInputSynSqSum(double weight_limit);
+	double Estimate_Cal();
+	double VAR_Cal();
     
 };
 
