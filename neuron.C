@@ -1946,13 +1946,13 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 #endif
         // build a dummmy firing timings for neurons when there is no spikes
         if(f_cnt == 0 && i == cls){
-            vector<int> dummy_f_seq = BuildDummyTimes(max_count, end_time, i == cls);
+            vector<int> dummy_f_seq = BuildDummyTimes(DESIRED_LEVEL, end_time, i == cls);
             _neurons[i]->SetSpikeTimes(dummy_f_seq); 
         }
         // set the error for further bp to other layers
         _neurons[i]->SetError(error);
 
-        if(error == 0)  continue;
+        if(fabs(error - 0.0) < 1e-8)  continue;
         _neurons[i]->BpError(error, iteration);
     }
 #ifdef _DEBUG_BP
@@ -1971,7 +1971,7 @@ void NeuronGroup::BpHiddenError(int iteration, int end_time, double sample_weigh
 
     for(int i = 0; i < _neurons.size(); ++i){
         // Gather the back-proped error from l+1 layer
-        double error = sample_weight*_neurons[i]->GatherError();
+        double error = _neurons[i]->GatherError();
 #ifdef _DEBUG_BP_HIDDEN
         cout<<"The gather error for "<<_neurons[i]->Name()<<" : "<<error<<endl;
 #endif

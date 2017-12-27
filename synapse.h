@@ -68,6 +68,8 @@ private:
     double _lsm_weight_old;
     double _lsm_weight_limit;
 
+    double _lsm_effect_ratio; // acc_response / o^{k-1}_i
+
     int _D_lsm_c;
     int _D_lsm_weight;
     int _D_lsm_weight_limit;

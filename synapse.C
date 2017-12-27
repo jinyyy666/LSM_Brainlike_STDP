@@ -52,6 +52,7 @@ Synapse::Synapse(Neuron * pre, Neuron * post, double lsm_weight, bool fixed, dou
     _lsm_v_w(0),
     _lsm_weight_old(_lsm_weight),
     _lsm_weight_limit(fabs(lsm_weight_limit)),
+    _lsm_effect_ratio(1.0),
     _Unit(1),
     _D_lsm_c(0),
     _D_lsm_weight(0),
@@ -113,6 +114,7 @@ Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int 
     _lsm_v_w(0),
     _lsm_weight_old(_lsm_weight),
     _lsm_weight_limit(0),
+    _lsm_effect_ratio(1.0),
     _D_lsm_c(0),
     _D_lsm_weight(D_lsm_weight),
     _D_lsm_weight_limit(abs(D_lsm_weight_limit)),
@@ -575,7 +577,7 @@ void Synapse::LSMFiringStamp(int time){
 
 //* Prop back the weighted error from l+1 layer
 double Synapse::LSMErrorBack(){
-   return _post->GetError()*_lsm_weight_old; 
+   return _post->GetError() * _lsm_weight_old * _lsm_effect_ratio; 
 }
 
 //* back prop the error w.r.t each synapse:
@@ -606,6 +608,8 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration, const vecto
         acc_response += c;
         //_lsm_weight -= error*lr*c + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
     }
+    _lsm_effect_ratio = pre_times.empty() || post_times.emtpy() ? 1 : acc_response / pre_times.size();
+
 #ifdef _DEBUG_BP
     if(strcmp(_pre->Name(), "input_157") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0 || (strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "hidden_0_0)") == 0))
         cout<<"error part: "<<error*lr*acc_response<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
