@@ -53,6 +53,10 @@ Synapse::Synapse(Neuron * pre, Neuron * post, double lsm_weight, bool fixed, dou
     _lsm_weight_old(_lsm_weight),
     _lsm_weight_limit(fabs(lsm_weight_limit)),
     _lsm_effect_ratio(1.0),
+    _lsm_g1(0.0f),
+    _lsm_g2(0.0f),
+    _b1_t(0.9),
+    _b2_t(0.999),
     _Unit(1),
     _D_lsm_c(0),
     _D_lsm_weight(0),
@@ -115,6 +119,10 @@ Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int 
     _lsm_weight_old(_lsm_weight),
     _lsm_weight_limit(0),
     _lsm_effect_ratio(1.0),
+    _lsm_g1(0.0f),
+    _lsm_g2(0.0f),
+    _b1_t(0.9),
+    _b2_t(0.999),
     _D_lsm_c(0),
     _D_lsm_weight(D_lsm_weight),
     _D_lsm_weight_limit(abs(D_lsm_weight_limit)),
@@ -577,7 +585,7 @@ void Synapse::LSMFiringStamp(int time){
 
 //* Prop back the weighted error from l+1 layer
 double Synapse::LSMErrorBack(){
-   return _post->GetError() * _lsm_weight_old * _lsm_effect_ratio; 
+   return _post->GetError() * _lsm_weight_old * _lsm_effect_ratio;
 }
 
 //* back prop the error w.r.t each synapse:
@@ -586,6 +594,9 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration, const vecto
     assert(0);
 #endif
     _lsm_weight_old = _lsm_weight;
+    const float b1 = 0.9f;
+    const float b2 = 0.999f;
+    const float eps = 1.e-8f;
     double beta = BP_BETA_REG;
     double lambda = BP_LAMBDA_REG;
     double presyn_sq_sum = _post->GetInputSynSqSum(_lsm_weight_limit);
@@ -597,27 +608,37 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration, const vecto
     auto synaptic_effects = ComputeAccSRM(pre_times, post_times, 4*LSM_T_M_C, LSM_T_FO, LSM_T_M_C, LSM_T_REFRAC);
     double size = synaptic_effects.size();
 #ifdef _DEBUG_BP
-    if(strcmp(_pre->Name(), "input_157") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0){
+    if(strcmp(_pre->Name(), "hidden_0_0") == 0 && strcmp(_post->Name(), "output_0") == 0){
         cout<<"Pre fire times for "<<_pre->Name()<<" : "<<pre_times<<endl;
         cout<<"Post fire times for "<<_post->Name()<<" : "<<post_times<<endl;
     }
 #endif
     double acc_response = 0;
-    //for(auto & c : pre_calcium_stamp){
     for(auto & c : synaptic_effects){
         acc_response += c;
-        //_lsm_weight -= error*lr*c + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
     }
-    _lsm_effect_ratio = pre_times.empty() || post_times.emtpy() ? 1 : acc_response / pre_times.size();
-
+    _lsm_effect_ratio = pre_times.empty() || post_times.empty() ? 1 : acc_response / pre_times.size();
 #ifdef _DEBUG_BP
-    if(strcmp(_pre->Name(), "input_157") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0 || (strcmp(_pre->Name(), "reservoir_0") == 0 && strcmp(_post->Name(), "hidden_0_0)") == 0))
+    if(strcmp(_pre->Name(), "hidden_0_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
         cout<<"error part: "<<error*lr*acc_response<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
 #endif
-    double weight_grad = error * acc_response * lr + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
-    _lsm_v_w = _lsm_v_w * BP_MOMENTUM + weight_grad;
-    _lsm_weight -= _lsm_v_w;
 
+    double weight_grad = error * acc_response + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
+
+#ifdef OPT_ADAM
+    _lsm_g1 = b1 * _lsm_g1 + (1 - b1) * weight_grad;
+    _lsm_g2 = b2 * _lsm_g2 + (1 - b2) * weight_grad * weight_grad;
+#ifdef _DEBUG_BP
+    if(strcmp(_pre->Name(), "hidden_0_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
+        cout<<"Wgrad: "<<weight_grad<<" Adam weight update: "<<lr* (_lsm_g1/(1.f-_b1_t)) / ((float)sqrt(_lsm_g2/(1.-_b2_t)) + eps)<<" g1: "<<_lsm_g1<<" g2: "<<_lsm_g2<<endl;
+#endif
+    _lsm_weight -= lr* (_lsm_g1/(1.f-_b1_t)) / ((float)sqrt(_lsm_g2/(1.-_b2_t)) + eps);
+    _b1_t *= b1;
+    _b2_t *= b2; 
+#else
+    _lsm_v_w = _lsm_v_w * BP_MOMENTUM + weight_grad * lr;
+    _lsm_weight -= _lsm_v_w;   
+#endif
     CheckReadoutWeightOutBound();
 }
 

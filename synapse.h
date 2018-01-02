@@ -69,6 +69,10 @@ private:
     double _lsm_weight_limit;
 
     double _lsm_effect_ratio; // acc_response / o^{k-1}_i
+    float _lsm_g1;  // first moment estimated for adam
+    float _lsm_g2;  // second moment estimated for adam
+    float _b1_t;    // beta_1^t for adam
+    float _b2_t;
 
     int _D_lsm_c;
     int _D_lsm_weight;
