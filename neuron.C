@@ -1051,7 +1051,7 @@ double Neuron::GatherError(){
 }
 
 //* Back prop the final error back
-void Neuron::BpError(double error, int iteration){
+void Neuron::BpError(double error, int iteration, double lateral_factor){
 #ifdef _TEST_
     // for testing the accumulative effect of each synapse:
     vector<double> A_k(this->FireCount(), 0.0);
@@ -1072,9 +1072,9 @@ void Neuron::BpError(double error, int iteration){
         assert(synapse);
         if(synapse->Fixed())  continue; 
 #ifdef DIGITAL
-        synapse->LSMBpSynError(error, _D_lsm_v_thresh, iteration, post_times);
+        synapse->LSMBpSynError(error*lateral_factor, _D_lsm_v_thresh, iteration, post_times);
 #else
-        synapse->LSMBpSynError(error, _lsm_v_thresh, iteration, post_times);
+        synapse->LSMBpSynError(error*lateral_factor, _lsm_v_thresh, iteration, post_times);
 #endif
     }
 }
@@ -1938,8 +1938,6 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 #endif
         error *= sample_weight;
         sum_error += error*error;
-        // incorporate the change for lateral inhibition
-        error *= lateral_factors[i]; 
 
 #ifdef _DEBUG_BP
         cout<<"The backprop error for neuron "<<i<<" : "<<error<<" with fc: "<<_neurons[i]->FireCount()<<endl;
@@ -1953,7 +1951,8 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
         _neurons[i]->SetError(error);
 
         if(fabs(error - 0.0) < 1e-8)  continue;
-        _neurons[i]->BpError(error, iteration);
+        // incorporate the change for lateral inhibition
+        _neurons[i]->BpError(error, iteration, lateral_factors[i]);
     }
 #ifdef _DEBUG_BP
     cout<<"Current accumulative error: "<<sum_error/2<<endl;
@@ -1978,7 +1977,7 @@ void NeuronGroup::BpHiddenError(int iteration, int end_time, double sample_weigh
         // Set the error for further use
         _neurons[i]->SetError(error);
         // update the weight given the error
-        _neurons[i]->BpError(error, iteration);
+        _neurons[i]->BpError(error, iteration, 1);
     }
 #ifdef _DYNAMIC_THRESHOLD
     // For adaptively tuning the threshold:

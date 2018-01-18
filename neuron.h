@@ -228,7 +228,7 @@ public:
     void MergeNeuron(Neuron * target); // merge the this into target neuron
     double GatherError();
     //* Bp the error for each neuron
-    void BpError(double error, int iteration);
+    void BpError(double error, int iteration. double lateral_factor);
     void UpdateLWeight();
 
     void DebugFunc(int t);
