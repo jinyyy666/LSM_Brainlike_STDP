@@ -1,14 +1,14 @@
 #ifndef DEF_H
 #define DEF_H
 
-#define _IMAGE    0
+#define _IMAGE    1
 #define _MNIST    0
 #define _TRAFFIC   0
 #define _CITYSCAPE 0
-#define _NMNIST 0
+#define _NMNIST 1
 
-#define _SPEECH    1
-#define _LETTER    1
+#define _SPEECH    0
+#define _LETTER    0
 #define _DIGIT    0
 
 // this control variable is defined to direct compute the \delta_t 
@@ -111,22 +111,24 @@
 /*****************************************
  * Settings for error-backprop rule
  ****************************************/
-#define BP_MOMENTUM 0.9   // momentum for STDp
-#define BP_BETA_REG 0.0   // params for the regularization
-#define BP_LAMBDA_REG 0.08
-#define BP_DELTA_POT 0.00001 // params for the learning of pos/neg class
-#define BP_DELTA_DEP 0.00001
+#define BP_MOMENTUM 0.0   // momentum for STDp
+#define BP_BETA_REG 10   // params for the regularization
+#define BP_LAMBDA_REG 0.04
+#define BP_DELTA_POT 0.001 // params for the learning of pos/neg class
+#define BP_DELTA_DEP 0.001
 #define BP_ITER_SEARCH_CONV 50 // search and converge learning rate 
 
 //#define BP_OBJ_RATIO 
 #define BP_OBJ_COUNT // current best
 //#define BP_OBJ_SOFTMAX  // remember to make DELTA_POT == DELTA_DEP for this case
 
-#define DESIRED_LEVEL 45    // the count level for the count based obj
-#define UNDESIRED_LEVEL 15
+#define DESIRED_LEVEL 35    // the count level for the count based obj
+#define UNDESIRED_LEVEL 5
 #define MARGIN 5
 
-//#define _BOOSTING_METHOD
+#define OPT_ADAM    // enable adam here
+
+#define _BOOSTING_METHOD
 
 /*****************************************
  * some available modifications 
@@ -237,7 +239,7 @@
 #define LSM_DELTA_POT 0.006
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
-#define CLS 26
+#define CLS 10
 #define NUM_THREADS 1
 #define NUM_ITERS 10
 
