@@ -1944,7 +1944,7 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 #endif
         // build a dummmy firing timings for neurons when there is no spikes
         if(f_cnt == 0 && i == cls){
-            vector<int> dummy_f_seq = BuildDummyTimes(DESIRED_LEVEL, end_time, i == cls);
+            vector<int> dummy_f_seq = BuildDummyTimes(DESIRED_LEVEL, end_time);
             _neurons[i]->SetSpikeTimes(dummy_f_seq); 
         }
         // set the error for further bp to other layers

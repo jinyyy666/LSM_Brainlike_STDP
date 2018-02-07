@@ -52,7 +52,7 @@ public:
 };
 
 std::vector<double> ComputeAccSRM(const std::vector<int>& pre_times, const std::vector<int>& post_times, const int window, const double ts, const double tm, const double t_ref = 0.0);
-std::vector<int> BuildDummyTimes(int max_count, int end_time, bool is_target);
+std::vector<int> BuildDummyTimes(int max_count, int end_time);
 void MakeDirs(std::string dir);
 
 std::vector<std::string> GetFilesEndWith(std::string path, const std::string& suffix);
