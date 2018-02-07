@@ -1,0 +1,9 @@
+neurongroup	input 1156 excitatory
+column reservoir 6 6 15
+neurongroup hidden_0 400 excitatory 15
+neurongroup	output	10	excitatory 5
+lsmsynapse input reservoir  1   5   32  1 fixed
+lsmsynapse reservoir hidden_0   -1  -1  8   2   learning
+lsmsynapse hidden_0 output	-1	-1	8	2	learning
+NMNIST	0   train   ../1156_1000_stable_1/Train_0.dat
+end

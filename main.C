@@ -144,7 +144,7 @@ int main(int argc, char * argv[]){
 #if _MNIST == 1
         parser.Parse("netlist/netlist_MNIST_new.txt"); // For mnist
 #elif _NMNIST == 1
-	    parser.Parse("netlist/netlist_N_MNIST.txt"); // For N-MNIST
+	    parser.Parse("netlist/netlist_N_MNIST_test.txt"); // For N-MNIST
 #elif _TRAFFIC == 1
         parser.Parse("netlist/netlist_TrafficSign.txt"); // For traffic sign
 #elif _CITYSCAPE == 1

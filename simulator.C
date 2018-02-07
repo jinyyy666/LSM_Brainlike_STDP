@@ -281,7 +281,7 @@ void Simulator::LSMRun(long tid){
         for(int iii = 0; iii < NUM_ITERS; iii++){
             if(tid == 0)    cout<<"Run the iteration: "<<iii<<endl;
             // random shuffle the training samples for better generalization
-            _network->ShuffleTrainingSamples();
+            //_network->ShuffleTrainingSamples();
             _network->LSMSupervisedTraining(networkmode, tid, iii);
 #ifdef _DUMP_READOUT_WEIGHTS
             if(tid == 0){

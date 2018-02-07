@@ -613,12 +613,15 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #if defined(_UPDATE_AT_LAST)
         UpdateLearningWeights();
 #endif
+        PrintSpikeCount("output"); // print the readout firing counts
 
         LSMClearSignals();
 
 #ifdef CV
         info = LoadNextSpeechTrainCV(networkmode);
 #else
+        //info = -1;
+        //LSMNetworkRemoveSpeech();
         info = LoadNextSpeech(true, networkmode);
 #endif
 
@@ -666,7 +669,8 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
         if(_network_mode == READOUTBP)  cost += GetBpCost();
 
 #ifdef _PRINT_SPIKE_COUNT
-        if(tid == 0 && (iteration == 0 || (iteration+1) % 5 == 0))
+        //if(tid == 0 && (iteration == 0 || (iteration+1) % 5 == 0))
+            cout<<"Print the fire counts for the testing phrase: "<<endl;
             PrintSpikeCount("output"); // print the readout firing counts
 #endif
 
@@ -691,6 +695,8 @@ void Network::LSMSupervisedTraining(networkmode_t networkmode, int tid, int iter
 #elif defined(USE_TEST_SAMPLE)
         info = LoadNextSpeech(false, networkmode, "test_sample");
 #else
+        //info = -1;
+        //LSMNetworkRemoveSpeech();
         info = LoadNextSpeech(false, networkmode);
 #endif
     }
@@ -1039,7 +1045,7 @@ void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neur
         neuronmode_readout = NORMALSTDP;
     }
     else if(networkmode == READOUTBP){ // the error backprop mode
-        neuronmode_input = READCHANNEL;
+        neuronmode_input = READCHANNELBP;
         neuronmode_reservoir = DEACTIVATED;
         neuronmode_readout = NORMALBP;
     }else{
@@ -1582,6 +1588,10 @@ void Network::BoostWeightUpdate(const vector<pair<Speech*, bool> >& predictions)
         double stage = error_weighted[cls]/20; 
         double new_weight = weight * exp(stage * (!prediction));
         p.first->SetWeight(new_weight);
+        /*
+        cout<<"Sample: "<<cls<<(prediction ? " predicts correctly " : " predicts incorrectly ")
+            <<" old sample weight: "<<weight<<" new sample weight: "<<new_weight<<endl;
+        */
     }
 }
 
