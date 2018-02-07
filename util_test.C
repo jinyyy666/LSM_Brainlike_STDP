@@ -57,10 +57,10 @@ void UtilTest::testComputeAccSRM(){
 }
 
 void UtilTest::testBuildDummyTimes(){
-    vector<vector<int> > params = {{0, 10, true}, {53, 658, true}, {0, 10, false}, {53, 658, false}};
-    vector<vector<int> > true_res = {{9}, {12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132, 144, 156, 168, 180, 192, 204, 216, 228, 240, 252, 264, 276, 288, 300, 312, 324, 336, 348, 360, 372, 384, 396, 408, 420, 432, 444, 456, 468, 480, 492, 504, 516, 528, 540, 552, 564, 576, 588, 600, 612, 624, 636, 648},{9},{657}};
+    vector<vector<int> > params = {{53, 658};
+    vector<vector<int> > true_res = {{12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132, 144, 156, 168, 180, 192, 204, 216, 228, 240, 252, 264, 276, 288, 300, 312, 324, 336, 348, 360, 372, 384, 396, 408, 420, 432, 444, 456, 468, 480, 492, 504, 516, 528, 540, 552, 564, 576, 588, 600, 612, 624, 636, 648}};
     for(int i = 0; i < true_res.size(); ++i){
-        vector<int> res = BuildDummyTimes(params[i][0], params[i][1], params[i][2]);
+        vector<int> res = BuildDummyTimes(params[i][0], params[i][1]);
         assert(res == true_res[i]);
     }
 
