@@ -139,6 +139,13 @@ std::vector<double> ComputeAccSRM(const std::vector<int>& pre_times, const std::
     return effects;
 }
 
+//* Compute the summation of the accumulative synaptic effect
+double ComputeAccSRMSum(const std::vector<int>& pre_times, const std::vector<int>& post_times, const int window, const double ts, const double tm, const double t_ref){
+    std::vector<double> effects = ComputeAccSRM(pre_times, post_times, window, ts, tm, t_ref);
+    double acc_response = 0;
+    for(auto & c : effects) acc_response += c;
+    return acc_response;
+}
 
 //* Build the dummy firing times for the targeted neuron with zero spike cnt
 //* for the target neuron, the fire count after changing should be max_count

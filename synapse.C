@@ -601,14 +601,14 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration, const vecto
     double lambda = BP_LAMBDA_REG;
     double presyn_sq_sum = _post->GetInputSynSqSum(_lsm_weight_limit);
     double lr = error < 0 ? BP_DELTA_POT : BP_DELTA_DEP;
-    lr = lr/( 1 + iteration/BP_ITER_SEARCH_CONV);
+    lr = lr/sqrt(1 + iteration);//lr/( 1 + iteration/BP_ITER_SEARCH_CONV);
     //auto pre_calcium_stamp = _pre->GetCalciumStamp();
     vector<int> pre_times;
     _pre->GetSpikeTimes(pre_times);
     auto synaptic_effects = ComputeAccSRM(pre_times, post_times, 4*LSM_T_M_C, LSM_T_FO, LSM_T_M_C, LSM_T_REFRAC);
     double size = synaptic_effects.size();
 #ifdef _DEBUG_BP
-    if(strcmp(_pre->Name(), "hidden_0_0") == 0 && strcmp(_post->Name(), "output_0") == 0){
+    if(strcmp(_pre->Name(), "input_0") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0){
         cout<<"Pre fire times for "<<_pre->Name()<<" : "<<pre_times<<endl;
         cout<<"Post fire times for "<<_post->Name()<<" : "<<post_times<<endl;
     }
@@ -617,9 +617,12 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration, const vecto
     for(auto & c : synaptic_effects){
         acc_response += c;
     }
+    if(post_times.empty() && !pre_times.empty())
+        acc_response = 0.1;
+
     _lsm_effect_ratio = pre_times.empty() || post_times.empty() ? 1 : acc_response / pre_times.size();
 #ifdef _DEBUG_BP
-    if(strcmp(_pre->Name(), "hidden_0_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
+    if(strcmp(_pre->Name(), "input_0") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0)
         cout<<"error part: "<<error*lr*acc_response<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
 #endif
 
@@ -629,7 +632,7 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration, const vecto
     _lsm_g1 = b1 * _lsm_g1 + (1 - b1) * weight_grad;
     _lsm_g2 = b2 * _lsm_g2 + (1 - b2) * weight_grad * weight_grad;
 #ifdef _DEBUG_BP
-    if(strcmp(_pre->Name(), "hidden_0_0") == 0 && strcmp(_post->Name(), "output_0") == 0)
+    if(strcmp(_pre->Name(), "input_0") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0)
         cout<<"Wgrad: "<<weight_grad<<" Adam weight update: "<<lr* (_lsm_g1/(1.f-_b1_t)) / ((float)sqrt(_lsm_g2/(1.-_b2_t)) + eps)<<" g1: "<<_lsm_g1<<" g2: "<<_lsm_g2<<endl;
 #endif
     _lsm_weight -= lr* (_lsm_g1/(1.f-_b1_t)) / ((float)sqrt(_lsm_g2/(1.-_b2_t)) + eps);

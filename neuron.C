@@ -921,6 +921,28 @@ void Neuron::SetSpikeTimes(const vector<int>& times){
     _fire_timings = times;
 }
 
+//* Compute the factor associated lateral inhibition on the output layer
+double Neuron::LateralFactor(int cls, double lateral_w)
+{
+    double vth = _lsm_v_thresh; // assume vth is fixed
+    int f_cnt_j = _f_count;
+    double d_sum = 0.0;
+    double d_j = (f_cnt_j > 0 || (f_cnt_j == 0 && _indexInGroup == cls)) ? 1 / vth : 0;
+    for(auto synapse : _outputSyns)
+    {
+        int f_cnt_l = synapse->PostNeuron()->FireCount();
+        Neuron * post = synapse->PostNeuron();
+        int l = post->IndexInGroup();
+        double d_l = (f_cnt_l > 0 || (f_cnt_l == 0 && l == cls)) ? 1 / vth : 0;
+        vector<int> post_times;
+        post->GetSpikeTimes(post_times);
+        double effect_ratio_jl = f_cnt_j == 0 || f_cnt_l == 0 ? 1 : ComputeAccSRMSum(_fire_timings, post_times, 4*LSM_T_M_C, LSM_T_FO, LSM_T_M_C, LSM_T_REFRAC) / f_cnt_j;
+        double effect_ratio_lj = f_cnt_l == 0 || f_cnt_j == 0 ? 1 : ComputeAccSRMSum(post_times, _fire_timings, 4*LSM_T_M_C, LSM_T_FO, LSM_T_M_C, LSM_T_REFRAC) / f_cnt_l;
+        d_sum += effect_ratio_jl * d_l * effect_ratio_lj * d_j;
+    }
+    return 1.0 / (1 - lateral_w * lateral_w * d_sum);
+}
+
 //* Collect the presynaptic neuron firing activity:
 void Neuron::CollectPreSynAct(double& p_n, double& avg_i_n, int& max_i_n){
     if(_presyn_act.empty()){
@@ -1051,7 +1073,7 @@ double Neuron::GatherError(){
 }
 
 //* Back prop the final error back
-void Neuron::BpError(double error, int iteration){
+void Neuron::BpError(double error, int iteration, double lateral_factor){
 #ifdef _TEST_
     // for testing the accumulative effect of each synapse:
     vector<double> A_k(this->FireCount(), 0.0);
@@ -1072,9 +1094,9 @@ void Neuron::BpError(double error, int iteration){
         assert(synapse);
         if(synapse->Fixed())  continue; 
 #ifdef DIGITAL
-        synapse->LSMBpSynError(error, _D_lsm_v_thresh, iteration, post_times);
+        synapse->LSMBpSynError(error*lateral_factor, _D_lsm_v_thresh, iteration, post_times);
 #else
-        synapse->LSMBpSynError(error, _lsm_v_thresh, iteration, post_times);
+        synapse->LSMBpSynError(error*lateral_factor, _lsm_v_thresh, iteration, post_times);
 #endif
     }
 }
@@ -1866,18 +1888,8 @@ double NeuronGroup::GetCost(int cls, double sample_weight){
 //* get the specific factor when lateral exists
 vector<double> NeuronGroup::GetLateralFactor(int cls){
     vector<double> factors(_neurons.size(), 1);
-    double d_sum = 0.0;
-    for(int i = 0; i < _neurons.size(); ++i){
-        double vth = _neurons[i]->GetVth();
-        int f_cnt = _neurons[i]->FireCount();
-        if(f_cnt > 0 || (f_cnt == 0 && i == cls))  d_sum += 1/vth;
-    }
-
-    for(int i = 0; i < _neurons.size(); ++i){
-        double vth = _neurons[i]->GetVth();
-        int f_cnt = _neurons[i]->FireCount();
-        double d = (f_cnt > 0 || (f_cnt == 0 && i == cls)) ? 1 / vth : 0;
-        factors[i] = 1 / (1 - _lateral_w * _lateral_w * d * (d_sum - d));
+    for(int j = 0; j < _neurons.size(); ++j){
+        factors[j] = _neurons[j]->LateralFactor(cls, _lateral_w);
     }
     return factors;
 }
@@ -1938,8 +1950,6 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 #endif
         error *= sample_weight;
         sum_error += error*error;
-        // incorporate the change for lateral inhibition
-        error *= lateral_factors[i]; 
 
 #ifdef _DEBUG_BP
         cout<<"The backprop error for neuron "<<i<<" : "<<error<<" with fc: "<<_neurons[i]->FireCount()<<endl;
@@ -1953,7 +1963,8 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
         _neurons[i]->SetError(error);
 
         if(fabs(error - 0.0) < 1e-8)  continue;
-        _neurons[i]->BpError(error, iteration);
+        // incorporate the change for lateral inhibition
+        _neurons[i]->BpError(error, iteration, lateral_factors[i]);
     }
 #ifdef _DEBUG_BP
     cout<<"Current accumulative error: "<<sum_error/2<<endl;
@@ -1978,7 +1989,7 @@ void NeuronGroup::BpHiddenError(int iteration, int end_time, double sample_weigh
         // Set the error for further use
         _neurons[i]->SetError(error);
         // update the weight given the error
-        _neurons[i]->BpError(error, iteration);
+        _neurons[i]->BpError(error, iteration, 1);
     }
 #ifdef _DYNAMIC_THRESHOLD
     // For adaptively tuning the threshold:

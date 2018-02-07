@@ -216,6 +216,7 @@ public:
     void LSMRemoveChannel();
     void GetSpikeTimes(std::vector<int>& times);
     void SetSpikeTimes(const std::vector<int>& times);
+    double LateralFactor(int cls, double lateral_w); 
     void LSMSetNeuronMode(neuronmode_t neuronmode){_mode = neuronmode;}
     bool LSMCheckNeuronMode(neuronmode_t neuronmode){return _mode == neuronmode;}
 
@@ -228,7 +229,7 @@ public:
     void MergeNeuron(Neuron * target); // merge the this into target neuron
     double GatherError();
     //* Bp the error for each neuron
-    void BpError(double error, int iteration);
+    void BpError(double error, int iteration, double lateral_factor);
     void UpdateLWeight();
 
     void DebugFunc(int t);
