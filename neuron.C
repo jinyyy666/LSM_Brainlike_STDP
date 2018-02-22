@@ -1950,6 +1950,7 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 #endif
         error *= sample_weight;
         sum_error += error*error;
+        error /= _neurons[i]->GetVth();
 
 #ifdef _DEBUG_BP
         cout<<"The backprop error for neuron "<<i<<" : "<<error<<" with fc: "<<_neurons[i]->FireCount()<<endl;
@@ -1962,7 +1963,6 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
         // set the error for further bp to other layers
         _neurons[i]->SetError(error);
 
-        if(fabs(error - 0.0) < 1e-8)  continue;
         // incorporate the change for lateral inhibition
         _neurons[i]->BpError(error, iteration, lateral_factors[i]);
     }
@@ -1983,6 +1983,7 @@ void NeuronGroup::BpHiddenError(int iteration, int end_time, double sample_weigh
     for(int i = 0; i < _neurons.size(); ++i){
         // Gather the back-proped error from l+1 layer
         double error = _neurons[i]->GatherError();
+        error /= _neurons[i]->GetVth();
 #ifdef _DEBUG_BP_HIDDEN
         cout<<"The gather error for "<<_neurons[i]->Name()<<" : "<<error<<endl;
 #endif
