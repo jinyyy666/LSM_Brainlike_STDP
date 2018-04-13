@@ -149,10 +149,9 @@ double ComputeAccSRMSum(const std::vector<int>& pre_times, const std::vector<int
 
 //* Build the dummy firing times for the targeted neuron with zero spike cnt
 //* for the target neuron, the fire count after changing should be max_count
-//* for the neuron that is not the target, the fire count after chaning should be 4
-std::vector<int> BuildDummyTimes(int max_count, int end_time, bool is_target){
+std::vector<int> BuildDummyTimes(int max_count, int end_time){
     std::vector<int> v;
-    int interval = max_count == 0 || !is_target ? end_time - 1 : end_time/max_count;
+    int interval = end_time/max_count;
     for(int i = interval; i < end_time; i += interval){
         v.push_back(i);
     }

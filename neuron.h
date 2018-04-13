@@ -227,6 +227,7 @@ public:
     void CollectCorrelation(int& sum, int& cnt, int num_sample);
     void GroupCorrelated(UnionFind &uf, int pre_ind, int nsamples);
     void MergeNeuron(Neuron * target); // merge the this into target neuron
+    double GetSideEffect();
     double GatherError();
     //* Bp the error for each neuron
     void BpError(double error, int iteration, double lateral_factor);

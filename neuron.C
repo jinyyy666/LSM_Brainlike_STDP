@@ -1061,6 +1061,29 @@ void Neuron::MergeNeuron(Neuron * target){
 
 }
 
+//* compute the side effect factor for the back-prop rule
+double Neuron::GetSideEffect(){
+    double s_effect = 0;
+    for(Synapse * synapse : _inputSyns){
+        vector<int> pre_times, post_times;
+        assert(synapse && synapse->PreNeuron());
+        synapse->PreNeuron()->GetSpikeTimes(pre_times);
+        this->GetSpikeTimes(post_times);
+        auto synaptic_effects = ComputeAccSRM(pre_times, post_times, 4*LSM_T_M_C, LSM_T_FO, LSM_T_M_C, LSM_T_REFRAC);
+        double acc_response = 0;
+        double w = synapse->Weight();
+        for(auto & c : synaptic_effects){
+            acc_response += c;
+        }
+        int o_cnt = post_times.size();
+        if(post_times.empty() && !pre_times.empty())
+            acc_response = 0.1;
+        double ratio = o_cnt == 0 ? 0.5 : acc_response / o_cnt;
+        s_effect += ratio * w;
+    }
+    return s_effect/ _lsm_v_thresh;
+}
+
 //* Gather the back-proped error
 double Neuron::GatherError(){
     double error = 0;
@@ -1088,15 +1111,18 @@ void Neuron::BpError(double error, int iteration, double lateral_factor){
         cout<<"For "<<_name<<", the sum of effects: "<<a<<endl; 
     }
 #endif
+    // compute the side effect factor for this neuron
+    double side_effect = GetSideEffect();
+
     vector<int> post_times;
     GetSpikeTimes(post_times);
     for(Synapse * synapse : _inputSyns){
         assert(synapse);
         if(synapse->Fixed())  continue; 
 #ifdef DIGITAL
-        synapse->LSMBpSynError(error*lateral_factor, _D_lsm_v_thresh, iteration, post_times);
+        synapse->LSMBpSynError(error*lateral_factor, _D_lsm_v_thresh, side_effect, iteration, post_times);
 #else
-        synapse->LSMBpSynError(error*lateral_factor, _lsm_v_thresh, iteration, post_times);
+        synapse->LSMBpSynError(error*lateral_factor, _lsm_v_thresh, side_effect, iteration, post_times);
 #endif
     }
 }
@@ -1921,7 +1947,6 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
     double sum_error = 0;
     double soft_max_sum = SoftMax(max_count);
     vector<double> lateral_factors = _has_lateral ? GetLateralFactor(cls) : vector<double>(_neurons.size(), 1);
-
 #ifdef _DEBUG_BP
     cout<<"True class label: "<<cls<<endl;
 #endif
@@ -1957,7 +1982,7 @@ void NeuronGroup::BpOutputError(int cls, int iteration, int end_time, double sam
 #endif
         // build a dummmy firing timings for neurons when there is no spikes
         if(f_cnt == 0 && i == cls){
-            vector<int> dummy_f_seq = BuildDummyTimes(DESIRED_LEVEL, end_time, i == cls);
+            vector<int> dummy_f_seq = BuildDummyTimes(DESIRED_LEVEL, end_time);
             _neurons[i]->SetSpikeTimes(dummy_f_seq); 
         }
         // set the error for further bp to other layers
