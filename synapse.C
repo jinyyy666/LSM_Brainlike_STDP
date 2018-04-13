@@ -589,7 +589,7 @@ double Synapse::LSMErrorBack(){
 }
 
 //* back prop the error w.r.t each synapse:
-void Synapse::LSMBpSynError(double error, double vth, int iteration, const vector<int>& post_times){
+void Synapse::LSMBpSynError(double error, double vth, double s_effect, int iteration, const vector<int>& post_times){
 #ifdef DIGITAL
     assert(0);
 #endif
@@ -626,7 +626,7 @@ void Synapse::LSMBpSynError(double error, double vth, int iteration, const vecto
         cout<<"error part: "<<error*lr*acc_response<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
 #endif
 
-    double weight_grad = error * acc_response + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
+    double weight_grad = error * acc_response * (1 + s_effect) + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
 
 #ifdef OPT_ADAM
     _lsm_g1 = b1 * _lsm_g1 + (1 - b1) * weight_grad;

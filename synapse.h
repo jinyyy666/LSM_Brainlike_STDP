@@ -200,7 +200,7 @@ public:
     //* Prop back the weighted error from l+1 layer
     double LSMErrorBack();
     //* back prop the error wrt each syn
-    void LSMBpSynError(double error, double vth, int iteration, const std::vector<int>& post_times);
+    void LSMBpSynError(double error, double vth, double s_effect, int iteration, const std::vector<int>& post_times);
     //* perform an accumulated update at the end:
     void LSMUpdateLearningWeight();
     //* the second order response (no w.r.t to weight)
