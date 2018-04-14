@@ -24,6 +24,10 @@
 //#define _DEBUG_UPDATE_AT_LAST
 //#define _DEBUG_BP
 
+// for debug print out
+#define _INPUT_NEURON_NAME  "reservoir_0"
+#define _OUTPUT_NEURON_NAME "hidden_0_4"
+
 using namespace std;
 
 extern int COUNTER_LEARN;
@@ -608,7 +612,7 @@ void Synapse::LSMBpSynError(double error, double vth, double s_effect, int itera
     auto synaptic_effects = ComputeAccSRM(pre_times, post_times, 4*LSM_T_M_C, LSM_T_FO, LSM_T_M_C, LSM_T_REFRAC);
     double size = synaptic_effects.size();
 #ifdef _DEBUG_BP
-    if(strcmp(_pre->Name(), "input_0") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0){
+    if(strcmp(_pre->Name(), _INPUT_NEURON_NAME) == 0 && strcmp(_post->Name(), _OUTPUT_NEURON_NAME) == 0){
         cout<<"Pre fire times for "<<_pre->Name()<<" : "<<pre_times<<endl;
         cout<<"Post fire times for "<<_post->Name()<<" : "<<post_times<<endl;
     }
@@ -622,8 +626,8 @@ void Synapse::LSMBpSynError(double error, double vth, double s_effect, int itera
 
     _lsm_effect_ratio = pre_times.empty() || post_times.empty() ? 1 : acc_response / pre_times.size();
 #ifdef _DEBUG_BP
-    if(strcmp(_pre->Name(), "input_0") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0)
-        cout<<"error part: "<<error*lr*acc_response<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
+    if(strcmp(_pre->Name(), _INPUT_NEURON_NAME) == 0 && strcmp(_post->Name(), _OUTPUT_NEURON_NAME) == 0)
+        cout<<"error part: "<<error*lr*acc_response*(1+s_effect)<<" regulation part: "<<lambda*beta * _lsm_weight/_lsm_weight_limit * exp(beta*( presyn_sq_sum - 1))<<endl;
 #endif
 
     double weight_grad = error * acc_response * (1 + s_effect) + lambda*beta * (_lsm_weight/_lsm_weight_limit) * exp(beta*( presyn_sq_sum - 1));
@@ -632,7 +636,7 @@ void Synapse::LSMBpSynError(double error, double vth, double s_effect, int itera
     _lsm_g1 = b1 * _lsm_g1 + (1 - b1) * weight_grad;
     _lsm_g2 = b2 * _lsm_g2 + (1 - b2) * weight_grad * weight_grad;
 #ifdef _DEBUG_BP
-    if(strcmp(_pre->Name(), "input_0") == 0 && strcmp(_post->Name(), "hidden_0_0") == 0)
+    if(strcmp(_pre->Name(), _INPUT_NEURON_NAME) == 0 && strcmp(_post->Name(), _OUTPUT_NEURON_NAME) == 0)
         cout<<"Wgrad: "<<weight_grad<<" Adam weight update: "<<lr* (_lsm_g1/(1.f-_b1_t)) / ((float)sqrt(_lsm_g2/(1.-_b2_t)) + eps)<<" g1: "<<_lsm_g1<<" g2: "<<_lsm_g2<<endl;
 #endif
     _lsm_weight -= lr* (_lsm_g1/(1.f-_b1_t)) / ((float)sqrt(_lsm_g2/(1.-_b2_t)) + eps);
@@ -640,7 +644,12 @@ void Synapse::LSMBpSynError(double error, double vth, double s_effect, int itera
     _b2_t *= b2; 
 #else
     _lsm_v_w = _lsm_v_w * BP_MOMENTUM + weight_grad * lr;
-    _lsm_weight -= _lsm_v_w;   
+    _lsm_weight -= _lsm_v_w;
+#ifdef _DEBUG_BP
+    if(strcmp(_pre->Name(), _INPUT_NEURON_NAME) == 0 && strcmp(_post->Name(), _OUTPUT_NEURON_NAME) == 0)
+        cout<<"Wgrad: "<<weight_grad * lr<<" Sgd with momentum update: "<<_lsm_v_w<<endl;
+#endif
+
 #endif
     CheckReadoutWeightOutBound();
 }

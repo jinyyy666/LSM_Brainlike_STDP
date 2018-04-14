@@ -142,7 +142,7 @@ int main(int argc, char * argv[]){
         Parser parser(&array_network[i]);
 #if _IMAGE == 1
 #if _MNIST == 1
-        parser.Parse("netlist/netlist_MNIST_new.txt"); // For mnist
+        parser.Parse("netlist/netlist_MNIST_new_test.txt"); // For mnist
 #elif _NMNIST == 1
 	    parser.Parse("netlist/netlist_N_MNIST_test.txt"); // For N-MNIST
 #elif _TRAFFIC == 1
