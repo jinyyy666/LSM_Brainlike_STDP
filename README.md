@@ -55,24 +55,24 @@ Notes for dumping the CPU outputs for GPU verification.
 
 Currently, I need the CPU code to verify 2 N-MNIST test cases, 1 MNIST test case, and 1 spoken English letter test case.
 
->1) For MNIST, do:
->    a) Modify the def.h for reading the MNIST.
->    b) Enable the OPT_ADAM.
->    c) Make sure the output weights are input->hidden_0 and hidden_0 to output.
->    d) Enable the line:623-624 and disable line:625 in network.C
+>1. For MNIST, do:
+>    a. Modify the def.h for reading the MNIST.
+>    b. Enable the OPT_ADAM.
+>    c. Make sure the output weights are input->hidden_0 and hidden_0 to output.
+>    d. Enable the line:623-624 and disable line:625 in network.C
 
->2) For N-MNIST, do:
->    a) Modify the def.h for reading N-MNIST.
->    b) Modify the main.C for reading the corresponding netlist (feedforward case or reservoir case)
->    c) Make sure the output weights are recorded correctly (input->h->o or input->r->h->o).
->    d) Rememeber to change the status of neurons (network.C:1047-1050), e.g. if reservoir is used, need to activated reservoir while disable the input. 
->    e) If the effect ratio is  NOT used, remember to delete the _lsm_effect_ratio in Synapse::LSMErrorBack.
->    f) Remember to change the optimizer type to be consistent with GPU.
+>2. For N-MNIST, do:
+>    a. Modify the def.h for reading N-MNIST.
+>    b. Modify the main.C for reading the corresponding netlist (feedforward case or reservoir case)
+>    c. Make sure the output weights are recorded correctly (input->h->o or input->r->h->o).
+>    d. Rememeber to change the status of neurons (network.C:1047-1050), e.g. if reservoir is used, need to activated reservoir while disable the input. 
+>    e. If the effect ratio is  NOT used, remember to delete the _lsm_effect_ratio in Synapse::LSMErrorBack.
+>    f. Remember to change the optimizer type to be consistent with GPU.
 
->3) For Spoken English letter, do:
->    a) Modify the def.h for reading the spoken English letter.
->    b) Remember to change the NUM_CLS to 26.
->    c) Remember to change the optimizer type to be consistent with GPU.
+>3. For Spoken English letter, do:
+>    a. Modify the def.h for reading the spoken English letter.
+>    b. Remember to change the NUM_CLS to 26.
+>    c. Remember to change the optimizer type to be consistent with GPU.
 
 The order of performing the test:
 
