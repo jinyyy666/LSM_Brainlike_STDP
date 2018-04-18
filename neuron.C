@@ -546,7 +546,7 @@ inline void Neuron::UpdateVmem(int& temp,const int c_num_dec_digit_mem, const in
 inline void Neuron::SetPostNeuronSpikeT(int time){
     for(Synapse * synapse : _inputSyns){
         // indication of two case synapse
-        bool betweenLayer = synapse->IsInputSyn() || synapse->IsReadoutSyn();
+        bool betweenLayer = synapse->IsInputSyn() || synapse->IsReadoutSyn() || synapse->IsFeedbackSyn();
         if(!betweenLayer)  assert(synapse->IsLiquidSyn());
 
         if(_mode == STDP && !betweenLayer){
@@ -595,6 +595,8 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
                 // active this reservoir for STDP training
                 synapse->LSMActivateSTDPSyns(_network, "reservoir");	  
             }
+            else if(synapse->IsReadoutSyn() && !(synapse->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED)))
+                synapse->LSMActivate(_network, true, train);
         }
         else if(isInput){
             if(_name[0] == 'i'){

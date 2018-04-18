@@ -20,7 +20,7 @@
 //#define _DEBUG_VARBASE
 //#define _DEBUG_CORBASE
 //#define _SHOW_SPEECH_ORDER
-#define _PRINT_SPIKE_COUNT
+//#define _PRINT_SPIKE_COUNT
 
 using namespace std;
 
@@ -838,6 +838,8 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration,int end_time, FILE
         if(_network_mode == READOUT){
             for(Synapse * synapse : _lsmActiveLearnSyns)    synapse->LSMLearn(t, iteration);
             _lsmActiveLearnSyns.clear();
+            for(Synapse * synapse : _lsmActiveSTDPLearnSyns)    synapse->LSMSTDPLearn(t);
+            _lsmActiveSTDPLearnSyns.clear();
         }else if(_network_mode == READOUTSUPV){
             for(Synapse * synapse : _lsmActiveSTDPLearnSyns)    synapse->LSMSTDPSupvLearn(t, iteration); 
             _lsmActiveSTDPLearnSyns.clear();
@@ -925,6 +927,8 @@ void Network::LoadSpeeches(Speech      * sp,
     assert(_lsm_reservoir_layer);
     // reservoir channell will not be loaded for STDP training
     bool load_reservoir_channel = _network_mode == TRAINRESERVOIR || _network_mode == TRAININPUT ? false : true;
+    if(_network_mode == READOUT && neuronmode_reservoir == STDP)
+        load_reservoir_channel = false;
     if(load_reservoir_channel){
         _lsm_reservoir_layer->LSMLoadSpeech(sp,&_lsm_reservoir,neuronmode_reservoir,RESERVOIRCHANNEL);
     }else{
@@ -1019,7 +1023,7 @@ void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neur
     }else if(networkmode == TRAINRESERVOIR){
         neuronmode_input = READCHANNEL;
         neuronmode_reservoir = STDP;
-        neuronmode_readout = NORMAL;
+        neuronmode_readout = DEACTIVATED;
     }else if(networkmode == TRAININPUT){
         neuronmode_input = READCHANNELSTDP; // read channel and enable STDP
         neuronmode_reservoir = NORMALSTDP;  // enable inputSyns trained by STDP
@@ -1279,6 +1283,9 @@ bool Network::LSMEndOfSpeech(networkmode_t networkmode, int end_time){
     }
 
     if((networkmode == TRANSIENTSTATE)&&(_lsm_input>0)){
+        return false;
+    }
+    if((networkmode == READOUT)&&(_lsm_input>0)){
         return false;
     }
     if((networkmode != VOID)&&(_lsm_reservoir > 0 || _lsm_input > 0)){

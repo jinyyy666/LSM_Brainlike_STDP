@@ -156,7 +156,10 @@ Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int 
     // be careful.. that might hamper the performance : ( 
     // if(pre_name[0] == 'i')  _excitatory = _D_lsm_weight >= 0; 
 
-    if((_liquid == false)&&(pre_name[0] != 'i')){
+    if(IsFeedbackSyn()){
+        _Unit = 1;
+    }
+    else if((_liquid == false)&&(pre_name[0] != 'i')){
 #if NUM_BIT_SYN > NBT_STD_SYN
         _Unit = _Unit<<(NUM_BIT_SYN-NBT_STD_SYN);
         _D_lsm_weight = _D_lsm_weight<<(NUM_BIT_SYN-NBT_STD_SYN);
@@ -398,6 +401,16 @@ bool Synapse::IsInputSyn(){
         return false;
 }
 
+bool Synapse::IsFeedbackSyn(){
+    char * name_post = _post->Name();
+    // if the post neuron is the reservoir neuron:
+    if((name_post[0] == 'r' && name_post[9] == '_')){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
 
 bool Synapse::IsValid(){
     assert(_pre && _post); 

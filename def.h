@@ -1,14 +1,14 @@
 #ifndef DEF_H
 #define DEF_H
 
-#define _IMAGE    1
+#define _IMAGE    0
 #define _MNIST    0
 #define _TRAFFIC   0
 #define _CITYSCAPE 0
-#define _NMNIST 1
+#define _NMNIST 0
 
-#define _SPEECH    0
-#define _LETTER    0
+#define _SPEECH    1
+#define _LETTER    1
 #define _DIGIT    0
 
 // this control variable is defined to direct compute the \delta_t 
@@ -87,7 +87,7 @@
  * The TS is only defined for Yong's and supvervised
  * STDP.
  *****************************************/
-//#define TEACHER_SIGNAL
+#define TEACHER_SIGNAL
 
 
 /*******************************************
@@ -239,9 +239,9 @@
 #define LSM_DELTA_POT 0.006
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
-#define CLS 10
+#define CLS 26
 #define NUM_THREADS 1
-#define NUM_ITERS 10
+#define NUM_ITERS 40
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -281,12 +281,12 @@
 #define _LEVEL_PERCENT 0.1 // level % of average variance will be considered correlated
 
 #define LOST_RATE 0.0
-//#define DIGITAL
+#define DIGITAL
 //#define DIGITAL_SYN_ORGINAL 1
 #define LIQUID_SYN_MODIFICATION 1
 
-//#define SYN_ORDER_2 1 
-#define SYN_ORDER_1 1
+#define SYN_ORDER_2 1 
+//#define SYN_ORDER_1 1
 //#define SYN_ORDER_0 0 
 
 //#define CV
