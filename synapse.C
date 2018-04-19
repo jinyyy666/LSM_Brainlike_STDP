@@ -403,8 +403,9 @@ bool Synapse::IsInputSyn(){
 
 bool Synapse::IsFeedbackSyn(){
     char * name_post = _post->Name();
-    // if the post neuron is the reservoir neuron:
-    if((name_post[0] == 'r' && name_post[9] == '_')){
+    char * name_pre = _pre->Name();
+    // if the post neuron is the reservoir neuron and pre is output neuron:
+    if((name_post[0] == 'r' && name_post[9] == '_') && (name_pre[0] == 'o' && name_pre[6] == '_')){
         return true;
     }
     else{
