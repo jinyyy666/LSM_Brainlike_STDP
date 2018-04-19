@@ -227,7 +227,7 @@ public:
         _synapses_map[pre_name][post_name] = synapse; 
     
         // push back the reservoir, readout and input synapses into the vector:
-        if(!synapse->IsReadoutSyn() && !synapse->IsInputSyn())
+        if(!synapse->IsReadoutSyn() && !synapse->IsInputSyn() && !synapse->IsFeedbackSyn())
             _rsynapses.push_back(synapse);
         else if(synapse->IsReadoutSyn())
             _rosynapses.push_back(synapse);
