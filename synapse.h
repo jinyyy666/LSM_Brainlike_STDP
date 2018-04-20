@@ -160,6 +160,7 @@ public:
     //* Determine whether or not the synapse is the input synapse:
     bool IsInputSyn();
     bool IsFeedbackSyn();
+    bool IsLateralIni();
     //* Determine whether or not the synapse is valid (connected to no deactivated neurons)
     bool IsValid();
 

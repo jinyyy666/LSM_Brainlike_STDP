@@ -158,6 +158,7 @@ Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int 
 
     if(IsFeedbackSyn()){
         _Unit = 1;
+        _D_lsm_weight_limit = 8;
     }
     else if((_liquid == false)&&(pre_name[0] != 'i')){
 #if NUM_BIT_SYN > NBT_STD_SYN
@@ -190,7 +191,7 @@ Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int 
 #endif
     }
 
-    cout<<pre->Name()<<"\t"<<post->Name()<<"\tPreExcit: "<<_excitatory<<"\tPostExcit: "<<post->IsExcitatory()<<"\t"<<_D_lsm_weight<<endl;
+    cout<<pre->Name()<<"\t"<<post->Name()<<"\tPreExcit: "<<_excitatory<<"\tPostExcit: "<<post->IsExcitatory()<<"\t"<<_D_lsm_weight<<"\t"<<_D_lsm_weight_limit<<endl;
 
     // initialize the look-up table:
     _init_lookup_table(false);
@@ -383,8 +384,9 @@ void Synapse::SetPostNeuron(Neuron * post){
 
 bool Synapse::IsReadoutSyn(){
     char * name_post = _post->Name();
+    char * name_pre  = _pre->Name();
     // if the post neuron is the readout/hidden neuron:
-    if((name_post[0] == 'o' && name_post[6] == '_') || (name_post[0] == 'h' && name_post[6] == '_')){
+    if(((name_post[0] == 'o' && name_post[6] == '_') || (name_post[0] == 'h' && name_post[6] == '_')) && (name_pre[0] != 'o')){
         return true;
     }
     else{
@@ -411,6 +413,18 @@ bool Synapse::IsFeedbackSyn(){
     else{
         return false;
     }
+}
+
+bool Synapse::IsLateralIni(){
+    char * name_post = _post->Name();
+    char * name_pre = _pre->Name();
+    if((name_post[0] == 'o' && name_post[6] == '_') && (name_pre[0] == 'o' && name_pre[6] == '_')){
+        return true;
+    }
+    else{
+        return false;
+    }
+ 
 }
 
 bool Synapse::IsValid(){
@@ -1275,6 +1289,7 @@ void Synapse::LSMSTDPSimpleLearn(int t){
         cout<<"Remapped weight to 2-bit: "<<_D_lsm_weight<<endl;
 #endif
 
+    CheckPlasticWeightOutBound();
     return;
 
 }

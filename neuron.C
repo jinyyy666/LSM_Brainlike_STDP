@@ -547,16 +547,19 @@ inline void Neuron::SetPostNeuronSpikeT(int time){
     for(Synapse * synapse : _inputSyns){
         // indication of two case synapse
         bool betweenLayer = synapse->IsInputSyn() || synapse->IsReadoutSyn() || synapse->IsFeedbackSyn();
-        if(!betweenLayer)  assert(synapse->IsLiquidSyn());
+        if(!betweenLayer)   assert(synapse->IsLiquidSyn() || (synapse->IsLateralIni()));
 
-        if(_mode == STDP && !betweenLayer){
+        if(_mode == STDP && (!betweenLayer || synapse->IsFeedbackSyn())){
             // this synapse is in reservoir and we are training reservoir synaspes
             synapse->SetPostSpikeT(time);
             // push the synapse into STDP learning list
             if(synapse->GetActiveSTDPStatus() == false 
                     && synapse->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false
                     && synapse->WithinSTDPTable(time) )
-                synapse->LSMActivateSTDPSyns(_network, "reservoir");	
+                if(!betweenLayer)
+                    synapse->LSMActivateSTDPSyns(_network, "reservoir");
+                else
+                    synapse->LSMActivateSTDPSyns(_network, "readout");
         }
         else if((_mode == NORMALSTDP) && betweenLayer){
             // this synapse is in between two layers (input-reservoir or reservoir-readout)
@@ -566,7 +569,7 @@ inline void Neuron::SetPostNeuronSpikeT(int time){
                     && synapse->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false
                     && synapse->WithinSTDPTable(time) )
                 if(synapse->IsInputSyn())  synapse->LSMActivateSTDPSyns(_network, "input");
-                else if(synapse->IsReadoutSyn())  synapse->LSMActivateSTDPSyns(_network, "readout");
+                else if(synapse->IsFeedbackSyn())  synapse->LSMActivateSTDPSyns(_network, "readout");
         }
     }
 }
@@ -589,16 +592,24 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
         synapse->LSMDeliverSpike();  
         synapse->SetPreSpikeT(time);
 
-        if(_mode == STDP && !isInput){
-            // for reservoir-reservoir synapse in TRAINRESERVOIR STATE:
-            if(synapse->IsLiquidSyn() == true && synapse->GetActiveSTDPStatus() == false){
-                // active this reservoir for STDP training
-                synapse->LSMActivateSTDPSyns(_network, "reservoir");	  
+        if(!isInput){
+            if(_mode == STDP){
+                // for reservoir-reservoir synapse in TRAINRESERVOIR STATE:
+                if(synapse->IsLiquidSyn() == true && synapse->GetActiveSTDPStatus() == false){
+                    // active this reservoir for STDP training
+                    synapse->LSMActivateSTDPSyns(_network, "reservoir");	  
+                }
+                else if(synapse->IsReadoutSyn() && !(synapse->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED)))
+                    synapse->LSMActivate(_network, true, train);
             }
-            else if(synapse->IsReadoutSyn() && !(synapse->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED)))
-                synapse->LSMActivate(_network, true, train);
+            else if(_mode == NORMALSTDP){
+                if(synapse->IsFeedbackSyn() == true && synapse->GetActiveSTDPStatus() == false){
+                    // active this reservoir for STDP training
+                    synapse->LSMActivateSTDPSyns(_network, "readout");	  
+                }
+            }
         }
-        else if(isInput){
+        else{
             if(_name[0] == 'i'){
                 // for input synapses in TRANSIENT/TRAINRESERVOIR/TRAININPUT STATE:
                 if(_mode == READCHANNELSTDP){

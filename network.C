@@ -363,7 +363,7 @@ void Network::LSMAddSynapse(NeuronGroup * pre, int npre, int npost, int value, i
             Neuron * post_neuron = pre->Order(i);
             if(pre_neuron == post_neuron)   continue;
             // weight_value, fixed, weight_limit, is_in_liquid
-            LSMAddSynapse(pre_neuron, post_neuron, double(-value), fixed, double(value), false);
+            LSMAddSynapse(pre_neuron, post_neuron, int(-value), fixed, int(value), false);
         }
     }
 }
@@ -1033,9 +1033,9 @@ void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neur
         neuronmode_reservoir = READCHANNELSTDP; 
         neuronmode_readout = NORMALSTDP;
     }else if(networkmode == READOUT){
-        neuronmode_input = DEACTIVATED;
-        neuronmode_reservoir = READCHANNEL;
-        neuronmode_readout = NORMAL;
+        neuronmode_input = READCHANNEL;
+        neuronmode_reservoir = STDP;
+        neuronmode_readout = NORMALSTDP;
     }
     else if(networkmode == READOUTSUPV){
         neuronmode_input = DEACTIVATED;
@@ -1288,7 +1288,7 @@ bool Network::LSMEndOfSpeech(networkmode_t networkmode, int end_time){
     if((networkmode == READOUT)&&(_lsm_input>0)){
         return false;
     }
-    if((networkmode != VOID)&&(_lsm_reservoir > 0 || _lsm_input > 0)){
+    if((networkmode != VOID)&&(_lsm_reservoir > 0 && _lsm_input > 0)){
         return false;
     }
     return true;
@@ -1595,7 +1595,7 @@ void Network::BoostWeightUpdate(const vector<pair<Speech*, bool> >& predictions)
 
 //* add the active reservoir synapse about to be trained by STDP
 void Network::LSMAddSTDPActiveSyn(Synapse * synapse){
-    assert(synapse->GetActiveStatus() == false);
+    assert(synapse->GetActiveSTDPStatus() == false);
     _lsmActiveSTDPLearnSyns.push_back(synapse);
 }
 
@@ -2049,7 +2049,8 @@ void Network::LoadSynWeightsFromFile(const char * syn_type, char * filename){
 #endif
     while(f_in>>index>>pre>>post>>weight){//>>pre_ext>>post_ext){
         if(index < 0 || index >= synapses.size()){
-            cout<<"In Network::LoadSynWeightsFromFile(), the index of the synapse you read : "<<index<<" is out of bound of the container stores the synapses!!"<<endl;
+            cout<<"In Network::LoadSynWeightsFromFile(), the index of the synapse you read : "<<index<<" is out of bound of the container size: "<<synapses.size()<<endl;
+            cout<<"Synapse type: "<<syn_type<<endl;
             exit(EXIT_FAILURE);
         }
 

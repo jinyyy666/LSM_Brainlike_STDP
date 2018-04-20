@@ -12,6 +12,7 @@
 #include <algorithm>
 
 //#define _DUMP_READOUT_WEIGHTS
+//#define MULTI_STAGE
 
 using namespace std;
 double TSstrength;
@@ -86,6 +87,8 @@ void Simulator::LSMRun(long tid){
         _network->WriteSynWeightsToFile("input", "hidden_0", filename);
         sprintf(filename, "o_weights_info.txt");
         _network->WriteSynWeightsToFile("reservoir", "output", filename);
+        sprintf(filename, "feedback_info.txt");
+        _network->WriteSynWeightsToFile("output", "reservoir", filename);
 
         sprintf(filename, "o_weights_info_all.txt");
         _network->WriteSelectedSynToFile("readout", filename); 
@@ -136,8 +139,10 @@ void Simulator::LSMRun(long tid){
 
     ////////////////////////////////////////////////////////////////////////
     // REMEMBER TO REMOVE THESE CODES!!
-    //sprintf(filename, "o_weights_info_trained_final.txt");
-    //_network->LoadSynWeightsFromFile("readout", filename);
+#ifdef MULTI_STAGE
+    sprintf(filename, "o_weights_info_trained.txt");
+    _network->LoadSynWeightsFromFile("readout", filename);
+#endif
     ////////////////////////////////////////////////////////////////////////
 
 
@@ -181,6 +186,10 @@ void Simulator::LSMRun(long tid){
     //ofstream f1("spike_freq.txt"), f2("spike_speech_label.txt");
     //assert(f1.is_open() && f2.is_open());
     ////////////////////////////////////////////////////////////////////////
+#ifdef MULTI_STAGE
+    sprintf(filename, "r_weights_recurrent_info_trained.txt");
+    _network->LoadSynWeightsFromFile("reservoir", filename);
+#endif
 
 #ifndef LOAD_RESPONSE
     // produce transient state
@@ -307,6 +316,8 @@ void Simulator::LSMRun(long tid){
         _network->WriteSynWeightsToFile("input", "hidden_0", filename);
         sprintf(filename, "o_weights_info_trained.txt");
         _network->WriteSynWeightsToFile("reservoir", "output", filename);
+        sprintf(filename, "feedback_info_trained.txt");
+        _network->WriteSynWeightsToFile("output", "reservoir", filename);
     }
     
     if(tid == 0){
