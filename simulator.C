@@ -136,29 +136,6 @@ void Simulator::LSMRun(long tid){
 #endif
     myTimer.End("STDP training of input and reservoir");
 
-
-    ////////////////////////////////////////////////////////////////////////
-    // REMEMBER TO REMOVE THESE CODES!!
-#ifdef MULTI_STAGE
-    sprintf(filename, "o_weights_info_trained.txt");
-    _network->LoadSynWeightsFromFile("readout", filename);
-#endif
-    ////////////////////////////////////////////////////////////////////////
-
-
-    // detect total number of hubs in the reservoir AFTER stdp training:
-    //cout<<"After STDP training:"<<endl;
-    //_network->LSMHubDetection();
-
-#ifdef ADAPTIVE_POWER_GATING
-    // apply the power gating scheme to turn off some neurons with low connectivity
-    _network->LSMAdaptivePowerGating(); 
-    // retrain the network for few echos:
-    for(int i = 0; i < 5; ++i)
-        _network->LSMReservoirTraining(networkmode);
-    _network->LSMSumGatedNeurons();
-#endif
-
     // Load the weight from file:
     // sprintf(filename, "r_weights_info.txt");
     // _network->LoadSynWeightsFromFile("reservoir", filename);
@@ -188,7 +165,7 @@ void Simulator::LSMRun(long tid){
     ////////////////////////////////////////////////////////////////////////
 #ifdef MULTI_STAGE
     sprintf(filename, "r_weights_recurrent_info_trained.txt");
-    _network->LoadSynWeightsFromFile("reservoir", filename);
+    _network->LoadSynWeightsFromFile(filename);
 #endif
 
 #ifndef LOAD_RESPONSE
@@ -255,6 +232,11 @@ void Simulator::LSMRun(long tid){
 #endif
 
     // train the readout layer
+#ifdef MULTI_STAGE
+    sprintf(filename, "o_weights_info_trained.txt");
+    _network->LoadSynWeightsFromFile(filename);
+#endif
+
     myTimer.Start();
 #ifndef TEACHER_SIGNAL
     networkmode = READOUTBP; // choose the readout supervised algorithm here!
