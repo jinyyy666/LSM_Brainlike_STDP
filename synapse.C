@@ -919,11 +919,7 @@ void Synapse::LSMSTDPSupvLearn(int t, int iteration){
     if(t == _t_spike_post && delta_t >= _TABLE_LTP_S.size()) return;
 #endif
 
-#if defined(DIGITAL) && defined(_SIMPLE_STDP) 
-    // if the simple hardware efficiency STDP rule is considered,
-    // apply the simple approach:
-    LSMSTDPSupvSimpleLearn(t);
-#else
+#if defined(DIGITAL)
     // apply the look-up table appoarch
     LSMSTDPSupvHardwareLearn(t, iteration);
 #endif
@@ -1404,7 +1400,6 @@ void Synapse::LSMClearLearningSynWeights(){
 void Synapse::LSMActivate(Network * network, bool need_learning, bool train){
     if(_lsm_active)
         cout<<_pre->Name()<<"\t"<<_post->Name()<<endl;
-
     assert(_lsm_active == false);
     // 1. Add the synapses for firing processing
 
@@ -1442,7 +1437,7 @@ void Synapse::LSMActivateSTDPSyns(Network * network, const char * type){
     /** Currently, for readout synapses, I am training it regardless of type **/
     /** Because the type of the readout synapses is independent of the pre-  **/
     /** neuron under the current settings (supervised learning)              **/
-    if(_excitatory == true || (strcmp(type, "readout") == 0 && network->LSMGetNetworkMode() == READOUTSUPV)){
+    if(_excitatory == true || (strcmp(type, "readout") == 0 && network->LSMGetNetworkMode() == READOUT)){
 #ifdef _DEBUG_UNSUPERV_TRAINING
         cout<<"Put synapse from "<<_pre->Name()<<" to "<<_post->Name()<<" for STDP training"<<endl;
 #endif

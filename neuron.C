@@ -569,7 +569,7 @@ inline void Neuron::SetPostNeuronSpikeT(int time){
                     && synapse->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false
                     && synapse->WithinSTDPTable(time) )
                 if(synapse->IsInputSyn())  synapse->LSMActivateSTDPSyns(_network, "input");
-                else if(synapse->IsFeedbackSyn())  synapse->LSMActivateSTDPSyns(_network, "readout");
+                else if(synapse->IsReadoutSyn())  synapse->LSMActivateSTDPSyns(_network, "readout");
         }
     }
 }
@@ -599,8 +599,8 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
                     // active this reservoir for STDP training
                     synapse->LSMActivateSTDPSyns(_network, "reservoir");	  
                 }
-                else if(synapse->IsReadoutSyn() && !(synapse->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED)))
-                    synapse->LSMActivate(_network, true, train);
+                else if(synapse->IsReadoutSyn() &&  synapse->GetActiveSTDPStatus() == false)
+                    synapse->LSMActivateSTDPSyns(_network, "readout");
             }
             else if(_mode == NORMALSTDP){
                 if(synapse->IsFeedbackSyn() == true && synapse->GetActiveSTDPStatus() == false){

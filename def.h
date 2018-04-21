@@ -17,7 +17,7 @@
 
 // this control variable is to enable the simple STDP update rule
 // NEED TO ENABLE _LUT_HARDWARE_APPROACH and DIGITAL first!
-//#define _SIMPLE_STDP
+#define _SIMPLE_STDP
 
 // this control variable enable the pure random connection in the reservoir
 //#define PURE_RANDOM_RES_CONNECTION
@@ -38,7 +38,7 @@
 /* FOR LIQUID STATE MACHINE */
 // the control parameter to enable STDP training, you only to enable this one
 // before enable the following two variables!!
-#define STDP_TRAINING
+//#define STDP_TRAINING
 
 // the control parameter to enable training the reservoir:
 //#define STDP_TRAINING_RESERVOIR
@@ -93,7 +93,7 @@
 /*******************************************
 // the new rule(SRM based/reward modulated)
 *******************************************/
-#define _REWARD_MODULATE
+//#define _REWARD_MODULATE
 #define VMEM_DAMPING_FACTOR 1
 
 #define TAU_REWARD_POS_E 4
@@ -240,8 +240,8 @@
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
 #define CLS 26
-#define NUM_THREADS 1
-#define NUM_ITERS 40
+#define NUM_THREADS 5
+#define NUM_ITERS 50
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -289,7 +289,7 @@
 //#define SYN_ORDER_1 1
 //#define SYN_ORDER_0 0 
 
-//#define CV
+#define CV
 #define NFOLD 5
 
 //* Control variable to enable the old way of readout by writing outputs/*.dat

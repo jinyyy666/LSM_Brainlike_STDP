@@ -838,7 +838,10 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration,int end_time, FILE
         if(_network_mode == READOUT){
             for(Synapse * synapse : _lsmActiveLearnSyns)    synapse->LSMLearn(t, iteration);
             _lsmActiveLearnSyns.clear();
-            for(Synapse * synapse : _lsmActiveSTDPLearnSyns)    synapse->LSMSTDPLearn(t);
+            for(Synapse * synapse : _lsmActiveSTDPLearnSyns){
+                if(synapse->IsReadoutSyn()) synapse->LSMSTDPSupvLearn(t, iteration); 
+                else    synapse->LSMSTDPLearn(t);
+            }
             _lsmActiveSTDPLearnSyns.clear();
         }else if(_network_mode == READOUTSUPV){
             for(Synapse * synapse : _lsmActiveSTDPLearnSyns)    synapse->LSMSTDPSupvLearn(t, iteration); 
