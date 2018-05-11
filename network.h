@@ -32,6 +32,7 @@ private:
     std::list<Synapse*> _synapses;
     std::vector<Synapse*> _rsynapses;       
     std::vector<Synapse*> _rosynapses;
+    std::vector<Synapse*> _fsynapses;
     std::vector<Synapse*> _isynapses;
     std::list<Synapse*> _lsmActiveLearnSyns;
     std::list<Synapse*> _lsmActiveSyns;
@@ -58,6 +59,8 @@ private:
     NeuronGroup * _lsm_reservoir_layer;
     std::vector<std::string> _hidden_layer_names;
     std::vector<NeuronGroup*> _lsm_hidden_layers;
+    std::vector<networkmode_t> _phase;       
+    std::vector<networkmode_t>::iterator _phase_iter;
     NeuronGroup * _lsm_output_layer;
     int _lsm_input;
     int _lsm_reservoir;
@@ -102,7 +105,13 @@ public:
     void LSMSumGatedNeurons();
     void LSMHubDetection();
 
+	void LSMTrainInput(networkmode_t networkmode, int tid);
+	void LSMTrainReservoir(networkmode_t networkmode,int tid);
+	void LSMTrainReadout(networkmode_t networkmode, int tid);
     void LSMTransientSim(networkmode_t networkmode, int tid, const std::string sample_type);
+	void LSMReadout(networkmode_t networkmode, int tid);
+	void LSMFeedbackSTDP(networkmode_t networkmode, int tid);
+	void LSMFeedbackReadout(networkmode_t networkmode, int tid);
     void LSMSupervisedTraining(networkmode_t networkmode, int tid, int iteration);
     void LSMUnsupervisedTraining(networkmode_t networkmode, int tid);
     void LSMReservoirTraining(networkmode_t networkmode);
@@ -227,17 +236,40 @@ public:
         _synapses_map[pre_name][post_name] = synapse; 
     
         // push back the reservoir, readout and input synapses into the vector:
-        if(!synapse->IsReadoutSyn() && !synapse->IsInputSyn() && !synapse->IsFeedbackSyn())
-            _rsynapses.push_back(synapse);
+        if(synapse->IsInputSyn())
+            _isynapses.push_back(synapse);
         else if(synapse->IsReadoutSyn())
             _rosynapses.push_back(synapse);
+        else if(synapse->IsFeedbackSyn())
+            _fsynapses.push_back(synapse);
         else
-            _isynapses.push_back(synapse);
+            _rsynapses.push_back(synapse);
 
         if(group)  group->AddSynapse(synapse);
         pre->AddPostSyn(synapse);
         post->AddPreSyn(synapse);	
     } 
+	void SavePhase(networkmode_t phase_mode){
+		_phase.push_back(phase_mode);
+	}
+	networkmode_t PhaseFirst(){
+		_phase_iter=_phase.begin();
+		if(_phase_iter==_phase.end()){
+			return VOID;
+		}
+		else
+			return *_phase_iter;
+
+	}
+	networkmode_t PhaseNext(){
+		_phase_iter++;
+		if(_phase_iter==_phase.end()){
+			return VOID;
+		}
+		else
+			return *_phase_iter;
+	}
+
 };
 
 #endif

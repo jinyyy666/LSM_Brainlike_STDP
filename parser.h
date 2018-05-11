@@ -24,6 +24,7 @@ public:
     void ParseMNIST(int duration);
     void ParseNMNIST(int cls, char* train_test, char* path);
     void GeneratePossionSpikes(std::vector<std::vector<std::vector<float> > >& x, std::vector<int>& y, int duration, bool is_train);
+	void ParsePhase(char* mode);
 };
 
 #endif

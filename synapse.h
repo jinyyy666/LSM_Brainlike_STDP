@@ -159,8 +159,6 @@ public:
     bool IsReadoutSyn();
     //* Determine whether or not the synapse is the input synapse:
     bool IsInputSyn();
-    bool IsFeedbackSyn();
-    bool IsLateralIni();
     //* Determine whether or not the synapse is valid (connected to no deactivated neurons)
     bool IsValid();
 
@@ -218,6 +216,7 @@ public:
 
     // determine whether or not this synapse is in the liquid?
     bool IsLiquidSyn(){ return _liquid;};
+	bool IsFeedbackSyn();
 
     void CheckPlasticWeightOutBound();
     void CheckReadoutWeightOutBound();

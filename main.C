@@ -154,7 +154,7 @@ int main(int argc, char * argv[]){
 #endif
 #elif _SPEECH == 1
 #if _LETTER == 1
-        parser.Parse("netlist/netlist_new_multistage.txt"); // For English spoken letters
+        parser.Parse("netlist/netlist_feedback.txt"); // For English spoken letters
 #elif _DIGIT == 1
         parser.Parse("netlist/netlist.txt"); // For spoken digits
 #else

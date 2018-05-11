@@ -542,24 +542,25 @@ inline void Neuron::UpdateVmem(int& temp,const int c_num_dec_digit_mem, const in
  * for STDP training.
  * Two cases for synapses: 1) reservoir-reservoir (laterial connection)
  *                         2) input-reservoir & reservoir-readout (inter-layer)
+ *                         3) readout-reservoir
  ***************************************************************************/
 inline void Neuron::SetPostNeuronSpikeT(int time){
     for(Synapse * synapse : _inputSyns){
         // indication of two case synapse
         bool betweenLayer = synapse->IsInputSyn() || synapse->IsReadoutSyn() || synapse->IsFeedbackSyn();
-        if(!betweenLayer)   assert(synapse->IsLiquidSyn() || (synapse->IsLateralIni()));
+        if(!betweenLayer)  assert(synapse->IsLiquidSyn());
 
-        if(_mode == STDP && (!betweenLayer || synapse->IsFeedbackSyn())){
+        if(_mode == STDP && (!betweenLayer||synapse->IsFeedbackSyn())){
             // this synapse is in reservoir and we are training reservoir synaspes
             synapse->SetPostSpikeT(time);
             // push the synapse into STDP learning list
             if(synapse->GetActiveSTDPStatus() == false 
                     && synapse->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false
                     && synapse->WithinSTDPTable(time) )
-                if(!betweenLayer)
-                    synapse->LSMActivateSTDPSyns(_network, "reservoir");
-                else
-                    synapse->LSMActivateSTDPSyns(_network, "readout");
+				if(synapse->IsFeedbackSyn())
+					synapse->LSMActivateSTDPSyns(_network, "feedback");
+				else
+					synapse->LSMActivateSTDPSyns(_network, "reservoir");	
         }
         else if((_mode == NORMALSTDP) && betweenLayer){
             // this synapse is in between two layers (input-reservoir or reservoir-readout)
@@ -568,8 +569,10 @@ inline void Neuron::SetPostNeuronSpikeT(int time){
             if(synapse->GetActiveSTDPStatus() == false 
                     && synapse->PreNeuron()->LSMCheckNeuronMode(DEACTIVATED) == false
                     && synapse->WithinSTDPTable(time) )
-                if(synapse->IsInputSyn())  synapse->LSMActivateSTDPSyns(_network, "input");
-                else if(synapse->IsFeedbackSyn())  synapse->LSMActivateSTDPSyns(_network, "readout");
+                if(synapse->IsInputSyn())  
+					synapse->LSMActivateSTDPSyns(_network, "input");
+                else if(synapse->IsReadoutSyn() && _network->LSMGetNetworkMode()!=FEEDBACKSTDP)  
+					synapse->LSMActivateSTDPSyns(_network, "readout");
         }
     }
 }
@@ -593,23 +596,28 @@ inline void Neuron::HandleFiringActivity(bool isInput, int time, bool train){
         synapse->SetPreSpikeT(time);
 
         if(!isInput){
-            if(_mode == STDP){
-                // for reservoir-reservoir synapse in TRAINRESERVOIR STATE:
-                if(synapse->IsLiquidSyn() == true && synapse->GetActiveSTDPStatus() == false){
-                    // active this reservoir for STDP training
-                    synapse->LSMActivateSTDPSyns(_network, "reservoir");	  
-                }
-                else if(synapse->IsReadoutSyn() && !(synapse->PostNeuron()->LSMCheckNeuronMode(DEACTIVATED)))
+			if(_mode == STDP){
+				// for reservoir-reservoir synapse in TRAINRESERVOIR STATE:
+				if(synapse->IsLiquidSyn() == true && synapse->GetActiveSTDPStatus() == false){
+					// active this reservoir for STDP training
+					synapse->LSMActivateSTDPSyns(_network, "reservoir");	  
+				}
+                if(synapse->IsReadoutSyn()&& _network->LSMGetNetworkMode()==FEEDBACKSTDP)
                     synapse->LSMActivate(_network, true, train);
-            }
-            else if(_mode == NORMALSTDP){
-                if(synapse->IsFeedbackSyn() == true && synapse->GetActiveSTDPStatus() == false){
-                    // active this reservoir for STDP training
-                    synapse->LSMActivateSTDPSyns(_network, "readout");	  
-                }
-            }
+			}
+			if(_mode == NORMALSTDP){
+				if(synapse->IsFeedbackSyn()==true && synapse->GetActiveSTDPStatus() == false){
+					// active this reservoir for STDP training
+					synapse->LSMActivateSTDPSyns(_network, "feedback");	  
+				}
+			}
+			if(_mode == NORMAL){
+                if(synapse->IsReadoutSyn()&& _network->LSMGetNetworkMode()==FEEDBACKREADOUT)
+                    synapse->LSMActivate(_network, true, train);
+
+			}
         }
-        else{
+        else if(isInput){
             if(_name[0] == 'i'){
                 // for input synapses in TRANSIENT/TRAINRESERVOIR/TRAININPUT STATE:
                 if(_mode == READCHANNELSTDP){
