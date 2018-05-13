@@ -17,7 +17,7 @@
 
 // this control variable is to enable the simple STDP update rule
 // NEED TO ENABLE _LUT_HARDWARE_APPROACH and DIGITAL first!
-//#define _SIMPLE_STDP
+#define _SIMPLE_STDP
 
 // this control variable enable the pure random connection in the reservoir
 //#define PURE_RANDOM_RES_CONNECTION
