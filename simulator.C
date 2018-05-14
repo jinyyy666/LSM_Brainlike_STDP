@@ -77,239 +77,76 @@ void Simulator::LSMRun(long tid){
     _network->WriteSynWeightsToFile("reservoir", "reservoir", filename);
 #endif
 
-    if(tid == 0){
-        sprintf(filename, "r_weights_info.txt");
-        _network->WriteSynWeightsToFile("input", "reservoir", filename);
-        sprintf(filename, "r_weights_recurrent_info.txt");
-        _network->WriteSynWeightsToFile("reservoir", "reservoir", filename);
-        sprintf(filename, "h_weights_info.txt");
-        _network->WriteSynWeightsToFile("input", "hidden_0", filename);
-        sprintf(filename, "o_weights_info.txt");
-        _network->WriteSynWeightsToFile("hidden_0", "output", filename);
-
-        sprintf(filename, "o_weights_info_all.txt");
-        _network->WriteSelectedSynToFile("readout", filename); 
-    }
-
-#ifdef STDP_TRAINING
-    myTimer.Start();
-#ifdef STDP_TRAINING_RESERVOIR
-    // train the reservoir using STDP rule:
-    networkmode = TRAINRESERVOIR;
-    _network->LSMSetNetworkMode(networkmode);
-
-    // repeatedly training the reservoir for a certain amount of iterations:
-    for(int i = 0; i < 25; ++i){
-        _network->LSMReservoirTraining(networkmode);
-
-#if NUM_THREADS == 1  
-        // Write the weight back to file after training the reservoir with STDP:
-        sprintf(filename, "reservoir_weights_%d.txt", i);
-        _network->WriteSelectedSynToFile("reservoir", filename);
-#endif       
-    }
-    myTimer.Report("training the reservoir");
-#endif
-
-    // visualize the reservoir synapses after stdp training:
-    //_network->VisualizeReservoirSyns(1);
-
-#ifdef STDP_TRAINING_INPUT
-    // train the input using STDP rule:
-    networkmode = TRAININPUT;
-    _network->LSMSetNetworkMode(networkmode);
-
-    // repeatedly training the input for a certain amount of iterations:
-    for(int i = 0; i < 20; ++i){
-        _network->LSMUnsupervisedTraining(networkmode, tid);
-
-#if NUM_THREADS == 1
-        // Write the weight back to file after training the input with STDP:
-        sprintf(filename, "input_weights_%d.txt", i);
-        _network->WriteSelectedSynToFile("input", filename);
-#endif
-    }
-    myTimer.Report("training the input");
-#endif
-    myTimer.End("STDP training of input and reservoir");
-
-
-    ////////////////////////////////////////////////////////////////////////
-    // REMEMBER TO REMOVE THESE CODES!!
-    //sprintf(filename, "o_weights_info_trained_final.txt");
-    //_network->LoadSynWeightsFromFile("readout", filename);
-    ////////////////////////////////////////////////////////////////////////
-
-
-    // detect total number of hubs in the reservoir AFTER stdp training:
-    //cout<<"After STDP training:"<<endl;
-    //_network->LSMHubDetection();
-
-#ifdef ADAPTIVE_POWER_GATING
-    // apply the power gating scheme to turn off some neurons with low connectivity
-    _network->LSMAdaptivePowerGating(); 
-    // retrain the network for few echos:
-    for(int i = 0; i < 5; ++i)
-        _network->LSMReservoirTraining(networkmode);
-    _network->LSMSumGatedNeurons();
-#endif
-
-    // Load the weight from file:
-    // sprintf(filename, "r_weights_info.txt");
-    // _network->LoadSynWeightsFromFile("reservoir", filename);
-
-    // Write the weight back to file after training the reservoir with STDP:
-    if(tid == 0){
-        sprintf(filename, "r_weights_recurrent_info_trained.txt");
-        _network->WriteSelectedSynToFile("reservoir", filename);
-        sprintf(filename, "r_weights_info_trained.txt");
-        _network->WriteSelectedSynToFile("input", filename);
-    }
-
-#ifdef _RM_ZERO_RES_WEIGHT
-    _network->RemoveZeroWeights("reservoir");
-#endif  
-
-#endif
-    ////////////////////////////////////////////////////////////////////////
-    // REMEMBER TO REMOVE THESE CODES!!
-    // sprintf(filename, "r_weights_info_best.txt");
-    // _network->LoadSynWeightsFromFile("reservoir", filename);
-    // _network->TruncateIntermSyns("reservoir");
-    // sprintf(filename, "r_weights_info_best_tmp.txt");
-    // _network->WriteSelectedSynToFile("reservoir", filename);
-    //ofstream f1("spike_freq.txt"), f2("spike_speech_label.txt");
-    //assert(f1.is_open() && f2.is_open());
-    ////////////////////////////////////////////////////////////////////////
-
-#ifndef LOAD_RESPONSE
-    // produce transient state
-    networkmode = TRANSIENTSTATE;
-    _network->LSMSetNetworkMode(networkmode);
-    myTimer.Start();
-    _network->LSMTransientSim(networkmode, tid, "train_sample");
+	networkmode_t phase=_network->PhaseFirst();
+	while(phase){
+		myTimer.Start();
+		switch(phase){
+			case TRAININPUT:
+				cout<<"stdp train input start"<<endl;
+				_network->LSMTrainInput(phase,tid);
+				myTimer.End("STDP training of input");
+				cout<<"stdp train input end"<<endl;
+				break;
+			case TRAINRESERVOIR:
+				cout<<"stdp train reservoir start"<<endl;
+				_network->LSMTrainReservoir(phase,tid);
+				myTimer.End("STDP training of input and reservoir");
+				break;
+				cout<<"stdp train reservoir end"<<endl;
+			case TRAINREADOUT:
+				cout<<"stdp train readout start"<<endl;
+				_network->LSMTrainReadout(phase,tid);
+				myTimer.End("training the readout");
+				cout<<"stdp train readout end"<<endl;
+				break;
+			case TRANSIENTSTATE:
+				cout<<"transient start"<<endl;
+				// produce transient state
+				_network->LSMTransientSim(phase, tid, "train_sample");
 #ifdef USE_TEST_SAMPLE
-    _network->LSMTransientSim(networkmode, tid, "test_sample");
+				_network->LSMTransientSim(phase, tid, "test_sample");
 #endif
-    
-    myTimer.End("running transient");
-    //_network->LoadSynWeightsFromFile("o_weights_info_trained_all.txt");
-    //////////////////////////////////////////////////////////////////////////////
-    // REMEMBER TO REMOVE THESE CODES!
-    //_network->LSMSumGatedNeurons();
-    // f2<<endl;
-    // f1.close(); f2.close();
-    /////////////////////////////////////////////////////////////////////////////
+				myTimer.End("running transient");			
+				cout<<"transient end"<<endl;
+				break;
+			case READOUT:
+				cout<<"train readout start"<<endl;
+				_network->LSMReadout(phase, tid);
+				myTimer.End("supervised training the readout"); 
+				cout<<"train readout end"<<endl;
+				break;
+			case READOUTSUPV:
+				cout<<"supervised stdp train readout start"<<endl;
+				_network->LSMReadout(phase, tid);
+				myTimer.End("supervised STDP training the readout"); 
+				cout<<"supervised stdp train readout end"<<endl;
+				break;
+			case READOUTBP:
+				cout<<"backpropogate train readout start"<<endl;
+				_network->LSMReadout(phase, tid);
+				myTimer.End("backpropagation training the readout"); 
+				cout<<"backpropogate train readout end"<<endl;
+				break;
+			case FEEDBACKSTDP:
+				cout<<"feedback stdp start"<<endl;
+				_network->LSMFeedbackSTDP(phase, tid);
+				myTimer.End("training the feedback with STDP"); 
+				cout<<"feedback stdp end"<<endl;
+				break;
+			case FEEDBACKREADOUT:
+				cout<<"feedback train readout start"<<endl;
+				_network->LSMFeedbackReadout(phase, tid);
+				myTimer.End("training the feedback network with learning rule"); 
+				cout<<"feedback train readout end"<<endl;
+				break;
+			case VOID:
+				return;
+			default:
+				assert(0);
+		}
 
-#ifdef _VARBASED_SPARSE
-    // sparsify the reservoir to readout connection using var-based technique:
-    _network->VarBasedSparsify("readout");
-#endif
-
-#ifdef _CORBASED_SPARSE
-    // merge the firing of two neurons based on the correlations
-    cout<<"Begin correlation based readout sparsification"<<endl;
-    _network->CorBasedSparsify();
-#endif
-
-#endif // end of load response
-#ifdef QUICK_RESPONSE
-	return;
-#endif
-
-#if defined(STDP_TRAINING_READOUT) && defined(STDP_TRAINING)
-    // traing the readout using STDP rule first:
-    /****************************************************************
-      The current version suppose you have trained the reservoir
-     *****************************************************************/
-    networkmode = TRAINREADOUT;
-    _network->LSMSetNetworkMode(networkmode);
-
-    myTimer.Start();
-    for(int i = 0; i < 20; ++i){
-        cout<<"\n************************"
-            <<"\n* i = "<<i
-            <<"\n************************"<<endl;
-        _network->LSMUnsupervisedTraining(networkmode, tid);
-#if NUM_THREADS == 1
-        // Write the weight back to file
-        sprintf(filename, "readout_weights_%d.txt", i);
-        _network->WriteSelectedSynToFile("readout", filename);
-#endif
-    }
-    if(tid == 0){
-        sprintf(filename, "o_weights_info_trained.txt");
-        _network->WriteSelectedSynToFile("readout", filename);
-    }
-    _network->RemoveZeroWeights("readout");
-    myTimer.End("training the readout");
-#endif
-
-    // train the readout layer
-    myTimer.Start();
-#ifndef TEACHER_SIGNAL
-    networkmode = READOUTBP; // choose the readout supervised algorithm here!
-#else
-    networkmode = READOUT; // choose the readout supervised algorithm here!
-#endif
-    _network->LSMSetNetworkMode(networkmode);
-#ifdef CV
-#if NUM_THREADS == 1
-    for(int fff = 0; fff < NFOLD; ++fff){
-        _network->Fold(fff);
-        _network->LSMClearWeights();
-        Tid = (int)tid;
-        cout<<"Only one thread is running:Tid_"<<Tid<<endl;
-#else 
-        Tid = (int)tid;
-        cout<<"Tid:"<<Tid<<endl;
-        _network->Fold(Tid);
-#endif
-
-#ifdef _WRITE_STAT
-        info = _network->LoadFirstSpeechTestCV(networkmode);
-        while(info != -1){
-            // write the file array for the purpose of parallel writing protectation:
-            file[info] = Tid;
-            sprintf(filename,"outputs/spikepattern%d.dat",info);
-            InitializeFile(filename);
-
-            info = _network->LoadNextSpeechTestCV(networkmode);
-        }
-#endif
-#endif
-        for(int iii = 0; iii < NUM_ITERS; iii++){
-            if(tid == 0)    cout<<"Run the iteration: "<<iii<<endl;
-            // random shuffle the training samples for better generalization
-            _network->ShuffleTrainingSamples();
-            _network->LSMSupervisedTraining(networkmode, tid, iii);
-#ifdef _DUMP_READOUT_WEIGHTS
-            if(tid == 0){
-                sprintf(filename, "o_weights_info_trained_intern_%d.txt",iii);
-                _network->WriteSelectedSynToFile("readout", filename);
-            }
-#endif
-            _network->CurrentPerformance(iii);
-        }
-#if defined(CV) && NUM_THREADS == 1
-    }
-#endif
-    myTimer.End("supervised training the readout"); 
-#ifdef _RES_EPEN_CHR
-    CollectEPENStat("reservoir");
-    CollectEPENStat("readout");
-#endif
-
-    if(tid == 0){
-        sprintf(filename, "o_weights_info_trained_all.txt");
-        _network->WriteSelectedSynToFile("readout", filename);
-        sprintf(filename, "h_weights_info_trained.txt");
-        _network->WriteSynWeightsToFile("input", "hidden_0", filename);
-        sprintf(filename, "o_weights_info_trained.txt");
-        _network->WriteSynWeightsToFile("hidden_0", "output", filename);
-    }
-
-
+		phase=_network->PhaseNext();
+	}
 }
 
 

@@ -145,27 +145,27 @@ void Parser::Parse(const char * filename){
             assert(token[1] != NULL);
             token[2] = strtok(NULL," \t\n");
             assert(token[2] != NULL);
-
             ParseSpeech(atoi(token[1]),token[2]);
+        }else if(strcmp(token[0],"phase")==0){
+            token[1] = strtok(NULL," \t\n");
+            assert(token[1] != NULL);
+            ParsePhase(token[1]);
         }else if(strcmp(token[0],"poisson")==0){
             token[1] = strtok(NULL," \t\n");
             assert(token[1] != NULL);
             token[2] = strtok(NULL," \t\n");
             assert(token[2] != NULL);
-
             ParsePoissonSpeech(atoi(token[1]),token[2]);
         }else if(strcmp(token[0],"MNIST")==0){
              token[1] = strtok(NULL," \t\n");
              assert(token[1] != NULL);
              token[2] = strtok(NULL," \t\n");
              assert(token[2] != NULL);
-
              ParseMNISTSpeech(atoi(token[1]),token[2]); 
         }else if(strcmp(token[0], "MNIST_DURATION") == 0){
             token[1] = strtok(NULL, " \t\n");
             assert(token[1] != NULL && atoi(token[1]) > 0);
             mnist_duration = atoi(token[1]);
-
             ParseMNIST(mnist_duration);
         }else if(strcmp(token[0],"NMNIST")==0){
             token[1] = strtok(NULL," \t\n");
@@ -253,6 +253,32 @@ void Parser::ParseSpeech(int cls, char* path){
     }
 
     fclose(fp);
+}
+
+void Parser::ParsePhase(char* mode){
+	networkmode_t phase_mode; 
+	if(strcmp(mode, "TRAINRESERVOIR") == 0){
+		phase_mode = TRAINRESERVOIR;
+	}else if(strcmp(mode, "TRAININPUT") == 0){
+		phase_mode = TRAININPUT;
+	}else if(strcmp(mode, "TRAINREADOUT") == 0){
+		phase_mode = TRAINREADOUT;
+	}else if(strcmp(mode, "TRANSIENTSTATE") == 0){
+		phase_mode = TRANSIENTSTATE;
+	}else if(strcmp(mode, "READOUT") == 0){
+		phase_mode = READOUT;
+	}else if(strcmp(mode, "READOUTSUPV") == 0){
+		phase_mode = READOUTSUPV;
+	}else if(strcmp(mode, "READOUTBP") == 0){
+		phase_mode = READOUTBP;
+	}else if(strcmp(mode, "FEEDBACKSTDP") == 0){
+		phase_mode = FEEDBACKSTDP;
+	}else if(strcmp(mode, "FEEDBACKREADOUT") == 0){
+		phase_mode = FEEDBACKREADOUT;
+	}else{
+		assert(0);
+	}
+	_network->SavePhase(phase_mode);
 }
 
 

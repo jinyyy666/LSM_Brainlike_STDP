@@ -1,14 +1,14 @@
 #ifndef DEF_H
 #define DEF_H
 
-#define _IMAGE    1
+#define _IMAGE    0
 #define _MNIST    0
 #define _TRAFFIC   0
 #define _CITYSCAPE 0
-#define _NMNIST 1
+#define _NMNIST 0
 
-#define _SPEECH    0
-#define _LETTER    0
+#define _SPEECH    1
+#define _LETTER    1
 #define _DIGIT    0
 
 // this control variable is defined to direct compute the \delta_t 
@@ -17,7 +17,7 @@
 
 // this control variable is to enable the simple STDP update rule
 // NEED TO ENABLE _LUT_HARDWARE_APPROACH and DIGITAL first!
-//#define _SIMPLE_STDP
+#define _SIMPLE_STDP
 
 // this control variable enable the pure random connection in the reservoir
 //#define PURE_RANDOM_RES_CONNECTION
@@ -27,7 +27,7 @@
 
 // this control variable enable you to remove the zero reservoir weights
 // after reservoir training
-#define _RM_ZERO_RES_WEIGHT
+//#define _RM_ZERO_RES_WEIGHT
 
 #define MAX_GRAYSCALE 512
 #define DURATION_TRAIN 500
@@ -35,22 +35,8 @@
 // calcium parameters
 #define TAU_C		64
 
-/* FOR LIQUID STATE MACHINE */
-// the control parameter to enable STDP training, you only to enable this one
-// before enable the following two variables!!
-#define STDP_TRAINING
-
-// the control parameter to enable training the reservoir:
-//#define STDP_TRAINING_RESERVOIR
-
-// the control parameter to enable training the input to reservoir syns
-//#define STDP_TRAINING_INPUT
-
-// the control parameter to enable training the readout synapses in unsupervised way
-//#define STDP_TRAINING_READOUT
-
 // inject additional current to readout during the readout unsupvervised stage
-#define _READOUT_HELPER_CURRENT
+//#define _READOUT_HELPER_CURRENT
 // tune the teacher signal strength during the readout training to "activate v_mem"
 #define TS_STRENGTH_P 0
 #define TS_STRENGTH_N 0 
@@ -80,14 +66,13 @@
 #define INDEG_LIMIT  1
 #define OUTDEG_LIMIT 1
 
-
 /******************************************
  * Control variable for switching different 
  * readout training algorithms
  * The TS is only defined for Yong's and supvervised
  * STDP.
  *****************************************/
-//#define TEACHER_SIGNAL
+#define TEACHER_SIGNAL
 
 
 /*******************************************
@@ -128,7 +113,7 @@
 
 #define OPT_ADAM    // enable adam here
 
-#define _BOOSTING_METHOD
+//#define _BOOSTING_METHOD
 
 /*****************************************
  * some available modifications 
@@ -239,9 +224,9 @@
 #define LSM_DELTA_POT 0.006
 #define LSM_DELTA_DEP 0.006
 #define ITER_SEARCH_CONV 25.0
-#define CLS 10
-#define NUM_THREADS 1
-#define NUM_ITERS 10
+#define CLS 26
+#define NUM_THREADS 5
+#define NUM_ITERS 500
 
 #define LSM_TBIT_SYNE 1
 #define LSM_TBIT_SYNI 3
@@ -281,15 +266,15 @@
 #define _LEVEL_PERCENT 0.1 // level % of average variance will be considered correlated
 
 #define LOST_RATE 0.0
-//#define DIGITAL
+#define DIGITAL
 //#define DIGITAL_SYN_ORGINAL 1
 #define LIQUID_SYN_MODIFICATION 1
 
-//#define SYN_ORDER_2 1 
-#define SYN_ORDER_1 1
+#define SYN_ORDER_2 1 
+//#define SYN_ORDER_1 1
 //#define SYN_ORDER_0 0 
 
-//#define CV
+#define CV
 #define NFOLD 5
 
 //* Control variable to enable the old way of readout by writing outputs/*.dat
@@ -306,27 +291,22 @@
 //#define _DUMP_RESPONSE
 
 //#define _DUMP_CALCIUM
-
-//#define _TEST_
-
+//
 //NMNIST functions
 
 //#define USE_TEST_SAMPLE
 
 #define TB_PER_CLASS 1 //set to -1 if need to read all
 
-//#define LOAD_RESPONSE
-
 //#define _DYNAMIC_THRESHOLD
 //#define DYNAMIC_THRESHOLD_PER 1
 
-//#define QUICK_RESPONSE
 
 
 
 enum channelmode_t {INPUTCHANNEL,RESERVOIRCHANNEL, OUTPUTCHANNEL}; // for allocate speech channels
 enum neuronmode_t {DEACTIVATED,READCHANNEL,WRITECHANNEL,STDP,READCHANNELSTDP,READCHANNELBP,NORMALSTDP,NORMALBP,NORMAL}; // for implement network stat.
-enum networkmode_t {TRAINRESERVOIR,TRAININPUT,TRAINREADOUT,TRANSIENTSTATE,READOUT,READOUTSUPV,READOUTBP,VOID}; // different network mode
+enum networkmode_t {TRAINRESERVOIR,TRAININPUT,TRAINREADOUT,TRANSIENTSTATE,READOUT,READOUTSUPV,READOUTBP,FEEDBACKSTDP,FEEDBACKREADOUT,VOID}; // different network mode
 
 enum synapsetype_t {RESERVOIR_SYN, INPUT_SYN, READOUT_SYN, INVALID}; // different synaptic type
 

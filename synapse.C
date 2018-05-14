@@ -18,7 +18,7 @@
 //#define _DEBUG_TRUNC
 //#define _DEBUG_YONG_RULE
 //#define _DEBUG_SIMPLE_STDP
-#define _DEBUG_AP_STDP
+//#define _DEBUG_AP_STDP
 //#define _DEBUG_UNSUPERV_TRAINING
 //#define _DEBUG_SUPV_STDP
 //#define _DEBUG_UPDATE_AT_LAST
@@ -87,7 +87,7 @@ Synapse::Synapse(Neuron * pre, Neuron * post, double lsm_weight, bool fixed, dou
     char * name = post->Name();
     if(name[0] == 'o')  _excitatory = _lsm_weight >= 0; 
 
-    cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<_excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
+//    cout<<pre->Name()<<"\t"<<post->Name()<<"\t"<<_excitatory<<"\t"<<post->IsExcitatory()<<"\t"<<_lsm_weight<<"\t"<<_lsm_weight_limit<<endl;
 
     // initialize the look-up table:
     _init_lookup_table(false);
@@ -155,8 +155,12 @@ Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int 
     assert(pre_name != NULL);
     // be careful.. that might hamper the performance : ( 
     // if(pre_name[0] == 'i')  _excitatory = _D_lsm_weight >= 0; 
-
-    if((_liquid == false)&&(pre_name[0] != 'i')){
+	
+	if(IsFeedbackSyn()){
+		_Unit=1;
+		_D_lsm_weight_limit = 8;
+	}
+	else if((_liquid == false)&&(pre_name[0] != 'i')){
 #if NUM_BIT_SYN > NBT_STD_SYN
         _Unit = _Unit<<(NUM_BIT_SYN-NBT_STD_SYN);
         _D_lsm_weight = _D_lsm_weight<<(NUM_BIT_SYN-NBT_STD_SYN);
@@ -187,7 +191,7 @@ Synapse::Synapse(Neuron * pre, Neuron * post, int D_lsm_weight, bool fixed, int 
 #endif
     }
 
-    cout<<pre->Name()<<"\t"<<post->Name()<<"\tPreExcit: "<<_excitatory<<"\tPostExcit: "<<post->IsExcitatory()<<"\t"<<_D_lsm_weight<<endl;
+//    cout<<pre->Name()<<"\t"<<post->Name()<<"\tPreExcit: "<<_excitatory<<"\tPostExcit: "<<post->IsExcitatory()<<"\t"<<_D_lsm_weight<<endl;
 
     // initialize the look-up table:
     _init_lookup_table(false);
@@ -398,6 +402,18 @@ bool Synapse::IsInputSyn(){
         return false;
 }
 
+
+bool Synapse::IsFeedbackSyn(){
+    char * name_post = _post->Name();
+    char * name_pre = _pre->Name();
+    // if the post neuron is the reservoir neuron and pre is output neuron:
+    if((name_post[0] == 'r' && name_post[9] == '_') && (name_pre[0] == 'o' && name_pre[6] == '_')){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
 
 bool Synapse::IsValid(){
     assert(_pre && _post); 
@@ -1398,11 +1414,13 @@ void Synapse::LSMActivate(Network * network, bool need_learning, bool train){
  ******************************************************/
 void Synapse::LSMActivateSTDPSyns(Network * network, const char * type){
     if(strcmp(type, "input") == 0)
-        assert(_lsm_stdp_active == false && !IsReadoutSyn() && !IsLiquidSyn());
+        assert(_lsm_stdp_active == false && !IsReadoutSyn() && !IsLiquidSyn() && !IsFeedbackSyn());
     else if(strcmp(type, "reservoir") == 0)
-        assert(_lsm_stdp_active == false && !IsReadoutSyn() && !IsInputSyn());
+        assert(_lsm_stdp_active == false && !IsReadoutSyn() && !IsInputSyn() && !IsFeedbackSyn());
     else if(strcmp(type, "readout") == 0)
-        assert(_lsm_stdp_active == false && !IsInputSyn() && !IsLiquidSyn());
+        assert(_lsm_stdp_active == false && !IsInputSyn() && !IsLiquidSyn() && !IsFeedbackSyn());
+    else if(strcmp(type, "feedback") == 0)
+        assert(_lsm_stdp_active == false && !IsInputSyn() && !IsLiquidSyn() && !IsReadoutSyn());
     else
         assert(0);
 
@@ -1413,7 +1431,7 @@ void Synapse::LSMActivateSTDPSyns(Network * network, const char * type){
     /** Currently, for readout synapses, I am training it regardless of type **/
     /** Because the type of the readout synapses is independent of the pre-  **/
     /** neuron under the current settings (supervised learning)              **/
-    if(_excitatory == true || (strcmp(type, "readout") == 0 && network->LSMGetNetworkMode() == READOUTSUPV)){
+    if((_excitatory == true || (strcmp(type, "readout") == 0 && network->LSMGetNetworkMode() == READOUTSUPV))|| (_excitatory == true && network -> LSMGetNetworkMode()==FEEDBACKSTDP&& strcmp(type, "feedback")==0)){
 #ifdef _DEBUG_UNSUPERV_TRAINING
         cout<<"Put synapse from "<<_pre->Name()<<" to "<<_post->Name()<<" for STDP training"<<endl;
 #endif

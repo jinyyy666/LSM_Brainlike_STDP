@@ -510,6 +510,93 @@ void Network::LSMHubDetection(){
     cout<<"Total number of hubs in the reservoir is "<<cnt<<endl;
 }
 
+void Network::LSMTrainInput(networkmode_t networkmode, int tid){
+    char filename[64];
+    if(tid == 0){
+        sprintf(filename, "reservoir_weights_before_input_stdp.txt");
+        WriteSelectedSynToFile("reservoir", filename);
+        sprintf(filename, "input_weights_before_input_stdp.txt");
+        WriteSelectedSynToFile("input", filename);
+    }
+    // train the input using STDP rule:
+    LSMSetNetworkMode(networkmode);
+
+    // repeatedly training the input for a certain amount of iterations:
+    for(int i = 0; i < 20; ++i){
+        LSMUnsupervisedTraining(networkmode, tid);
+#if NUM_THREADS == 1
+        // Write the weight back to file after training the input with STDP:
+        sprintf(filename, "input_weights_%d.txt", i);
+        WriteSelectedSynToFile("input", filename);
+#endif
+    }
+    if(tid == 0){
+        sprintf(filename, "reservoir_weights_after_input_stdp.txt");
+        WriteSelectedSynToFile("reservoir", filename);
+        sprintf(filename, "input_weights_after_input_stdp.txt");
+        WriteSelectedSynToFile("input", filename);
+    }
+
+}
+
+
+void Network::LSMTrainReservoir(networkmode_t networkmode,int tid){
+    char filename[64];
+    if(tid == 0){
+        sprintf(filename, "reservoir_weights_before_reservoir_stdp.txt");
+        WriteSelectedSynToFile("reservoir", filename);
+        sprintf(filename, "input_weights_before_reservoir_stdp.txt");
+        WriteSelectedSynToFile("input", filename);
+    }
+    // train the reservoir using STDP rule:
+    LSMSetNetworkMode(networkmode);
+
+    // repeatedly training the reservoir for a certain amount of iterations:
+    for(int i = 0; i < 25; ++i){
+        LSMReservoirTraining(networkmode);
+
+#if NUM_THREADS == 1  
+        // Write the weight back to file after training the reservoir with STDP:
+        sprintf(filename, "reservoir_weights_%d.txt", i);
+        WriteSelectedSynToFile("reservoir", filename);
+#endif       
+    }
+    if(tid == 0){
+        sprintf(filename, "reservoir_weights_after_reservoir_stdp.txt");
+        WriteSelectedSynToFile("reservoir", filename);
+        sprintf(filename, "input_weights_after_reservoir_stdp.txt");
+        WriteSelectedSynToFile("input", filename);
+    }
+#ifdef _RM_ZERO_RES_WEIGHT
+    RemoveZeroWeights("reservoir");
+#endif  
+}
+
+void Network::LSMTrainReadout(networkmode_t networkmode, int tid){
+    char filename[64];
+    if(tid == 0){
+        sprintf(filename, "readout_weights_before_readout_stdp.txt");
+        WriteSelectedSynToFile("readout", filename);
+    }
+    LSMSetNetworkMode(networkmode);
+    for(int i = 0; i < 20; ++i){
+        cout<<"\n************************"
+            <<"\n* i = "<<i
+            <<"\n************************"<<endl;
+        LSMUnsupervisedTraining(networkmode, tid);
+#if NUM_THREADS == 1
+        // Write the weight back to file
+        sprintf(filename, "readout_weights_%d.txt", i);
+        WriteSelectedSynToFile("readout", filename);
+#endif
+    }
+    if(tid == 0){
+        sprintf(filename, "readout_weights_after_readout_stdp.txt");
+        WriteSelectedSynToFile("readout", filename);
+    }
+    RemoveZeroWeights("readout");
+}
+
 //****************************************************************************************
 //
 // This is a function wrapper for running the transient simulation
@@ -517,6 +604,7 @@ void Network::LSMHubDetection(){
 //                 "test_sample", samples for purely testing, need to enable "USE_TEST_SAMPLE"
 //****************************************************************************************
 void Network::LSMTransientSim(networkmode_t networkmode, int  tid, const string sample_type){
+	LSMSetNetworkMode(networkmode);
     int count = 0;
     LSMClearSignals();
     int info = this->LoadFirstSpeech(false, networkmode, sample_type);
@@ -553,7 +641,156 @@ void Network::LSMTransientSim(networkmode_t networkmode, int  tid, const string 
 
 }
 
+void Network::LSMReadout(networkmode_t networkmode, int tid){
+    char filename[64];
+    int Tid;
+    if(tid == 0){
+        sprintf(filename, "readout_weights_before_train.txt");
+        WriteSelectedSynToFile("readout", filename);
+    }
+    // train the readout layer
+    LSMSetNetworkMode(networkmode);
+#ifdef CV
+#if NUM_THREADS == 1
+    for(int fff = 0; fff < NFOLD; ++fff){
+        Fold(fff);
+        LSMClearWeights();
+        Tid = (int)tid;
+        cout<<"Only one thread is running:Tid_"<<Tid<<endl;
+#else 
+        Tid = (int)tid;
+        Fold(Tid);
+#endif
+#endif
+        for(int iii = 0; iii < NUM_ITERS; iii++){
+            if(tid == 0)    cout<<"Run the iteration: "<<iii<<endl;
+            // random shuffle the training samples for better generalization
+            ShuffleTrainingSamples();
+            LSMSupervisedTraining(networkmode, tid, iii);
+			CurrentPerformance(iii);
+        }
+#if defined(CV) && NUM_THREADS == 1
+    }
+#endif
 
+    if(tid == 0){
+        sprintf(filename, "readout_weights_after_train.txt");
+        WriteSelectedSynToFile("readout", filename);
+    }
+
+}
+
+void Network::LSMFeedbackSTDP(networkmode_t networkmode, int tid){
+    char filename[64];
+    int Tid;
+	if(tid == 0){
+		sprintf(filename, "o_weights_before_feedback_stdp.txt");
+		WriteSelectedSynToFile("readout", filename);
+		sprintf(filename, "feedback_before_feedback_stdp.txt");
+		WriteSynWeightsToFile("output", "reservoir", filename);
+		sprintf(filename, "r_weights_before_feedback_stdp.txt");
+		WriteSelectedSynToFile("reservoir", filename);
+	}
+    // train the feedback and reservoir with STDP and train readout with learning rule
+    LSMSetNetworkMode(networkmode);
+#ifdef CV
+    Tid = (int)tid;
+    Fold(Tid);
+#endif
+    for(int iii = 0; iii < 20; iii++){
+        if(tid == 0)    cout<<"Run the iteration: "<<iii<<endl;
+        // random shuffle the training samples for better generalization
+        ShuffleTrainingSamples();
+		int info = -1;
+		FILE * Foutp = NULL;
+		char filename[64];
+
+    // 1. Clear the signals
+		LSMClearSignals();
+   
+    // 2. Load the first speech:
+#ifdef CV
+		info = LoadFirstSpeechTrainCV(networkmode);
+#else
+		info = LoadFirstSpeech(true, networkmode);
+#endif
+    // 3. Load the speech for training
+		while(info != -1){
+			int time = 0, end_time = this->SpeechEndTime();
+			Foutp = NULL;
+			while(!LSMEndOfSpeech(networkmode, end_time)){
+				LSMNextTimeStep(++time, true, iii, end_time, NULL); 
+			}
+
+			LSMClearSignals();
+#ifdef CV
+			info = LoadNextSpeechTrainCV(networkmode);
+#else
+			info = LoadNextSpeech(true, networkmode);
+#endif
+		}
+		LSMClearSignals();
+	}
+
+	if(tid == 0){
+		sprintf(filename, "o_weights_after_feedback_stdp.txt");
+		WriteSelectedSynToFile("readout", filename);
+		sprintf(filename, "feedback_after_feedback_stdp.txt");
+		WriteSynWeightsToFile("output", "reservoir", filename);
+		sprintf(filename, "r_weights_after_feedback_stdp.txt");
+		WriteSelectedSynToFile("reservoir", filename);
+	}
+
+}
+
+void Network::LSMFeedbackReadout(networkmode_t networkmode, int tid){
+    char filename[64];
+    int Tid;
+    // only train readout with feedback
+    LSMSetNetworkMode(networkmode);
+	if(tid == 0){
+		sprintf(filename, "o_weights_before_readout.txt");
+		WriteSelectedSynToFile("readout", filename);
+		sprintf(filename, "feedback_before_readout.txt");
+		WriteSynWeightsToFile("output", "reservoir", filename);
+		sprintf(filename, "r_weights_before_readout.txt");
+		WriteSelectedSynToFile("reservoir", filename);
+	}
+#ifdef CV
+#if NUM_THREADS == 1
+	for(int fff = 0; fff < NFOLD; ++fff){
+	Fold(fff);
+	LSMClearWeights();
+	Tid = (int)tid;
+	cout<<"Only one thread is running:Tid_"<<Tid<<endl;
+#else 
+	Tid = (int)tid;
+	cout<<"Tid:"<<Tid<<endl;
+	Fold(Tid);
+#endif
+#endif
+	for(int iii = 0; iii < NUM_ITERS; iii++){
+		if(tid == 0)    cout<<"Run the iteration: "<<iii<<endl;
+    // random shuffle the training samples for better generalization
+		ShuffleTrainingSamples();
+		LSMSupervisedTraining(networkmode, tid, iii);
+		CurrentPerformance(iii);
+	}
+#if defined(CV) && NUM_THREADS == 1
+	}
+#endif
+
+
+	if(tid == 0){
+		sprintf(filename, "o_weights_after_readout.txt");
+		WriteSelectedSynToFile("readout", filename);
+		sprintf(filename, "feedback_after_readout.txt");
+		WriteSynWeightsToFile("output", "reservoir", filename);
+		sprintf(filename, "r_weights_after_readout.txt");
+		WriteSelectedSynToFile("reservoir", filename);
+	}
+
+}
 //****************************************************************************************
 //
 // This is a function wrapper for training the readout synapses supervisedly! 
@@ -835,13 +1072,24 @@ void Network::LSMNextTimeStep(int t, bool train,int iteration,int end_time, FILE
     }
 
     if(train == true) {
-        if(_network_mode == READOUT){
+        if(_network_mode == READOUT || _network_mode == FEEDBACKREADOUT){
             for(Synapse * synapse : _lsmActiveLearnSyns)    synapse->LSMLearn(t, iteration);
             _lsmActiveLearnSyns.clear();
         }else if(_network_mode == READOUTSUPV){
             for(Synapse * synapse : _lsmActiveSTDPLearnSyns)    synapse->LSMSTDPSupvLearn(t, iteration); 
             _lsmActiveSTDPLearnSyns.clear();
-        }
+        }else if(_network_mode == FEEDBACKSTDP){
+            for(Synapse * synapse : _lsmActiveLearnSyns)    
+				synapse->LSMLearn(t, iteration);
+            _lsmActiveLearnSyns.clear();
+            for(Synapse * synapse : _rsynapses) 
+				synapse->LSMUpdate(t);
+            for(Synapse * synapse : _fsynapses) 
+				synapse->LSMUpdate(t);
+			for(Synapse * synapse : _lsmActiveSTDPLearnSyns)    
+				synapse->LSMSTDPLearn(t);
+			_lsmActiveSTDPLearnSyns.clear();
+		}
     }
 
 #ifdef _CORBASED_SPARSE
@@ -1042,6 +1290,14 @@ void Network::DetermineNetworkNeuronMode(const networkmode_t & networkmode, neur
         neuronmode_input = READCHANNEL;
         neuronmode_reservoir = DEACTIVATED;
         neuronmode_readout = NORMALBP;
+    }else if(networkmode == FEEDBACKSTDP){
+        neuronmode_input = READCHANNEL;
+        neuronmode_reservoir = STDP;
+        neuronmode_readout = NORMALSTDP;
+    }else if(networkmode == FEEDBACKREADOUT){
+        neuronmode_input = READCHANNEL;
+        neuronmode_reservoir = NORMAL;
+        neuronmode_readout = NORMAL;
     }else{
         cout<<"Unrecognized network mode!"<<endl;
         exit(EXIT_FAILURE);

@@ -216,6 +216,7 @@ public:
 
     // determine whether or not this synapse is in the liquid?
     bool IsLiquidSyn(){ return _liquid;};
+	bool IsFeedbackSyn();
 
     void CheckPlasticWeightOutBound();
     void CheckReadoutWeightOutBound();
